@@ -103,11 +103,24 @@ docs/02-architecture/
   system-context.md
   container-architecture.md
   component-architecture.md
+  data-flow.md
 ```
 
-The component architecture establishes transport, identity/tenant/authz, application-use-case, domain ownership, transaction, repository/port, provider adapter, idempotency, audit, read-model, and worker boundaries without creating microservices.
+The current baseline now establishes:
 
-The next architecture artifact is `data-flow.md`.
+- C4 system context,
+- logical containers and trust boundaries,
+- modular-monolith component ownership,
+- principal/tenant/capability authorization boundaries,
+- transaction and repository boundaries,
+- layered idempotency,
+- provider adapter boundaries,
+- worker/job responsibilities,
+- canonical vs derived data,
+- 12 critical Phase 1 end-to-end data flows,
+- retry/reconciliation/audit/observability semantics.
+
+The next architecture artifact is `technology-stack.md`.
 
 ## Major future domains
 
