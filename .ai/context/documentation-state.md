@@ -32,7 +32,7 @@
 
 All planned files complete at Draft v1.x.
 
-`assumptions.md` is the canonical decision register and now includes the legacy decision-ID crosswalk.
+`assumptions.md` is the canonical decision register and includes the legacy decision-ID crosswalk.
 
 ### `01-product`
 
@@ -57,23 +57,16 @@ Remaining architecture artifacts:
 
 ## Architecture governance state
 
-Repository audit identified a decision-reference inconsistency:
-
-- legacy `docs/16-open-decisions.md` uses numeric IDs such as `D-060`,
-- canonical `docs/00-overview/assumptions.md` uses scoped IDs such as `D-ARCH-006`,
-- existing structured architecture drafts still contain some legacy IDs.
-
-Completed governance correction:
+Completed:
 
 - canonical decision source explicitly declared,
-- missing canonical IDs added where current architecture required them,
-- legacy-to-canonical crosswalk added,
-- `docs/README.md` source hierarchy refreshed,
-- `.ai` decision memory now points to canonical source.
+- missing canonical decision IDs added where current architecture required them,
+- legacy-to-canonical decision-ID crosswalk added,
+- structured architecture drafts normalized to canonical scoped decision IDs,
+- architecture related-document links now point to the canonical assumptions register,
+- no provider/runtime decision was accepted as part of the normalization sweep.
 
-Current correction task:
-
-Normalize legacy IDs in the four structured architecture drafts before creating new downstream architecture documents.
+Legacy `docs/16-open-decisions.md` remains a migration input and may retain historical numeric IDs until its content has canonical destinations and deprecation pointers.
 
 ## Container architecture state
 
@@ -121,7 +114,7 @@ Canonical requirement IDs exist in `docs/01-product/functional-requirements.md` 
 
 Architecture documents reference requirement drivers where relevant.
 
-Decision traceability is being normalized to canonical scoped IDs before component architecture begins.
+Structured architecture decision traceability now uses canonical scoped decision IDs from `docs/00-overview/assumptions.md`.
 
 ## ADR state
 
@@ -142,17 +135,14 @@ Provider-specific ADRs for payments, messaging, hosting, and observability shoul
 
 ## Immediate next documentation task
 
-Normalize legacy decision references in:
+`TASK-DOC-ARCH-005 - Create C4 Component Architecture`
 
-- `docs/02-architecture/architecture-principles.md`
-- `docs/02-architecture/architecture-overview.md`
-- `docs/02-architecture/system-context.md`
-- `docs/02-architecture/container-architecture.md`
+Target:
 
-Use the crosswalk in `docs/00-overview/assumptions.md`.
+`docs/02-architecture/component-architecture.md`
 
-After that sweep, resume `TASK-DOC-ARCH-005` for `component-architecture.md`.
+The document should decompose the trusted Application/API and Worker boundaries into application services, domain modules, authorization, repositories/ports, provider adapters, audit/event handling, idempotency, and job components without converting them into microservices.
 
 ## Last update
 
-Architecture governance reconciliation completed after repository audit. Phase 4 remains in progress on branch `docs/phase-2-architecture`.
+Decision-reference normalization completed. Architecture Phase 4 remains in progress on branch `docs/phase-2-architecture`.
