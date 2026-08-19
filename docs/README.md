@@ -13,6 +13,7 @@ Every document or major decision should use one of these states where relevant:
 - `Confirmed`: supported by an approved product/business decision or source material.
 - `Proposed`: recommended design that still requires explicit approval or ADR acceptance.
 - `Assumed`: temporary working assumption used only to unblock design; must have an owner and review point.
+- `Open`: unresolved and requiring explicit decision.
 - `Future`: intentionally outside the current delivery phase.
 - `Out of Scope`: explicitly excluded from the referenced phase.
 - `Deprecated`: retained only for historical traceability and must not be treated as current truth.
@@ -21,13 +22,23 @@ Every document or major decision should use one of these states where relevant:
 
 When documents conflict, use this order:
 
-1. Accepted ADRs and explicitly approved business decisions.
+1. Explicitly approved business decisions and Accepted ADRs.
 2. Current structured documents under `docs/00-overview/` through `docs/15-roadmap/`.
-3. Current requirement IDs and domain specifications.
-4. Legacy flat documents in `docs/` that have not yet been migrated.
-5. Original Gym App Blueprint source material for source-derived Phase 1 behavior.
+3. Current atomic requirement IDs and domain specifications.
+4. Explicit assumptions/open decisions in `docs/00-overview/assumptions.md`.
+5. Legacy flat documents in `docs/` that have not yet been migrated.
+6. Original Gym App Blueprint source material for source-derived Phase 1 behavior.
+7. Architect recommendations not yet approved.
 
 No undocumented implementation detail overrides an approved requirement or ADR.
+
+### Canonical decision register
+
+`docs/00-overview/assumptions.md` is the canonical decision and assumption register.
+
+`docs/16-open-decisions.md` is a legacy migration source. New structured documents MUST use canonical decision IDs such as `D-ARCH-006`, not legacy aliases such as `D-060`.
+
+The canonical register contains the migration crosswalk needed while older documents are normalized.
 
 ## Target information architecture
 
@@ -158,9 +169,24 @@ NFR-PERFORMANCE-001
 
 Architecture documents and ADRs should reference the requirement IDs they satisfy. Tests should reference requirement or acceptance-criterion IDs where practical.
 
+Target traceability direction:
+
+```text
+Requirement
+  -> Product Capability
+  -> Domain
+  -> Architecture Component
+  -> Database Entity
+  -> API Contract
+  -> Security Control
+  -> Test
+```
+
 ## ADR policy
 
 A major architecture decision is not considered final merely because it appears in a design document. Decisions such as monorepo strategy, database, API style, authentication, job runner, payment provider, hosting platform, AI model strategy, or event architecture require an ADR before they become architectural commitments.
+
+ADRs must reference canonical decision IDs from `00-overview/assumptions.md`.
 
 ## Documentation quality rules
 
@@ -172,12 +198,13 @@ A major architecture decision is not considered final merely because it appears 
 - Use Mermaid diagrams when a diagram is clearer than prose.
 - Avoid repeating the same rule in many places; link to the canonical owning document.
 - When a canonical rule changes, identify and update all dependent documents in the same change set.
+- New structured documents must not introduce legacy decision IDs.
 
 ## Current structured-document status
 
-### Completed foundation
+### `00-overview/`
 
-`00-overview/` is complete at Draft v1.x level:
+Complete at Draft v1.x level:
 
 - `project-overview.md`
 - `vision.md`
@@ -186,7 +213,11 @@ A major architecture decision is not considered final merely because it appears 
 - `glossary.md`
 - `assumptions.md`
 
-`01-product/` is complete at Draft v1.x level:
+The assumptions document now owns canonical decision IDs and the legacy-ID migration crosswalk.
+
+### `01-product/`
+
+Complete at Draft v1.x level:
 
 - `product-requirements.md`
 - `personas.md`
@@ -197,20 +228,46 @@ A major architecture decision is not considered final merely because it appears 
 - `non-functional-requirements.md`
 - `success-metrics.md`
 
-### Next documentation phase
+### `02-architecture/`
 
-The next canonical phase is `02-architecture/`:
+Architecture Phase 4 is `IN_PROGRESS` on branch `docs/phase-2-architecture`.
+
+Completed drafts:
 
 1. `architecture-principles.md`
 2. `architecture-overview.md`
 3. `system-context.md`
 4. `container-architecture.md`
+
+Before creating the next architecture layer, existing structured architecture references to legacy decision IDs are being normalized to canonical IDs.
+
+After that governance sweep, continue in this order:
+
 5. `component-architecture.md`
 6. `data-flow.md`
 7. `technology-stack.md`
-8. initial ADRs for major decisions
+8. `docs/adr/README.md`
+9. initial ADRs for major decisions
 
-The legacy flat files remain migration inputs until their material has canonical structured destinations and they are explicitly marked deprecated.
+## Legacy migration state
+
+The legacy flat files remain migration inputs until their material has canonical structured destinations and they are explicitly marked `Deprecated` or replaced by a pointer.
+
+Do not delete legacy files simply because a newer structured document exists.
+
+The current high-value migration sources include:
+
+- `05-system-architecture.md`
+- `06-database-schema.md`
+- `07-api-contracts.md`
+- `08-automations.md`
+- `09-payments-billing.md`
+- `10-notifications-whatsapp.md`
+- `11-analytics-kpis.md`
+- `12-security-audit.md`
+- `13-testing-qa.md`
+- `15-engineering-workflow.md`
+- `16-open-decisions.md`
 
 ## Current delivery boundary
 
