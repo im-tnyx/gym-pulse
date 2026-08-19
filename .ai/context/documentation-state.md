@@ -46,10 +46,10 @@ Completed drafts:
 - `architecture-overview.md`
 - `system-context.md`
 - `container-architecture.md`
+- `component-architecture.md`
 
 Remaining architecture artifacts:
 
-- `component-architecture.md`
 - `data-flow.md`
 - `technology-stack.md`
 - `architecture-decisions/` index/pointers if retained
@@ -63,31 +63,37 @@ Completed:
 - missing canonical decision IDs added where current architecture required them,
 - legacy-to-canonical decision-ID crosswalk added,
 - structured architecture drafts normalized to canonical scoped decision IDs,
-- architecture related-document links now point to the canonical assumptions register,
-- no provider/runtime decision was accepted as part of the normalization sweep.
+- architecture related-document links point to the canonical assumptions register,
+- no provider/runtime decision was accepted as part of normalization.
 
 Legacy `docs/16-open-decisions.md` remains a migration input and may retain historical numeric IDs until its content has canonical destinations and deprecation pointers.
 
-## Container architecture state
+## Component architecture state
 
-`container-architecture.md` is the current C4 Level 2 draft.
+`component-architecture.md` is now the canonical C4 Level 3-style draft for trusted Application/API and Worker internals.
 
 It defines:
 
-- Owner/Staff Web logical container,
-- Member Mobile logical container,
-- trusted Application/API runtime,
-- Worker/Job runtime,
-- PostgreSQL proposed canonical store,
-- private Object Storage,
-- external Auth, Payment, Messaging, Observability, and Product Analytics boundaries,
-- synchronous vs asynchronous interactions,
-- data ownership,
-- dependency direction,
-- trust/failure/scaling/test boundaries,
-- both API deployment options without selecting one.
+- transport adapters and request/correlation context,
+- principal and tenant-context resolution,
+- capability authorization,
+- contract validation and DTO mapping,
+- application use-case/orchestration layer,
+- Phase 1 domain ownership,
+- transaction/unit-of-work boundaries,
+- repository/data-access ports,
+- layered request/domain/provider/business-effect idempotency,
+- payment adapter and verified webhook mapper,
+- notification policy/intent vs transport separation,
+- audit recorder and data-quality component,
+- operational query/read models,
+- worker scheduler/handlers,
+- cross-domain write restrictions,
+- synchronous vs asynchronous interaction rules,
+- failure propagation,
+- observability hooks and test seams.
 
-No provider selection or API deployment topology is final.
+The document does not make components separate services and does not finalize open providers/runtimes.
 
 ## Legacy flat documents
 
@@ -114,11 +120,13 @@ Canonical requirement IDs exist in `docs/01-product/functional-requirements.md` 
 
 Architecture documents reference requirement drivers where relevant.
 
-Structured architecture decision traceability now uses canonical scoped decision IDs from `docs/00-overview/assumptions.md`.
+`component-architecture.md` now maps requirements into application/domain components and explicit critical sequence flows.
+
+Structured architecture decision traceability uses canonical scoped decision IDs from `docs/00-overview/assumptions.md`.
 
 ## ADR state
 
-ADR framework not yet created in structured architecture pass.
+ADR framework not yet created in the structured architecture pass.
 
 Initial ADR candidates remain Proposed/Open, not Accepted:
 
@@ -135,14 +143,14 @@ Provider-specific ADRs for payments, messaging, hosting, and observability shoul
 
 ## Immediate next documentation task
 
-`TASK-DOC-ARCH-005 - Create C4 Component Architecture`
+`TASK-DOC-ARCH-006 - Create Architecture Data Flows`
 
 Target:
 
-`docs/02-architecture/component-architecture.md`
+`docs/02-architecture/data-flow.md`
 
-The document should decompose the trusted Application/API and Worker boundaries into application services, domain modules, authorization, repositories/ports, provider adapters, audit/event handling, idempotency, and job components without converting them into microservices.
+The document should trace concrete Phase 1 end-to-end data flows across clients, Application/API components, domain ownership, PostgreSQL, workers, and external providers. It must reuse the boundaries already defined rather than inventing new services casually.
 
 ## Last update
 
-Decision-reference normalization completed. Architecture Phase 4 remains in progress on branch `docs/phase-2-architecture`.
+C4 Level 3-style `component-architecture.md` completed on branch `docs/phase-2-architecture`. Architecture Phase 4 remains in progress.
