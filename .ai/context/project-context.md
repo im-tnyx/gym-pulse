@@ -69,16 +69,16 @@ Attendance
 
 The current architecture work proposes:
 
-- TypeScript as primary application language
-- modular monolith before microservices
-- explicit domain boundaries
-- PostgreSQL as canonical relational store
-- multi-tenant hierarchy from day one
-- web/mobile/API clients sharing stable contracts
-- provider adapters for auth, payments, messaging, storage, analytics
-- durable observable background jobs
-- UTC event timestamps + gym-local business timezone
-- integer minor units for money
+- TypeScript as primary application language,
+- modular monolith before microservices,
+- explicit domain boundaries,
+- PostgreSQL as canonical relational store,
+- multi-tenant hierarchy from day one,
+- web/mobile/API clients sharing stable contracts,
+- provider adapters for auth, payments, messaging, storage, analytics,
+- durable observable background jobs,
+- UTC event timestamps + gym-local business timezone,
+- integer minor units for money.
 
 These are not all final until the relevant ADRs are accepted.
 
@@ -104,9 +104,10 @@ docs/02-architecture/
   container-architecture.md
   component-architecture.md
   data-flow.md
+  technology-stack.md
 ```
 
-The current baseline now establishes:
+The current baseline establishes:
 
 - C4 system context,
 - logical containers and trust boundaries,
@@ -118,9 +119,27 @@ The current baseline now establishes:
 - worker/job responsibilities,
 - canonical vs derived data,
 - 12 critical Phase 1 end-to-end data flows,
-- retry/reconciliation/audit/observability semantics.
+- retry/reconciliation/audit/observability semantics,
+- technology evaluation and selection gates.
 
-The next architecture artifact is `technology-stack.md`.
+Current recommended technology direction for planning, not acceptance:
+
+```text
+TypeScript
+Turborepo-style monorepo
+pnpm
+Next.js Owner/Staff Web
+Expo / React Native when native member delivery is active
+JSON HTTP typed contracts
+PostgreSQL
+SQL-aware typed data layer, exact library Open
+provider-neutral Auth/Payments/Messaging/Storage/Observability adapters
+durable job runner, exact technology Open
+Redis not required by default
+managed hosting preferred for pilot, provider Open
+```
+
+The next architecture artifact is the ADR framework at `docs/adr/README.md`.
 
 ## Major future domains
 
@@ -144,12 +163,12 @@ Their detailed product requirements are not yet confirmed.
 
 When information conflicts, use:
 
-1. accepted ADRs and approved business decisions
-2. structured docs under `docs/00-overview/` through `docs/15-roadmap/`
-3. current requirement IDs/domain specifications
-4. explicit assumptions/open decisions in `docs/00-overview/assumptions.md`
-5. legacy flat docs that are not yet migrated
-6. original Gym App Blueprint source material
+1. accepted ADRs and approved business decisions,
+2. structured docs under `docs/00-overview/` through `docs/15-roadmap/`,
+3. current requirement IDs/domain specifications,
+4. explicit assumptions/open decisions in `docs/00-overview/assumptions.md`,
+5. legacy flat docs that are not yet migrated,
+6. original Gym App Blueprint source material.
 
 ## Canonical decision register
 
@@ -165,21 +184,31 @@ for current decision IDs, status, owners, and legacy-ID migration crosswalk.
 
 Do not guess these silently:
 
-- pilot gym and real operating rules
-- freeze expiry effect
-- renewal effective-date policy
-- duplicate attendance window / multiple visits per day
-- staff/member authentication strategy and method
-- managed backend
-- API deployment model
-- job runner
-- payment provider
-- messaging provider
-- hosting
-- observability provider
-- RLS strategy
-- membership renewal representation
-- receipt/tax document requirements
-- privacy/jurisdiction requirements
+- pilot gym and real operating rules,
+- freeze expiry effect,
+- renewal effective-date policy,
+- duplicate attendance window / multiple visits per day,
+- staff/member authentication strategy and method,
+- managed backend,
+- API deployment model,
+- job runner,
+- payment provider,
+- messaging provider,
+- hosting,
+- observability provider,
+- RLS strategy,
+- membership renewal representation,
+- receipt/tax document requirements,
+- privacy/jurisdiction requirements.
 
 Use canonical scoped decision IDs from `docs/00-overview/assumptions.md` when referencing these choices.
+
+## Current documentation task
+
+`TASK-DOC-ADR-001 - Create ADR Framework and Index`
+
+Target:
+
+`docs/adr/README.md`
+
+The framework must establish ADR lifecycle, numbering, template, canonical decision linkage, review, and supersession rules without accepting any technology merely by documenting it.
