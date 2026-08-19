@@ -2,7 +2,7 @@
 
 ## Last completed task
 
-`TASK-DOC-ARCH-005 - Create C4 Component Architecture`
+`TASK-DOC-ARCH-006 - Create Architecture Data Flows`
 
 Branch:
 
@@ -10,60 +10,67 @@ Branch:
 
 Created:
 
-`docs/02-architecture/component-architecture.md`
+`docs/02-architecture/data-flow.md`
 
-## What the component architecture established
+## What the data-flow architecture established
 
-The trusted Application/API and Worker logical containers are now decomposed into implementation-oriented source-code components.
+The Phase 1 architecture now traces critical data movement end to end across clients, trusted Application/API components, domain modules, PostgreSQL, workers, and external providers.
 
-Key boundaries:
+Covered flows:
 
-- Transport Adapters own protocol translation, not business rules.
-- Request/Correlation Context propagates safe diagnostic identity.
-- Principal Resolver maps verified authentication evidence to GymPulse principals.
-- Tenant Context Resolver determines allowed organization/gym/branch scope.
-- Capability Authorization enforces named permissions server-side.
-- Contract Validation protects trust boundaries.
-- Application Use Cases coordinate transactions and cross-domain intent.
-- Domain modules own canonical business mutations.
-- Repository/Data Ports prevent arbitrary table mutation across domains.
-- Unit of Work defines correctness-sensitive transaction boundaries.
-- Idempotency uses request, domain uniqueness, provider-event, and business-effect layers.
-- Provider SDK/payloads remain behind Auth, Payment, Messaging, Object Storage, and Observability adapters.
-- Notification business intent/policy is separate from delivery transport.
-- Audit history is required for defined sensitive mutations.
-- Operational Read Models may join domains but are read-only authorities.
-- Worker handlers reuse application/domain rules and carry explicit tenant context/system capabilities.
+1. authentication -> principal -> tenant/capability authorization,
+2. member QR check-in,
+3. assisted staff check-in,
+4. scheduled no-show scan -> retention case,
+5. follow-up -> return attendance -> case resolution,
+6. renewal window -> reminder intent,
+7. renewal order -> payment checkout initiation,
+8. verified payment webhook -> canonical payment transition -> exactly-once membership/add-on effect,
+9. notification intent -> current policy -> provider dispatch -> delivery status,
+10. controlled import -> staging/reconciliation -> canonical write,
+11. owner dashboard/action-queue read model,
+12. data-quality scan -> issue lifecycle.
 
-## Critical flows already illustrated
+## Important architecture rules captured
 
-`component-architecture.md` contains sequence diagrams for:
-
-1. member QR check-in,
-2. verified renewal payment -> exactly-once membership effect.
-
-These sequences show authorization, transaction, idempotency, domain ownership, and canonical persistence boundaries.
+- client/provider analytics are not canonical business truth,
+- authentication and tenant authorization are separate concerns,
+- clients cannot self-authorize tenant/member scope,
+- domain modules retain write ownership even with a shared database,
+- correctness-sensitive mutations use explicit transactions,
+- external provider latency stays outside long DB transactions where practical,
+- asynchronous work that must not be lost requires durable continuation/outbox-equivalent behavior,
+- request idempotency, domain uniqueness, provider-event dedupe, and business-effect dedupe are separate layers,
+- payment initiation never extends membership,
+- verified provider evidence plus a unique business-effect key is required for entitlement activation,
+- scheduled business rules use gym-local timezone while event timestamps remain UTC,
+- worker retries must be safe and observable,
+- dashboard/read-model projections remain read-only and traceable to canonical records.
 
 ## Important decision state
 
-No major technology/provider decision was accepted.
+No provider/runtime or framework decision was accepted by the data-flow task.
 
 Still Proposed/Open according to `docs/00-overview/assumptions.md`:
 
 ```text
 D-ARCH-001      Monorepo
 D-ARCH-002      PostgreSQL
+D-ARCH-003      JSON HTTP API
 D-ARCH-004      Authentication/session strategy
 D-ARCH-006      API deployment topology
 D-ARCH-007      Job runner
+D-ARCH-008      Redis requirement
 D-ARCH-009      Hosting
 D-ARCH-010      Object storage
 D-ARCH-011      Owner/Staff web framework
 D-ARCH-012      Member mobile framework
 D-ARCH-013      Managed backend
+D-ARCH-014      Package manager
 D-PROVIDER-001  Payment provider
 D-PROVIDER-002  Messaging provider
-D-PROVIDER-006  Observability provider
+D-PROVIDER-005  Product analytics
+D-PROVIDER-006  Observability
 D-SEC-002       Member authentication
 D-SEC-008       RLS strategy
 D-DATA-007      Membership renewal representation
@@ -75,56 +82,50 @@ Read `.ai/task/current.md`.
 
 Current task:
 
-`TASK-DOC-ARCH-006 - Create Architecture Data Flows`
+`TASK-DOC-ARCH-007 - Create Technology Stack Evaluation`
 
 Target:
 
-`docs/02-architecture/data-flow.md`
+`docs/02-architecture/technology-stack.md`
 
 ## Exact next action
 
-Trace Phase 1 end-to-end data movement through the boundaries that already exist.
+Evaluate the concrete technology options required to implement the architecture without treating recommendations as accepted decisions.
 
-Minimum flows:
+The next document must cover:
 
-- authentication -> principal -> tenant/capability authorization,
-- QR check-in,
-- assisted check-in,
-- no-show scan -> case,
-- follow-up -> return resolution,
-- renewal-window scan -> notification intent,
-- renewal order -> payment checkout,
-- payment webhook -> exactly-once business effect,
-- notification dispatch/delivery callback,
-- controlled import,
-- owner dashboard/read model,
-- data-quality scan.
-
-Each flow must show:
-
-- canonical source/destination,
-- trust boundary crossing,
-- auth/authz checkpoint,
-- transaction boundary,
-- sync/async handoff,
-- durable continuation if required,
-- idempotency/dedupe invariant,
-- retry/failure/reconciliation path,
-- audit/observability hooks,
-- relevant FR/NFR traceability.
+- TypeScript/runtime direction,
+- monorepo and package manager,
+- Owner/Staff web framework,
+- Member mobile framework,
+- API style and deployment topology,
+- PostgreSQL/data-access/migrations,
+- managed backend option,
+- auth/session requirements,
+- job runner/scheduler,
+- payments,
+- messaging,
+- object storage,
+- observability,
+- product analytics,
+- Redis/cache posture,
+- local development/testing,
+- security and operations implications,
+- alternatives/tradeoffs,
+- canonical decision IDs and ADR ownership.
 
 ## Do not forget
 
 - `docs/` is canonical truth.
-- `.ai/` is execution continuity, not canonical architecture.
-- use canonical scoped decision IDs only.
-- do not invent new services merely to draw a flow.
-- provider/runtime choices remain abstract until ADR/decision acceptance.
-- deterministic business truth stays in trusted domain/application code.
-- do not begin `technology-stack.md` until `data-flow.md` and context updates are complete.
+- `.ai/` is execution continuity only.
+- use canonical scoped decision IDs.
+- `technology-stack.md` is evaluation/guidance, not an ADR substitute.
+- recommendations may be `Proposed` or `Assumed`, not silently `Accepted`.
+- preserve the modular-monolith, tenant-isolation, idempotency, and provider-adapter boundaries already documented.
+- do not start ADR acceptance in the same bounded task unless explicitly requested.
 
 ## Blockers/open questions
 
-No blocker prevents writing the logical data-flow architecture.
+No blocker prevents writing the technology evaluation.
 
-Open provider and runtime choices can remain behind the existing ports/adapters.
+Some vendor/provider choices may remain Open because current repository evidence does not yet justify selection.
