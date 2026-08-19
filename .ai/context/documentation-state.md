@@ -50,65 +50,109 @@ Completed drafts:
 - `data-flow.md`
 - `technology-stack.md`
 
-Remaining Phase 4 architecture work:
+### `adr`
 
-- ADR framework/index
-- initial ADRs for major architecture decisions
-- optional `architecture-decisions/` pointer/index only if it adds navigation value beyond `docs/adr/`
+Created:
+
+- `docs/adr/README.md`
+
+The ADR framework now defines:
+
+- when ADRs are required,
+- status lifecycle,
+- numbering and filename conventions,
+- canonical decision-ID linkage,
+- FR/NFR and architecture traceability,
+- standard ADR metadata/template,
+- evidence and alternative expectations,
+- review and explicit acceptance workflow,
+- Rejected/Deferred handling,
+- Superseded/Deprecated handling,
+- post-acceptance documentation/implementation responsibilities,
+- rule that implementation alone does not confer acceptance,
+- initial ADR candidate index.
+
+No architecture/provider/framework choice became Accepted through framework creation.
 
 ## Architecture governance state
 
-Completed:
+Canonical decision source:
 
-- canonical decision source explicitly declared,
-- legacy-to-canonical decision-ID crosswalk added,
-- structured architecture drafts use canonical scoped decision IDs,
-- provider/runtime recommendations remain Proposed/Open/Assumed until decision/ADR acceptance.
+`docs/00-overview/assumptions.md`
 
-Legacy `docs/16-open-decisions.md` remains migration input until its content has canonical destinations and deprecation pointers.
+Canonical rationale records:
 
-## Component architecture state
+`docs/adr/`
 
-`component-architecture.md` is the canonical C4 Level 3-style draft for trusted Application/API and Worker internals.
+The decision register owns current status/priority; ADRs own the detailed rationale and consequence history. Accepted ADRs and the canonical register must remain synchronized.
 
-It defines transport, principal/tenant resolution, capability authorization, validation, use cases, domain ownership, transactions, repositories, layered idempotency, provider adapters, audit/events, worker handlers, operational read models, failure propagation, observability, and test seams.
+Legacy `docs/16-open-decisions.md` remains migration input only.
 
-## Data-flow architecture state
+## Current architecture maturity
 
-`data-flow.md` is the canonical Phase 1 end-to-end data-flow draft.
+The Phase 4 baseline now has:
 
-It covers authentication, attendance, retention, renewal/payment, notification, import, owner-read-model, and data-quality flows with explicit trust, transaction, idempotency, retry, reconciliation, audit, observability, and gym-local time boundaries.
+```text
+Architecture principles
+C4 Level 1 system context
+C4 Level 2 containers
+C4 Level 3-style components
+12 critical Phase 1 data flows
+Technology stack evaluation
+ADR governance framework
+```
 
-## Technology stack state
+Major technologies remain Proposed/Open/Assumed according to the canonical register until individual ADRs are explicitly resolved.
 
-`technology-stack.md` is now the canonical architecture-level technology evaluation.
+## Requirement traceability state
 
-It covers:
+Current target traceability:
 
-- TypeScript runtime direction,
-- monorepo and package manager,
-- Next.js Owner/Staff Web direction,
-- Expo/React Native Member Mobile direction,
-- JSON HTTP typed contracts,
-- API deployment Option A vs Option B,
-- PostgreSQL,
-- data-access/migration approach options,
-- managed backend platform evaluation,
-- auth/session requirements,
-- RLS posture,
-- durable job/scheduler options,
-- Redis posture,
-- payment and messaging adapter requirements,
-- object storage,
-- observability,
-- product analytics,
-- testing/local-development tooling,
-- secret/configuration rules,
-- hosting/deployment requirements,
-- CI/CD implications,
-- technology spikes and selection gates.
+```text
+Requirement
+  -> Domain
+  -> Component
+  -> Data Flow
+  -> Technology Evaluation
+  -> Canonical Decision ID
+  -> ADR
+  -> Database/API/Security/Test artifacts
+```
 
-No Open/Proposed technology was marked Accepted. Exact library/framework versions are intentionally left to implementation dependency policy rather than architecture documentation.
+## ADR state
+
+ADR framework: `DONE`.
+
+Initial candidate backlog:
+
+```text
+ADR-0001-use-monorepo.md            D-ARCH-001  P0 PROPOSED
+ADR-0002-database-selection.md      D-ARCH-002  P0 PROPOSED
+ADR-0003-api-architecture.md        D-ARCH-003  P0 PROPOSED
+ADR-0004-authentication-strategy.md D-ARCH-004  P0 OPEN
+ADR-0005-managed-backend-platform.md D-ARCH-013 P0 OPEN
+ADR-0006-background-job-runner.md   D-ARCH-007  P1 OPEN
+```
+
+No candidate ADR file exists merely because it appears in the index unless explicitly created.
+
+## Immediate next documentation task
+
+`TASK-DOC-ADR-002 - Draft Monorepo ADR`
+
+Target:
+
+`docs/adr/ADR-0001-use-monorepo.md`
+
+Primary canonical decision:
+
+`D-ARCH-001`
+
+Initial ADR status:
+
+`Proposed`
+
+The next task should evaluate the monorepo decision from current repository/architecture evidence and produce a reviewable ADR. It MUST NOT mark the decision Accepted without explicit acceptance evidence.
 
 ## Legacy flat documents
 
@@ -129,48 +173,6 @@ High-value migration sources still include:
 
 Do not delete them until their material has canonical destinations and deprecation pointers exist.
 
-## Requirement traceability state
-
-Canonical `FR-*` and `NFR-*` IDs are referenced by component/data-flow/technology architecture where relevant.
-
-Target traceability remains:
-
-```text
-Requirement
-  -> Domain
-  -> Component
-  -> Data flow
-  -> Technology/ADR
-  -> Database/API/Security/Test artifacts
-```
-
-## ADR state
-
-ADR framework has not yet been created.
-
-Initial candidates remain Proposed/Open, not Accepted:
-
-```text
-ADR-0001-use-monorepo.md
-ADR-0002-database-selection.md
-ADR-0003-api-architecture.md
-ADR-0004-authentication-strategy.md
-ADR-0005-managed-backend-platform.md
-ADR-0006-background-job-runner.md
-```
-
-Provider-specific ADRs for payments, messaging, hosting, observability, and product analytics should be created when evidence is sufficient.
-
-## Immediate next documentation task
-
-`TASK-DOC-ADR-001 - Create ADR Framework and Index`
-
-Target:
-
-`docs/adr/README.md`
-
-The ADR framework must define status semantics, numbering/naming, required sections, canonical decision-ID linkage, proposal/acceptance/deprecation workflow, supersession rules, evidence requirements, and cross-document update expectations. It must not accept any architecture choice merely by creating the framework.
-
 ## Last update
 
-Technology stack evaluation completed on branch `docs/phase-2-architecture`. Phase 4 remains in progress until ADR framework and the planned initial decision records are addressed.
+`TASK-DOC-ADR-001` completed on branch `docs/phase-2-architecture`. Phase 4 remains in progress while foundational ADRs are drafted and explicitly resolved one bounded decision at a time.
