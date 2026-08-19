@@ -30,13 +30,11 @@
 
 ### `00-overview`
 
-All planned files complete at Draft v1.x.
-
-`assumptions.md` is the canonical decision register and includes the legacy decision-ID crosswalk.
+All planned Draft v1.x overview files exist. `assumptions.md` is the canonical decision register.
 
 ### `01-product`
 
-All planned files complete at Draft v1.x.
+All planned Draft v1.x product files exist.
 
 ### `02-architecture`
 
@@ -54,25 +52,8 @@ Completed drafts:
 
 Created:
 
-- `docs/adr/README.md`
-
-The ADR framework now defines:
-
-- when ADRs are required,
-- status lifecycle,
-- numbering and filename conventions,
-- canonical decision-ID linkage,
-- FR/NFR and architecture traceability,
-- standard ADR metadata/template,
-- evidence and alternative expectations,
-- review and explicit acceptance workflow,
-- Rejected/Deferred handling,
-- Superseded/Deprecated handling,
-- post-acceptance documentation/implementation responsibilities,
-- rule that implementation alone does not confer acceptance,
-- initial ADR candidate index.
-
-No architecture/provider/framework choice became Accepted through framework creation.
+- `docs/adr/README.md` - active governance
+- `docs/adr/ADR-0001-use-monorepo.md` - `Proposed`
 
 ## Architecture governance state
 
@@ -80,13 +61,37 @@ Canonical decision source:
 
 `docs/00-overview/assumptions.md`
 
-Canonical rationale records:
+Canonical rationale/history:
 
 `docs/adr/`
 
-The decision register owns current status/priority; ADRs own the detailed rationale and consequence history. Accepted ADRs and the canonical register must remain synchronized.
+No architecture/provider/framework choice becomes Accepted through drafting alone.
 
 Legacy `docs/16-open-decisions.md` remains migration input only.
+
+## ADR-0001 state
+
+Primary decision:
+
+`D-ARCH-001 - Use a monorepo and define package boundaries`
+
+Current state:
+
+```text
+Canonical decision: PROPOSED
+ADR-0001: Proposed
+Acceptance evidence: None
+```
+
+ADR-0001 evaluates:
+
+- explicit apps/packages monorepo,
+- separate repositories per runtime/application,
+- one application repository without deliberate reusable package boundaries.
+
+The proposed direction is a monorepo with enforced package/dependency boundaries while keeping deployment topology independent.
+
+The ADR does not decide package manager, API deployment topology, frameworks, job runner, hosting, or providers.
 
 ## Current architecture maturity
 
@@ -100,9 +105,8 @@ C4 Level 3-style components
 12 critical Phase 1 data flows
 Technology stack evaluation
 ADR governance framework
+ADR-0001 monorepo proposal
 ```
-
-Major technologies remain Proposed/Open/Assumed according to the canonical register until individual ADRs are explicitly resolved.
 
 ## Requirement traceability state
 
@@ -121,38 +125,32 @@ Requirement
 
 ## ADR state
 
-ADR framework: `DONE`.
-
-Initial candidate backlog:
-
 ```text
-ADR-0001-use-monorepo.md            D-ARCH-001  P0 PROPOSED
-ADR-0002-database-selection.md      D-ARCH-002  P0 PROPOSED
-ADR-0003-api-architecture.md        D-ARCH-003  P0 PROPOSED
-ADR-0004-authentication-strategy.md D-ARCH-004  P0 OPEN
-ADR-0005-managed-backend-platform.md D-ARCH-013 P0 OPEN
-ADR-0006-background-job-runner.md   D-ARCH-007  P1 OPEN
+ADR-0001-use-monorepo.md             D-ARCH-001  P0 Proposed  CREATED
+ADR-0002-database-selection.md       D-ARCH-002  P0 Proposed  NEXT
+ADR-0003-api-architecture.md         D-ARCH-003  P0 Proposed  QUEUED
+ADR-0004-authentication-strategy.md  D-ARCH-004  P0 Open      QUEUED
+ADR-0005-managed-backend-platform.md D-ARCH-013  P0 Open      QUEUED
+ADR-0006-background-job-runner.md    D-ARCH-007  P1 Open      QUEUED
 ```
-
-No candidate ADR file exists merely because it appears in the index unless explicitly created.
 
 ## Immediate next documentation task
 
-`TASK-DOC-ADR-002 - Draft Monorepo ADR`
+`TASK-DOC-ADR-003 - Draft Database Selection ADR`
 
 Target:
 
-`docs/adr/ADR-0001-use-monorepo.md`
+`docs/adr/ADR-0002-database-selection.md`
 
 Primary canonical decision:
 
-`D-ARCH-001`
+`D-ARCH-002`
 
 Initial ADR status:
 
 `Proposed`
 
-The next task should evaluate the monorepo decision from current repository/architecture evidence and produce a reviewable ADR. It MUST NOT mark the decision Accepted without explicit acceptance evidence.
+The ADR must evaluate PostgreSQL against viable alternatives without bundling managed-backend/provider, RLS-policy, ORM/query-builder, or hosting decisions.
 
 ## Legacy flat documents
 
@@ -175,4 +173,4 @@ Do not delete them until their material has canonical destinations and deprecati
 
 ## Last update
 
-`TASK-DOC-ADR-001` completed on branch `docs/phase-2-architecture`. Phase 4 remains in progress while foundational ADRs are drafted and explicitly resolved one bounded decision at a time.
+`TASK-DOC-ADR-002` completed on branch `docs/phase-2-architecture`. Phase 4 remains in progress while foundational ADRs are drafted one bounded decision at a time.
