@@ -2,7 +2,13 @@
 
 Tasks are ordered. Do not skip ahead unless a blocking dependency requires it.
 
+## Architecture Governance
+
+- `TASK-DOC-GOV-002` Normalize legacy decision IDs in existing structured architecture drafts before creating new downstream architecture.
+
 ## Architecture
+
+After `TASK-DOC-GOV-002` is complete:
 
 - `TASK-DOC-ARCH-005` Create `docs/02-architecture/component-architecture.md`
 - `TASK-DOC-ARCH-006` Create `docs/02-architecture/data-flow.md`
