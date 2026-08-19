@@ -213,7 +213,7 @@ Complete at Draft v1.x level:
 - `glossary.md`
 - `assumptions.md`
 
-The assumptions document now owns canonical decision IDs and the legacy-ID migration crosswalk.
+The assumptions document owns canonical decision IDs and the legacy-ID migration crosswalk.
 
 ### `01-product/`
 
@@ -238,16 +238,18 @@ Completed drafts:
 2. `architecture-overview.md`
 3. `system-context.md`
 4. `container-architecture.md`
-
-Before creating the next architecture layer, existing structured architecture references to legacy decision IDs are being normalized to canonical IDs.
-
-After that governance sweep, continue in this order:
-
 5. `component-architecture.md`
+
+Architecture decision references in these structured documents use canonical scoped IDs from `00-overview/assumptions.md`.
+
+Continue in this order:
+
 6. `data-flow.md`
 7. `technology-stack.md`
 8. `docs/adr/README.md`
 9. initial ADRs for major decisions
+
+`component-architecture.md` now defines implementation-oriented Application/API and Worker components, domain write ownership, transaction boundaries, layered idempotency, provider adapter boundaries, audit/read-model behavior, failure propagation, observability, and testing seams while preserving the modular-monolith posture.
 
 ## Legacy migration state
 
