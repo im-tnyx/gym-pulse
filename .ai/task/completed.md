@@ -47,9 +47,39 @@ Created C4 Level 2 container architecture covering:
 - synchronous vs asynchronous interactions,
 - scaling, failure, security, observability, and testing boundaries.
 
-`D-060` API deployment remains Open. Both Option A (Next.js web/server API) and Option B (separate TypeScript API runtime) are documented without final selection.
+The API deployment decision remained Open and both deployment options were documented without final selection.
 
-**Next task:** `TASK-DOC-ARCH-005`
+### TASK-DOC-GOV-001
+
+**Title:** Repository Documentation Architecture Audit and Decision Governance Foundation
+
+**Completed:** 2026-08-19
+
+**Files updated:**
+
+- `docs/00-overview/assumptions.md`
+- `docs/README.md`
+- `.ai/memory/decisions.md`
+- `.ai/context/current-context.md`
+- `.ai/context/documentation-state.md`
+- `.ai/task/current.md`
+- `.ai/task/backlog.md`
+- `.ai/task/completed.md`
+- `.ai/memory/session-handoff.md`
+
+**Result:**
+
+- established `docs/00-overview/assumptions.md` as canonical decision register,
+- added canonical decision-ID policy,
+- added missing canonical IDs needed by current architecture,
+- added legacy-to-canonical decision-ID crosswalk,
+- refreshed documentation source hierarchy and architecture phase status,
+- corrected AI memory to stop treating `docs/16-open-decisions.md` as canonical,
+- identified existing structured architecture drafts that still need legacy-ID normalization.
+
+No architecture technology/provider decision was accepted or changed by this task.
+
+**Next task:** `TASK-DOC-GOV-002`
 
 ## Logging rule
 
