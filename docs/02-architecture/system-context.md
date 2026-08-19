@@ -132,7 +132,7 @@ Support access must be explicit, scoped, reasoned, time-bounded where possible, 
 
 ### 4.1 Authentication Provider
 
-**Status:** Open selection (`D-049`, `D-050`).
+**Status:** Open selection (`D-ARCH-004`, `D-SEC-002`).
 
 Responsibilities may include:
 
@@ -146,7 +146,7 @@ GymPulse remains responsible for tenant authorization and domain permissions eve
 
 ### 4.2 Payment Provider
 
-**Status:** Open selection (`D-030`).
+**Status:** Open selection (`D-PROVIDER-001`).
 
 Responsibilities:
 
@@ -167,7 +167,7 @@ GymPulse responsibilities:
 
 ### 4.3 Messaging Provider
 
-**Status:** Open selection (`D-038`).
+**Status:** Open selection (`D-PROVIDER-002`).
 
 Potential channels:
 
@@ -180,7 +180,7 @@ GymPulse owns notification policy, intent, deduplication, preference evaluation,
 
 ### 4.4 Object Storage
 
-**Status:** Open selection (`D-063`).
+**Status:** Open selection (`D-ARCH-010`).
 
 Potential data:
 
@@ -193,7 +193,7 @@ Protected files must not be public-by-default.
 
 ### 4.5 Analytics and Error Monitoring
 
-**Status:** Open selection (`D-065`, `D-066`).
+**Status:** Open selection (`D-PROVIDER-006`, `D-PROVIDER-005`).
 
 Uses:
 
@@ -383,4 +383,4 @@ Examples:
 - `../01-product/personas.md`
 - `../01-product/user-roles.md`
 - `../01-product/user-journeys.md`
-- `../16-open-decisions.md`
+- `../00-overview/assumptions.md`
