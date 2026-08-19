@@ -2,7 +2,7 @@
 
 ## Last completed task
 
-`TASK-DOC-ARCH-006 - Create Architecture Data Flows`
+`TASK-DOC-ARCH-007 - Create Technology Stack Evaluation`
 
 Branch:
 
@@ -10,71 +10,62 @@ Branch:
 
 Created:
 
-`docs/02-architecture/data-flow.md`
+`docs/02-architecture/technology-stack.md`
 
-## What the data-flow architecture established
+## What the technology evaluation established
 
-The Phase 1 architecture now traces critical data movement end to end across clients, trusted Application/API components, domain modules, PostgreSQL, workers, and external providers.
+The architecture now has a canonical technology-evaluation document that separates required capabilities from Proposed, Assumed, and Open choices.
 
-Covered flows:
+Evaluated areas:
 
-1. authentication -> principal -> tenant/capability authorization,
-2. member QR check-in,
-3. assisted staff check-in,
-4. scheduled no-show scan -> retention case,
-5. follow-up -> return attendance -> case resolution,
-6. renewal window -> reminder intent,
-7. renewal order -> payment checkout initiation,
-8. verified payment webhook -> canonical payment transition -> exactly-once membership/add-on effect,
-9. notification intent -> current policy -> provider dispatch -> delivery status,
-10. controlled import -> staging/reconciliation -> canonical write,
-11. owner dashboard/action-queue read model,
-12. data-quality scan -> issue lifecycle.
+- TypeScript primary application direction,
+- Turborepo-style monorepo and pnpm assumption,
+- Next.js Owner/Staff Web,
+- Expo/React Native Member Mobile,
+- JSON HTTP runtime-validated typed contracts,
+- API deployment Option A vs Option B,
+- PostgreSQL,
+- SQL-aware typed data-access and migration approaches,
+- Supabase-like managed backend option,
+- auth/session requirements,
+- RLS implications,
+- durable job/scheduler options,
+- Redis posture,
+- payment and messaging provider criteria,
+- object storage,
+- observability/error monitoring,
+- product analytics,
+- testing/local-development tooling,
+- secrets/configuration,
+- hosting/deployment,
+- database connection implications,
+- CI/CD and versioning policy,
+- technology spikes and pre-scaffold selection gates.
 
-## Important architecture rules captured
+## Important recommendation state
 
-- client/provider analytics are not canonical business truth,
-- authentication and tenant authorization are separate concerns,
-- clients cannot self-authorize tenant/member scope,
-- domain modules retain write ownership even with a shared database,
-- correctness-sensitive mutations use explicit transactions,
-- external provider latency stays outside long DB transactions where practical,
-- asynchronous work that must not be lost requires durable continuation/outbox-equivalent behavior,
-- request idempotency, domain uniqueness, provider-event dedupe, and business-effect dedupe are separate layers,
-- payment initiation never extends membership,
-- verified provider evidence plus a unique business-effect key is required for entitlement activation,
-- scheduled business rules use gym-local timezone while event timestamps remain UTC,
-- worker retries must be safe and observable,
-- dashboard/read-model projections remain read-only and traceable to canonical records.
+The document contains a recommended Phase 1 baseline for planning, but no Open/Proposed technology became Accepted.
 
-## Important decision state
-
-No provider/runtime or framework decision was accepted by the data-flow task.
-
-Still Proposed/Open according to `docs/00-overview/assumptions.md`:
+Examples that still require decisions/ADRs:
 
 ```text
 D-ARCH-001      Monorepo
 D-ARCH-002      PostgreSQL
 D-ARCH-003      JSON HTTP API
-D-ARCH-004      Authentication/session strategy
+D-ARCH-004      Authentication/session
 D-ARCH-006      API deployment topology
 D-ARCH-007      Job runner
-D-ARCH-008      Redis requirement
 D-ARCH-009      Hosting
-D-ARCH-010      Object storage
 D-ARCH-011      Owner/Staff web framework
 D-ARCH-012      Member mobile framework
 D-ARCH-013      Managed backend
-D-ARCH-014      Package manager
 D-PROVIDER-001  Payment provider
 D-PROVIDER-002  Messaging provider
-D-PROVIDER-005  Product analytics
 D-PROVIDER-006  Observability
-D-SEC-002       Member authentication
 D-SEC-008       RLS strategy
-D-DATA-007      Membership renewal representation
 ```
+
+The legacy `docs/05-system-architecture.md` may contain older `Accepted recommendations` language. It remains migration input; the canonical decision register in `docs/00-overview/assumptions.md` controls current status.
 
 ## Current task
 
@@ -82,50 +73,42 @@ Read `.ai/task/current.md`.
 
 Current task:
 
-`TASK-DOC-ARCH-007 - Create Technology Stack Evaluation`
+`TASK-DOC-ADR-001 - Create ADR Framework and Index`
 
 Target:
 
-`docs/02-architecture/technology-stack.md`
+`docs/adr/README.md`
 
 ## Exact next action
 
-Evaluate the concrete technology options required to implement the architecture without treating recommendations as accepted decisions.
+Create the ADR governance framework only.
 
-The next document must cover:
+It must define:
 
-- TypeScript/runtime direction,
-- monorepo and package manager,
-- Owner/Staff web framework,
-- Member mobile framework,
-- API style and deployment topology,
-- PostgreSQL/data-access/migrations,
-- managed backend option,
-- auth/session requirements,
-- job runner/scheduler,
-- payments,
-- messaging,
-- object storage,
-- observability,
-- product analytics,
-- Redis/cache posture,
-- local development/testing,
-- security and operations implications,
-- alternatives/tradeoffs,
-- canonical decision IDs and ADR ownership.
+- when ADRs are required,
+- status lifecycle,
+- numbering/filename convention,
+- mandatory sections,
+- canonical decision-ID linkage,
+- requirement/NFR linkage,
+- evidence/alternatives expectations,
+- review and acceptance process,
+- rejected/deferred handling,
+- supersession/deprecation rules,
+- implementation and cross-document update responsibilities,
+- initial ADR candidate index.
 
 ## Do not forget
 
-- `docs/` is canonical truth.
-- `.ai/` is execution continuity only.
-- use canonical scoped decision IDs.
-- `technology-stack.md` is evaluation/guidance, not an ADR substitute.
-- recommendations may be `Proposed` or `Assumed`, not silently `Accepted`.
-- preserve the modular-monolith, tenant-isolation, idempotency, and provider-adapter boundaries already documented.
-- do not start ADR acceptance in the same bounded task unless explicitly requested.
+- creating the ADR framework does not accept any technology,
+- `docs/00-overview/assumptions.md` remains the canonical decision register,
+- use canonical scoped decision IDs only,
+- implementation alone cannot make an ADR Accepted,
+- do not batch-accept the initial ADR set,
+- proceed one bounded decision record at a time after the framework exists.
 
 ## Blockers/open questions
 
-No blocker prevents writing the technology evaluation.
+No blocker prevents creating the ADR framework.
 
-Some vendor/provider choices may remain Open because current repository evidence does not yet justify selection.
+Actual ADR acceptance may require architecture spikes, provider evidence, product decisions, or explicit owner approval depending on the decision.
