@@ -4,7 +4,7 @@
 
 `Phase 4: Design System Architecture`
 
-Product foundation, structured product documentation, C4 architecture, Phase 1 data flows, technology-stack evaluation, and ADR governance are documented. The next bounded work is drafting foundational ADRs one decision at a time.
+Product foundation, structured product documentation, C4 architecture, Phase 1 data flows, technology-stack evaluation, ADR governance, and the first foundational ADR draft are now documented. Foundational ADRs are being drafted one bounded decision at a time.
 
 ## Current branch
 
@@ -23,14 +23,7 @@ Product foundation, structured product documentation, C4 architecture, Phase 1 d
 
 ### `docs/01-product/`
 
-- `product-requirements.md`
-- `personas.md`
-- `user-roles.md`
-- `user-journeys.md`
-- `feature-catalog.md`
-- `functional-requirements.md`
-- `non-functional-requirements.md`
-- `success-metrics.md`
+All planned Draft v1.x product documents are complete.
 
 ### `docs/02-architecture/`
 
@@ -44,7 +37,8 @@ Product foundation, structured product documentation, C4 architecture, Phase 1 d
 
 ### `docs/adr/`
 
-- `README.md` ADR governance framework and candidate index
+- `README.md` ADR governance framework
+- `ADR-0001-use-monorepo.md` - `Proposed`
 
 ## Architecture governance
 
@@ -56,96 +50,96 @@ Canonical decision rationale/history:
 
 `docs/adr/`
 
-Rules now established:
+Rules:
 
-- new ADRs use canonical scoped decision IDs only,
-- ADR files normally begin `Proposed`,
-- merging or implementing an ADR does not make it `Accepted`,
-- explicit approval evidence is required for `Accepted`,
-- accepted ADR status and the canonical decision register must remain synchronized,
-- rejected/deferred proposals remain traceable,
-- materially changing an accepted decision requires a new superseding ADR,
-- accepted ADRs are not rewritten to erase historical rationale.
+- ADRs use canonical scoped decision IDs only,
+- drafting/merging/implementing an ADR does not make it `Accepted`,
+- explicit approval evidence is required for acceptance,
+- accepted ADR status and the canonical decision register must be synchronized,
+- related decisions must not be silently bundled.
 
-Legacy `docs/16-open-decisions.md` remains migration input only.
+## ADR-0001 state
+
+`ADR-0001-use-monorepo.md` has been drafted for `D-ARCH-001`.
+
+Status remains:
+
+```text
+ADR: Proposed
+D-ARCH-001: PROPOSED
+```
+
+The ADR proposes a monorepo with explicit apps/packages boundaries because GymPulse must share domain/application logic, typed contracts, tests, migrations, and documentation across web/mobile/API/worker concerns while retaining independent deployment boundaries.
+
+It explicitly does **not** decide:
+
+- `D-ARCH-006` API deployment topology,
+- `D-ARCH-014` package manager,
+- exact task orchestrator,
+- Next.js/Expo/provider selections.
+
+Important boundary:
+
+```text
+one repository != one deployable runtime
+shared repository != permission to import server secrets into clients
+```
 
 ## Current architecture direction still Proposed/Open
 
 ```text
 Architecture         Modular monolith
-Language             TypeScript
-Monorepo              Turborepo-style workspace
-Package manager       pnpm
-Owner/Staff Web       Next.js + React
-Member Mobile         Expo / React Native when native delivery is active
-API                   JSON HTTP + runtime-validated typed contracts
+Language             TypeScript direction
+Monorepo              Proposed via ADR-0001
+Package manager       pnpm Assumed, not decided
+Owner/Staff Web       Next.js + React Proposed
+Member Mobile         Expo / React Native Proposed
+API                   JSON HTTP typed contracts Proposed
 API deployment        Open
-Database              PostgreSQL
-Data access           SQL-aware typed repository layer; exact library Open
-Managed backend       Supabase-like option evaluated; Open
-Auth                  Provider/session strategy Open
-Jobs                  Durable job/scheduler; exact technology Open
-Redis                 Not required by default; Open
-Payments              Provider adapter; provider Open
-Messaging             Provider adapter; provider/channels Open
-Object storage        Private managed/S3-compatible; Open
-Observability         Centralized error monitoring + structured logs; provider Open
-Product analytics     Privacy-minimized, non-canonical events; provider Open
-Hosting               Managed platform preferred for pilot; provider Open
+Database              PostgreSQL Proposed
+Managed backend       Open
+Auth                  Open
+Jobs                  Open
+Redis                 Open / not required by default
+Payments              Provider Open
+Messaging             Provider/channels Open
+Object storage        Open
+Observability         Provider Open
+Product analytics     Provider Open
+Hosting               Open
 ```
-
-No item above is Accepted merely because it is recommended.
-
-## ADR framework established
-
-`docs/adr/README.md` defines:
-
-- when an ADR is required,
-- `Proposed`, `Accepted`, `Rejected`, `Deferred`, `Superseded`, and `Deprecated`,
-- four-digit ADR numbering and kebab-case filenames,
-- standard metadata and ADR sections,
-- canonical decision-ID and FR/NFR traceability,
-- evidence requirements,
-- alternatives/tradeoff expectations,
-- review/acceptance workflow,
-- supersession/deprecation rules,
-- implementation/document synchronization obligations,
-- initial candidate ADR index.
 
 ## Immediate next action
 
-`TASK-DOC-ADR-002 - Draft Monorepo ADR`
+`TASK-DOC-ADR-003 - Draft Database Selection Architecture Decision Record`
 
 Target:
 
-`docs/adr/ADR-0001-use-monorepo.md`
+`docs/adr/ADR-0002-database-selection.md`
 
 Primary decision:
 
-`D-ARCH-001 - Use a monorepo and define package boundaries`
+`D-ARCH-002 - Select canonical relational database technology`
 
-Canonical current status:
+Canonical status:
 
 `PROPOSED`
 
-Initial ADR status must be:
+Initial ADR status:
 
 `Proposed`
 
-The task should evaluate the monorepo strategy using current architecture, technology evaluation, repository shape, dependency boundaries, CI implications, alternatives, migration/reversibility, and package-boundary enforcement.
+The next ADR should evaluate PostgreSQL against viable relational and NoSQL-first alternatives using GymPulse transaction, relational-integrity, tenant, idempotency, operational-query, migration, backup/restore, and portability requirements.
 
-Do not decide unrelated concerns such as API deployment topology or provider selection inside this ADR.
-
-Package manager `D-ARCH-014` may be listed as related, but should not silently become decided unless explicitly in scope and authorized.
+Do not silently decide managed backend, RLS policy, ORM/query-builder, or hosting provider inside the database-engine ADR.
 
 ## Stop condition
 
-After `ADR-0001-use-monorepo.md` is drafted:
+After ADR-0002 is drafted:
 
-- keep status `Proposed` unless explicit acceptance is separately authorized,
+- keep status `Proposed` unless explicit acceptance is authorized,
 - update `.ai/context/documentation-state.md`,
 - update `.ai/task/current.md`,
 - append `.ai/task/completed.md`,
 - update `.ai/memory/session-handoff.md`,
-- select the next bounded ADR task,
-- do not batch-accept foundational decisions.
+- select the next bounded P0 ADR task.
