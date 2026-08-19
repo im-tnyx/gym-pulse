@@ -1,18 +1,18 @@
 # Current Task
 
-## TASK-DOC-ARCH-004
+## TASK-DOC-ARCH-005
 
-**Title:** Create C4 Container Architecture
+**Title:** Create C4 Component Architecture
 
 **Status:** `READY`
 
 **Phase:** `Phase 4 - System Architecture`
 
-**Target file:** `docs/02-architecture/container-architecture.md`
+**Target file:** `docs/02-architecture/component-architecture.md`
 
 ## Objective
 
-Define GymPulse C4 Level 2 containers and runtime responsibilities without prematurely turning logical boundaries into microservices.
+Decompose the trusted GymPulse Application/API and Worker boundaries into implementation-oriented components while preserving the modular-monolith architecture and avoiding premature microservice boundaries.
 
 ## Inputs to read
 
@@ -23,58 +23,62 @@ Define GymPulse C4 Level 2 containers and runtime responsibilities without prema
 5. `docs/02-architecture/architecture-principles.md`
 6. `docs/02-architecture/architecture-overview.md`
 7. `docs/02-architecture/system-context.md`
-8. relevant sections of `docs/16-open-decisions.md`
+8. `docs/02-architecture/container-architecture.md`
+9. relevant sections of `docs/16-open-decisions.md`
 
 ## Required output
 
 The document must define at least:
 
-- Owner/Staff Web container
-- Member Mobile container
-- Application/API container/runtime
-- Worker/Job runtime
-- PostgreSQL
-- Object Storage
-- external Auth Provider
-- Payment Provider
-- Messaging Provider
-- Observability/Analytics systems
+- transport/HTTP adapters,
+- authentication/principal resolver,
+- tenant-context resolver,
+- capability authorization component,
+- request validation/contracts,
+- application use-case layer,
+- Phase 1 domain modules,
+- transaction/unit-of-work boundary,
+- repositories/data-access ports,
+- payment adapter and webhook mapper,
+- notification policy/intent and delivery adapter,
+- audit/event components,
+- idempotency/deduplication component,
+- background-job scheduler/handlers,
+- operational read/query components.
 
 ## Mandatory design points
 
-- C4 Level 2 Mermaid diagram
-- responsibilities of every container
-- dependency direction
-- trust boundaries
-- data ownership
-- synchronous vs asynchronous interactions
-- deployment implications
-- scaling implications
-- failure boundaries
-- security considerations
-- test boundaries
-- alternatives considered
-- `D-060` API deployment model remains Open
+- C4 Level 3-style Mermaid diagram(s),
+- explicit dependency direction,
+- which component owns which business rule,
+- shared write restrictions between domains,
+- transaction boundaries,
+- synchronous vs asynchronous component interactions,
+- idempotency locations,
+- authorization enforcement points,
+- provider adapter boundaries,
+- failure propagation rules,
+- test seams,
+- observability hooks,
+- alternatives/tradeoffs,
+- no silent selection of Open providers/runtimes.
 
 ## Important constraint
 
-Document both viable Phase 1 deployment forms:
+Components are source-code/application boundaries, not automatic deployable services.
 
-```text
-Option A: Next.js Web + server/API initially
-Option B: separate TypeScript API runtime
-```
-
-Do not select one as final without ADR acceptance.
+Do not create one service per domain. Preserve `AP-001 Modular Monolith Before Microservices`.
 
 ## Definition of Done
 
-- file exists at canonical path
-- terminology aligns with product and architecture docs
-- no provider choice is fabricated
-- open decisions are explicitly referenced
-- Mermaid diagram is syntactically reasonable
-- `.ai/context/documentation-state.md` is updated
-- this task is recorded in `.ai/task/completed.md`
-- next task becomes `component-architecture.md`
-- `.ai/memory/session-handoff.md` is updated
+- file exists at canonical path,
+- components align with C4 Level 2 container architecture,
+- domain ownership is explicit,
+- critical mutations show transaction/idempotency ownership,
+- terminology aligns with requirement IDs,
+- provider choices remain abstract where Open,
+- Mermaid diagrams are syntactically reasonable,
+- `.ai/context/documentation-state.md` is updated,
+- this task is recorded in `.ai/task/completed.md`,
+- next task becomes `data-flow.md`,
+- `.ai/context/current-context.md` and `.ai/memory/session-handoff.md` are updated.
