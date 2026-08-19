@@ -76,16 +76,36 @@ No architecture technology/provider decision was accepted or changed by this tas
 
 **Result:**
 
-- created C4 Level 3-style decomposition for the trusted Application/API and Worker boundaries,
+- created C4 Level 3-style decomposition for trusted Application/API and Worker boundaries,
 - defined transport, principal, tenant, authorization, validation, application-use-case, domain, repository, transaction, idempotency, provider, audit, query, and worker components,
-- established explicit Phase 1 domain write ownership and read-model rules,
-- documented QR check-in and verified renewal-payment critical sequences,
+- established Phase 1 domain write ownership and read-model rules,
 - separated provider-event dedupe from business-effect dedupe,
 - documented transaction boundaries, async durability, failure propagation, observability hooks, and test seams,
-- preserved modular-monolith boundaries without creating microservices,
+- preserved modular-monolith boundaries and accepted no Open provider/runtime decision.
+
+### TASK-DOC-ARCH-006
+
+**Title:** Create Architecture Data Flows
+
+**Target:** `docs/02-architecture/data-flow.md`
+
+**Completed:** 2026-08-19
+
+**Result:**
+
+- documented 12 critical Phase 1 end-to-end data flows,
+- mapped flows to canonical `FR-*` and `NFR-*` requirements,
+- made canonical vs derived/external data explicit,
+- documented trust-boundary crossings and authorization checkpoints,
+- documented transaction boundaries and sync/async handoffs,
+- documented durable continuation requirements,
+- documented request/domain/provider/business-effect idempotency,
+- documented retry, provider uncertainty, reconciliation, audit, and observability behavior,
+- documented gym-local timezone behavior for scheduled work,
+- reused existing C4 components without adding new deployable services,
 - used canonical decision IDs only and accepted no Open provider/runtime decision.
 
-**Next task:** `TASK-DOC-ARCH-006`
+**Next task:** `TASK-DOC-ARCH-007`
 
 ## Logging rule
 
