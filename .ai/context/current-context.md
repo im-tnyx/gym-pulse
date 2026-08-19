@@ -4,7 +4,7 @@
 
 `Phase 4: Design System Architecture`
 
-Product foundation and structured product documentation are complete at Draft v1.x level. C4 architecture, Phase 1 data flows, and technology-stack evaluation are now documented. The next bounded work is ADR governance and explicit decision records.
+Product foundation, structured product documentation, C4 architecture, Phase 1 data flows, technology-stack evaluation, and ADR governance are documented. The next bounded work is drafting foundational ADRs one decision at a time.
 
 ## Current branch
 
@@ -42,21 +42,34 @@ Product foundation and structured product documentation are complete at Draft v1
 - `data-flow.md`
 - `technology-stack.md`
 
+### `docs/adr/`
+
+- `README.md` ADR governance framework and candidate index
+
 ## Architecture governance
 
 Canonical decision source:
 
 `docs/00-overview/assumptions.md`
 
-Structured architecture uses canonical scoped decision IDs. Legacy `docs/16-open-decisions.md` remains migration input only.
+Canonical decision rationale/history:
 
-No provider/runtime/framework recommendation becomes Accepted merely because it appears in `technology-stack.md`.
+`docs/adr/`
 
-## Technology evaluation established
+Rules now established:
 
-`technology-stack.md` now distinguishes required capabilities from Proposed/Assumed/Open choices.
+- new ADRs use canonical scoped decision IDs only,
+- ADR files normally begin `Proposed`,
+- merging or implementing an ADR does not make it `Accepted`,
+- explicit approval evidence is required for `Accepted`,
+- accepted ADR status and the canonical decision register must remain synchronized,
+- rejected/deferred proposals remain traceable,
+- materially changing an accepted decision requires a new superseding ADR,
+- accepted ADRs are not rewritten to erase historical rationale.
 
-Current recommended baseline, still subject to decision/ADR acceptance:
+Legacy `docs/16-open-decisions.md` remains migration input only.
+
+## Current architecture direction still Proposed/Open
 
 ```text
 Architecture         Modular monolith
@@ -66,11 +79,12 @@ Package manager       pnpm
 Owner/Staff Web       Next.js + React
 Member Mobile         Expo / React Native when native delivery is active
 API                   JSON HTTP + runtime-validated typed contracts
+API deployment        Open
 Database              PostgreSQL
 Data access           SQL-aware typed repository layer; exact library Open
 Managed backend       Supabase-like option evaluated; Open
 Auth                  Provider/session strategy Open
-Jobs                  Durable managed job/scheduler preferred for pilot; Open
+Jobs                  Durable job/scheduler; exact technology Open
 Redis                 Not required by default; Open
 Payments              Provider adapter; provider Open
 Messaging             Provider adapter; provider/channels Open
@@ -80,75 +94,58 @@ Product analytics     Privacy-minimized, non-canonical events; provider Open
 Hosting               Managed platform preferred for pilot; provider Open
 ```
 
-Important evaluated tradeoffs:
+No item above is Accepted merely because it is recommended.
 
-- Next.js/server API vs separate TypeScript API,
-- managed backend vs independent platform services,
-- managed durable jobs vs Redis-backed queue vs database-backed jobs,
-- SQL-aware typed data layer vs heavier ORM,
-- responsive member web/PWA vs immediate native mobile,
-- PostgreSQL/indexing first vs Redis cache.
+## ADR framework established
 
-## High-impact decisions still requiring ADR work
+`docs/adr/README.md` defines:
 
-```text
-D-ARCH-001      Monorepo
-D-ARCH-002      PostgreSQL
-D-ARCH-003      JSON HTTP API
-D-ARCH-004      Authentication/session strategy
-D-ARCH-005      Modular monolith
-D-ARCH-006      API deployment topology
-D-ARCH-007      Job runner
-D-ARCH-008      Redis requirement
-D-ARCH-009      Hosting
-D-ARCH-010      Object storage
-D-ARCH-011      Owner/Staff web framework
-D-ARCH-012      Member mobile framework
-D-ARCH-013      Managed backend
-D-ARCH-014      Package manager
-D-PROVIDER-001  Payment provider
-D-PROVIDER-002  Messaging provider
-D-PROVIDER-005  Product analytics
-D-PROVIDER-006  Observability
-D-SEC-002       Member authentication
-D-SEC-008       RLS strategy
-D-DATA-007      Membership renewal representation
-```
+- when an ADR is required,
+- `Proposed`, `Accepted`, `Rejected`, `Deferred`, `Superseded`, and `Deprecated`,
+- four-digit ADR numbering and kebab-case filenames,
+- standard metadata and ADR sections,
+- canonical decision-ID and FR/NFR traceability,
+- evidence requirements,
+- alternatives/tradeoff expectations,
+- review/acceptance workflow,
+- supersession/deprecation rules,
+- implementation/document synchronization obligations,
+- initial candidate ADR index.
 
 ## Immediate next action
 
-`TASK-DOC-ADR-001 - Create ADR Framework and Index`
+`TASK-DOC-ADR-002 - Draft Monorepo ADR`
 
 Target:
 
-`docs/adr/README.md`
+`docs/adr/ADR-0001-use-monorepo.md`
 
-The ADR framework must define:
+Primary decision:
 
-- ADR purpose and scope,
-- status model such as Proposed/Accepted/Rejected/Superseded/Deprecated,
-- numbering and filename conventions,
-- mandatory ADR sections,
-- canonical decision-ID linkage,
-- evidence and alternatives requirements,
-- review/acceptance workflow,
-- supersession rules,
-- cross-document update rules,
-- rule that implementation alone does not make a decision Accepted.
+`D-ARCH-001 - Use a monorepo and define package boundaries`
 
-## After ADR framework
+Canonical current status:
 
-Proceed one bounded ADR at a time, beginning with the highest-value foundational decisions already listed in the canonical register.
+`PROPOSED`
 
-Do not create or accept all ADRs blindly in one task.
+Initial ADR status must be:
+
+`Proposed`
+
+The task should evaluate the monorepo strategy using current architecture, technology evaluation, repository shape, dependency boundaries, CI implications, alternatives, migration/reversibility, and package-boundary enforcement.
+
+Do not decide unrelated concerns such as API deployment topology or provider selection inside this ADR.
+
+Package manager `D-ARCH-014` may be listed as related, but should not silently become decided unless explicitly in scope and authorized.
 
 ## Stop condition
 
-After `docs/adr/README.md` is complete:
+After `ADR-0001-use-monorepo.md` is drafted:
 
+- keep status `Proposed` unless explicit acceptance is separately authorized,
 - update `.ai/context/documentation-state.md`,
 - update `.ai/task/current.md`,
 - append `.ai/task/completed.md`,
 - update `.ai/memory/session-handoff.md`,
-- set the exact next ADR task,
-- do not silently accept any technology choice while creating the framework.
+- select the next bounded ADR task,
+- do not batch-accept foundational decisions.
