@@ -124,7 +124,32 @@ No architecture technology/provider decision was accepted or changed by this tas
 - defined technology spikes and selection gates before implementation,
 - used canonical decision IDs and did not silently accept any Proposed/Open choice.
 
-**Next task:** `TASK-DOC-ADR-001`
+### TASK-DOC-ADR-001
+
+**Title:** Create ADR Framework and Index
+
+**Target:** `docs/adr/README.md`
+
+**Completed:** 2026-08-19
+
+**Result:**
+
+- created the canonical GymPulse ADR governance framework,
+- defined `Proposed`, `Accepted`, `Rejected`, `Deferred`, `Superseded`, and `Deprecated` lifecycle semantics,
+- defined four-digit numbering and filename conventions,
+- defined mandatory metadata and standard ADR structure,
+- linked ADRs to canonical decision IDs in `docs/00-overview/assumptions.md`,
+- defined FR/NFR and architecture traceability expectations,
+- defined evidence, alternative, tradeoff, and review requirements,
+- defined explicit acceptance conditions and decision-owner evidence,
+- defined rejected/deferred and supersession/deprecation behavior,
+- established that implementation/merge/prototype use does not confer acceptance,
+- created the initial ADR candidate index without accepting any decision,
+- selected `TASK-DOC-ADR-002` as the next bounded task.
+
+No technology/provider/framework decision became Accepted through ADR framework creation.
+
+**Next task:** `TASK-DOC-ADR-002`
 
 ## Logging rule
 
