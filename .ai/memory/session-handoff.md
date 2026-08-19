@@ -2,71 +2,72 @@
 
 ## Last completed task
 
-`TASK-DOC-GOV-002 - Normalize Architecture Decision References`
+`TASK-DOC-ARCH-005 - Create C4 Component Architecture`
 
 Branch:
 
 `docs/phase-2-architecture`
 
-## Files changed in the last bounded task
+Created:
 
-Canonical architecture:
+`docs/02-architecture/component-architecture.md`
 
-- `docs/02-architecture/architecture-principles.md`
-- `docs/02-architecture/architecture-overview.md`
-- `docs/02-architecture/system-context.md`
-- `docs/02-architecture/container-architecture.md`
+## What the component architecture established
 
-AI continuity:
+The trusted Application/API and Worker logical containers are now decomposed into implementation-oriented source-code components.
 
-- `.ai/context/current-context.md`
-- `.ai/context/documentation-state.md`
-- `.ai/task/current.md`
-- `.ai/task/completed.md`
-- `.ai/memory/session-handoff.md`
+Key boundaries:
 
-## What changed
+- Transport Adapters own protocol translation, not business rules.
+- Request/Correlation Context propagates safe diagnostic identity.
+- Principal Resolver maps verified authentication evidence to GymPulse principals.
+- Tenant Context Resolver determines allowed organization/gym/branch scope.
+- Capability Authorization enforces named permissions server-side.
+- Contract Validation protects trust boundaries.
+- Application Use Cases coordinate transactions and cross-domain intent.
+- Domain modules own canonical business mutations.
+- Repository/Data Ports prevent arbitrary table mutation across domains.
+- Unit of Work defines correctness-sensitive transaction boundaries.
+- Idempotency uses request, domain uniqueness, provider-event, and business-effect layers.
+- Provider SDK/payloads remain behind Auth, Payment, Messaging, Object Storage, and Observability adapters.
+- Notification business intent/policy is separate from delivery transport.
+- Audit history is required for defined sensitive mutations.
+- Operational Read Models may join domains but are read-only authorities.
+- Worker handlers reuse application/domain rules and carry explicit tenant context/system capabilities.
 
-All current structured architecture drafts now use canonical scoped decision IDs from:
+## Critical flows already illustrated
 
-`docs/00-overview/assumptions.md`
+`component-architecture.md` contains sequence diagrams for:
 
-Examples:
+1. member QR check-in,
+2. verified renewal payment -> exactly-once membership effect.
 
-```text
-D-060 -> D-ARCH-006
-D-058 -> D-ARCH-002
-D-049 -> D-ARCH-004
-D-050 -> D-SEC-002
-D-030 -> D-PROVIDER-001
-D-038 -> D-PROVIDER-002
-D-068 -> D-SEC-008
-D-069 -> D-DATA-007
-```
-
-Structured architecture related-document links now point to the canonical assumptions register instead of treating `docs/16-open-decisions.md` as current truth.
-
-Legacy `docs/16-open-decisions.md` remains a migration source and is not deleted.
+These sequences show authorization, transaction, idempotency, domain ownership, and canonical persistence boundaries.
 
 ## Important decision state
 
-No provider/runtime selection became Accepted through this task.
+No major technology/provider decision was accepted.
 
-High-impact choices still remain Proposed/Open/Assumed according to the canonical register, including:
+Still Proposed/Open according to `docs/00-overview/assumptions.md`:
 
-- monorepo strategy,
-- PostgreSQL acceptance,
-- authentication/session strategy,
-- member authentication,
-- API deployment topology,
-- job runner,
-- managed backend,
-- hosting,
-- payment provider,
-- messaging provider,
-- observability provider,
-- RLS strategy,
-- membership renewal representation.
+```text
+D-ARCH-001      Monorepo
+D-ARCH-002      PostgreSQL
+D-ARCH-004      Authentication/session strategy
+D-ARCH-006      API deployment topology
+D-ARCH-007      Job runner
+D-ARCH-009      Hosting
+D-ARCH-010      Object storage
+D-ARCH-011      Owner/Staff web framework
+D-ARCH-012      Member mobile framework
+D-ARCH-013      Managed backend
+D-PROVIDER-001  Payment provider
+D-PROVIDER-002  Messaging provider
+D-PROVIDER-006  Observability provider
+D-SEC-002       Member authentication
+D-SEC-008       RLS strategy
+D-DATA-007      Membership renewal representation
+```
 
 ## Current task
 
@@ -74,59 +75,56 @@ Read `.ai/task/current.md`.
 
 Current task:
 
-`TASK-DOC-ARCH-005 - Create C4 Component Architecture`
+`TASK-DOC-ARCH-006 - Create Architecture Data Flows`
 
 Target:
 
-`docs/02-architecture/component-architecture.md`
+`docs/02-architecture/data-flow.md`
 
 ## Exact next action
 
-Decompose the trusted Application/API and Worker logical containers into implementation-oriented source-code components without turning each domain into a deployable service.
+Trace Phase 1 end-to-end data movement through the boundaries that already exist.
 
-Must include:
+Minimum flows:
 
-- HTTP/transport adapters,
-- authentication/principal resolver,
-- tenant-context resolver,
-- capability authorization,
-- validation/contracts,
-- application use cases,
-- domain modules,
-- transaction/unit-of-work boundary,
-- repository/data-access ports,
-- payment/webhook adapters,
-- notification policy/intent/delivery adapters,
-- audit/events,
-- idempotency/dedupe,
-- worker scheduler/handlers,
-- operational read/query components,
-- synchronous vs asynchronous interaction rules,
-- failure propagation,
-- observability and test seams.
+- authentication -> principal -> tenant/capability authorization,
+- QR check-in,
+- assisted check-in,
+- no-show scan -> case,
+- follow-up -> return resolution,
+- renewal-window scan -> notification intent,
+- renewal order -> payment checkout,
+- payment webhook -> exactly-once business effect,
+- notification dispatch/delivery callback,
+- controlled import,
+- owner dashboard/read model,
+- data-quality scan.
 
-## Inputs that must be read before writing
+Each flow must show:
 
-- `.ai/context/project-context.md`
-- `.ai/context/current-context.md`
-- `docs/00-overview/assumptions.md`
-- `docs/01-product/functional-requirements.md`
-- `docs/01-product/non-functional-requirements.md`
-- all four current `docs/02-architecture/` drafts
-- relevant legacy architecture/database/API/automation/security sources
+- canonical source/destination,
+- trust boundary crossing,
+- auth/authz checkpoint,
+- transaction boundary,
+- sync/async handoff,
+- durable continuation if required,
+- idempotency/dedupe invariant,
+- retry/failure/reconciliation path,
+- audit/observability hooks,
+- relevant FR/NFR traceability.
 
 ## Do not forget
 
 - `docs/` is canonical truth.
 - `.ai/` is execution continuity, not canonical architecture.
-- use canonical scoped decision IDs only in new structured docs.
-- components are code boundaries, not automatic microservices.
-- provider decisions remain Open until accepted through ADRs.
-- preserve requirement traceability.
-- do not begin `data-flow.md` until the component task is complete and context files are updated.
+- use canonical scoped decision IDs only.
+- do not invent new services merely to draw a flow.
+- provider/runtime choices remain abstract until ADR/decision acceptance.
+- deterministic business truth stays in trusted domain/application code.
+- do not begin `technology-stack.md` until `data-flow.md` and context updates are complete.
 
 ## Blockers/open questions
 
-No blocker prevents writing logical C4 Level 3 component architecture.
+No blocker prevents writing the logical data-flow architecture.
 
-Open provider/runtime choices can remain abstract behind ports/adapters.
+Open provider and runtime choices can remain behind the existing ports/adapters.
