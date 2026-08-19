@@ -1,76 +1,124 @@
 # Current Task
 
-## TASK-DOC-ADR-001
+## TASK-DOC-ADR-002
 
-**Title:** Create ADR Framework and Index
+**Title:** Draft Monorepo Architecture Decision Record
 
 **Status:** `READY`
 
 **Phase:** `Phase 4 - System Architecture`
 
-**Target file:** `docs/adr/README.md`
+**Target file:** `docs/adr/ADR-0001-use-monorepo.md`
 
 ## Objective
 
-Create the canonical Architecture Decision Record framework for GymPulse so major technical decisions are proposed, reviewed, accepted, rejected, superseded, and traced consistently.
+Create a reviewable ADR for the canonical decision `D-ARCH-001` covering whether GymPulse should use a monorepo and what architectural boundaries the repository strategy must preserve.
 
-This task creates governance only. It MUST NOT accept monorepo, PostgreSQL, API topology, authentication, managed backend, job runner, or provider choices merely because they are referenced as candidate ADRs.
+The ADR MUST begin with status `Proposed` unless explicit acceptance evidence is separately authorized and recorded.
+
+This task drafts the decision rationale. It does not accept the decision merely because current architecture documents recommend a monorepo.
+
+## Primary decision
+
+```text
+D-ARCH-001
+Priority: P0
+Canonical status: PROPOSED
+Decision: Use a monorepo and define package boundaries.
+```
+
+## Related but separate decisions
+
+- `D-ARCH-014` package manager (`pnpm` currently Assumed)
+- `D-ARCH-005` modular monolith architecture style
+- `D-ARCH-006` API deployment topology
+- `D-ARCH-011` Owner/Staff web framework
+- `D-ARCH-012` Member mobile framework
+
+Do not silently resolve these related decisions inside ADR-0001.
 
 ## Inputs to read
 
-1. `docs/README.md`
+1. `docs/adr/README.md`
 2. `docs/00-overview/assumptions.md`
-3. `docs/02-architecture/architecture-principles.md`
-4. `docs/02-architecture/technology-stack.md`
-5. `.ai/context/current-context.md`
-6. legacy `docs/15-engineering-workflow.md` only as migration input
+3. `docs/01-product/non-functional-requirements.md`
+4. `docs/02-architecture/architecture-principles.md`
+5. `docs/02-architecture/architecture-overview.md`
+6. `docs/02-architecture/container-architecture.md`
+7. `docs/02-architecture/component-architecture.md`
+8. `docs/02-architecture/technology-stack.md`
+9. legacy `docs/15-engineering-workflow.md` only as migration input
+10. current repository tree/state where relevant
 
-## Required output
+## Required alternatives
 
-`docs/adr/README.md` must define:
+Evaluate at least:
 
-- ADR purpose and when one is required,
-- source-of-truth relationship with `docs/00-overview/assumptions.md`,
-- status model,
-- numbering and filename convention,
-- mandatory ADR sections,
-- canonical decision-ID linkage,
-- requirement/NFR linkage where relevant,
-- evidence and alternatives expectations,
-- proposal/review/acceptance workflow,
-- rejected/deferred decision handling,
-- supersession/deprecation rules,
-- implementation and documentation update responsibilities,
-- rule that implementation alone does not make an ADR Accepted,
-- initial ADR backlog/index without falsely accepting any decision.
+1. TypeScript monorepo with multiple apps/packages,
+2. separate repositories per application/runtime,
+3. a single application repository with minimal/no reusable package boundaries.
 
-## Initial ADR candidates
+## Required evaluation criteria
+
+- shared domain/business-rule reuse,
+- typed contract reuse,
+- cross-app atomic changes,
+- CI/build impact,
+- dependency boundary enforcement,
+- local-development ergonomics,
+- release/deployment independence,
+- mobile/web/API coordination,
+- code ownership and future team scaling,
+- migration/reversibility,
+- security implications of shared packages/configuration,
+- risk of monorepo becoming an unstructured shared-code dump.
+
+## Mandatory ADR content
+
+Follow `docs/adr/README.md` and include:
+
+- Status = `Proposed`,
+- Primary Decision ID = `D-ARCH-001`,
+- requirements/decision drivers,
+- constraints/assumptions,
+- alternatives,
+- explicit evaluation,
+- proposed decision,
+- consequences,
+- security/privacy implications,
+- reliability/performance/scalability implications,
+- CI/operations implications,
+- testing/validation,
+- migration/rollout,
+- reversibility,
+- risks/mitigations,
+- open questions,
+- decision evidence = `None - Proposed` unless explicit approval is supplied,
+- related documents.
+
+## Important design boundary
+
+A monorepo decision determines source/repository organization, not runtime deployment.
+
+It must remain valid whether:
 
 ```text
-ADR-0001-use-monorepo.md
-ADR-0002-database-selection.md
-ADR-0003-api-architecture.md
-ADR-0004-authentication-strategy.md
-ADR-0005-managed-backend-platform.md
-ADR-0006-background-job-runner.md
+Option A: Web + server/API initially share one deployable runtime
+Option B: Web and API deploy independently
 ```
 
-Provider-specific ADRs should be added when evidence is sufficient.
-
-## Decision discipline
-
-Use canonical scoped decision IDs from `docs/00-overview/assumptions.md` only.
-
-Do not introduce legacy numeric IDs.
+Similarly, a shared repository must not allow client code to import server secrets or database/provider adapters.
 
 ## Definition of Done
 
-- `docs/adr/README.md` exists,
-- status/numbering/template/workflow/supersession rules are explicit,
-- canonical decision-ID relationship is explicit,
-- initial ADR candidate index exists,
-- no architecture choice becomes Accepted through framework creation,
+- `docs/adr/ADR-0001-use-monorepo.md` exists,
+- status is `Proposed` unless explicit acceptance is separately authorized,
+- `D-ARCH-001` is the primary decision ID,
+- alternatives and tradeoffs are concrete,
+- package/dependency/security boundaries are explicit,
+- runtime deployment remains a separate decision,
+- no unrelated provider/framework decision becomes Accepted,
 - `.ai/context/documentation-state.md` updated,
 - this task recorded in `.ai/task/completed.md`,
 - `.ai/context/current-context.md` and `.ai/memory/session-handoff.md` updated,
-- next bounded ADR task is selected based on the canonical P0/P1 decision order.
+- next bounded ADR task selected according to canonical P0 decision order.
