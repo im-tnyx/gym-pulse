@@ -2,66 +2,53 @@
 
 ## Last completed task
 
-`TASK-DOC-ARCH-004 - Create C4 Container Architecture`
+`TASK-DOC-GOV-001 - Repository Documentation Architecture Audit and Decision Governance Foundation`
 
-Created:
-
-`docs/02-architecture/container-architecture.md`
-
-on branch:
+Branch:
 
 `docs/phase-2-architecture`
 
-## Files changed in the last bounded task
+## What changed
 
-- `docs/02-architecture/container-architecture.md`
-- `.ai/context/documentation-state.md`
-- `.ai/context/current-context.md`
-- `.ai/task/current.md`
-- `.ai/task/completed.md`
-- `.ai/memory/session-handoff.md`
+The repository audit found that structured architecture drafts were still using legacy numeric decision IDs from `docs/16-open-decisions.md`, while the structured canonical decision register uses scoped IDs.
 
-## What the container architecture established
+The canonical decision source is now explicitly:
 
-The C4 Level 2 draft now defines:
+`docs/00-overview/assumptions.md`
 
-- Owner/Staff Web logical container,
-- Member Mobile logical container,
-- trusted Application/API runtime,
-- Worker/Job runtime,
-- PostgreSQL canonical data boundary,
-- private Object Storage,
-- external Authentication Provider,
-- external Payment Provider,
-- external Messaging Provider,
-- Observability and Product Analytics boundaries,
-- controlled import boundary for existing gym data.
+That file now contains:
 
-It also defines:
+- canonical decision-ID policy,
+- additional canonical architecture/product/security/data decisions required by current docs,
+- legacy-to-canonical migration crosswalk,
+- rule that new structured docs must use canonical IDs only.
 
-- dependency direction,
-- canonical data ownership,
-- synchronous vs asynchronous interactions,
-- trust boundaries,
-- failure/degradation behavior,
-- scaling implications,
-- observability expectations,
-- testing seams.
+`docs/README.md` now reflects the real Architecture Phase 4 state and points to the canonical decision register.
+
+`.ai/memory/decisions.md` no longer points to the legacy file as canonical.
 
 ## Important decision state
 
-No major provider/runtime decision was silently finalized.
+No technology/provider decision was accepted in this task.
 
-`D-060` remains Open.
-
-Both deployment options remain valid pending ADR:
+Examples that remain Proposed/Open:
 
 ```text
-Option A: Next.js Web + Server/API initially
-Option B: separate TypeScript API runtime
+D-ARCH-001      Monorepo
+D-ARCH-002      PostgreSQL
+D-ARCH-004      Authentication/session strategy
+D-ARCH-006      API deployment topology
+D-ARCH-007      Job runner
+D-ARCH-011      Owner/Staff web framework
+D-ARCH-012      Member mobile framework
+D-ARCH-013      Managed backend
+D-PROVIDER-001  Payment provider
+D-PROVIDER-002  Messaging provider
+D-PROVIDER-006  Observability provider
+D-SEC-002       Member authentication
+D-SEC-008       RLS strategy
+D-DATA-007      Membership renewal representation
 ```
-
-PostgreSQL, Next.js, Expo, monorepo tooling, managed backend, job runner, payment provider, messaging provider, hosting, observability, Redis, and RLS remain Proposed/Assumed/Open according to the decision register.
 
 ## Current task
 
@@ -69,44 +56,45 @@ Read `.ai/task/current.md`.
 
 Current task:
 
+`TASK-DOC-GOV-002 - Normalize Architecture Decision References`
+
+## Exact next action
+
+Update these existing structured architecture documents so they use canonical decision IDs only:
+
+- `docs/02-architecture/architecture-principles.md`
+- `docs/02-architecture/architecture-overview.md`
+- `docs/02-architecture/system-context.md`
+- `docs/02-architecture/container-architecture.md`
+
+Use the migration crosswalk in:
+
+`docs/00-overview/assumptions.md`
+
+Do not change decision status or architecture behavior during the normalization sweep.
+
+## After the normalization sweep
+
+Resume:
+
 `TASK-DOC-ARCH-005 - Create C4 Component Architecture`
 
 Target:
 
 `docs/02-architecture/component-architecture.md`
 
-## Exact next action
-
-Decompose the trusted Application/API and Worker boundaries into implementation-oriented components without making them separate services.
-
-Must include:
-
-- HTTP/transport adapters,
-- auth/principal resolver,
-- tenant-context resolver,
-- capability authorization,
-- validation/contracts,
-- application use cases,
-- domain modules,
-- transaction/unit-of-work boundary,
-- repository/provider ports,
-- provider adapters,
-- audit/events,
-- idempotency/dedupe,
-- worker schedulers/handlers,
-- operational read/query components.
-
 ## Do not forget
 
 - `docs/` is canonical truth.
 - `.ai/` is execution continuity, not canonical architecture.
+- `docs/16-open-decisions.md` is legacy migration input.
+- new structured documents must use canonical scoped decision IDs.
 - components are code boundaries, not automatic microservices.
-- provider decisions remain Open until accepted through ADRs.
+- no provider or runtime becomes Accepted without explicit decision/ADR.
 - preserve requirement traceability.
-- do not begin `data-flow.md` until the component task is completed and context files are updated.
 
 ## Blockers/open questions
 
-No blocker prevents writing logical component architecture.
+No business blocker prevents the decision-reference normalization task.
 
-The API deployment model and provider choices can remain abstract.
+The only stop condition before component architecture is completing the canonical-ID sweep in the four existing structured architecture documents.
