@@ -2,26 +2,31 @@
 
 Tasks are ordered. Do not skip ahead unless a blocking dependency requires it.
 
-## Architecture Governance
+## Completed Architecture Foundation
 
-- `TASK-DOC-GOV-002` Normalize legacy decision IDs in existing structured architecture drafts before creating new downstream architecture.
+```text
+TASK-DOC-ARCH-005  C4 Component Architecture
+TASK-DOC-ARCH-006  Architecture Data Flows
+TASK-DOC-ARCH-007  Technology Stack Evaluation
+TASK-DOC-ADR-001   ADR Framework and Index
+```
 
-## Architecture
+## Current ADR Sequence
 
-After `TASK-DOC-GOV-002` is complete:
+Proceed one bounded decision record at a time. Drafting an ADR does not mean accepting it.
 
-- `TASK-DOC-ARCH-005` Create `docs/02-architecture/component-architecture.md`
-- `TASK-DOC-ARCH-006` Create `docs/02-architecture/data-flow.md`
-- `TASK-DOC-ARCH-007` Create `docs/02-architecture/technology-stack.md`
-- `TASK-DOC-ADR-001` Create ADR framework/index
-- `TASK-DOC-ADR-002` Draft monorepo ADR
-- `TASK-DOC-ADR-003` Draft PostgreSQL ADR
-- `TASK-DOC-ADR-004` Draft API deployment ADR
-- `TASK-DOC-ADR-005` Draft authentication ADR as `Proposed` if provider remains unresolved
+1. `TASK-DOC-ADR-002` Draft `docs/adr/ADR-0001-use-monorepo.md` for `D-ARCH-001` as `Proposed`.
+2. `TASK-DOC-ADR-003` Draft `docs/adr/ADR-0002-database-selection.md` for `D-ARCH-002` as `Proposed`.
+3. `TASK-DOC-ADR-004` Draft `docs/adr/ADR-0003-api-architecture.md` for `D-ARCH-003` as `Proposed`.
+4. `TASK-DOC-ADR-005` Draft `docs/adr/ADR-0004-authentication-strategy.md` for `D-ARCH-004`; provider/session choice may remain unresolved until evidence is sufficient.
+5. `TASK-DOC-ADR-006` Draft `docs/adr/ADR-0005-managed-backend-platform.md` for `D-ARCH-013`.
+6. `TASK-DOC-ADR-007` Draft `docs/adr/ADR-0006-background-job-runner.md` for `D-ARCH-007`.
+
+Related decisions such as `D-ARCH-006` API deployment topology, `D-SEC-008` RLS strategy, hosting, object storage, frameworks, and providers should receive separate ADRs when their evidence/priority justifies creation.
 
 ## Domain Architecture
 
-After architecture baseline is coherent:
+After the foundational architecture/ADR baseline is coherent enough to avoid redefining domain ownership:
 
 - Identity
 - Members
@@ -33,7 +38,7 @@ After architecture baseline is coherent:
 - Notifications
 - Analytics/Audit
 
-Only then document future domains such as Workout, Nutrition, Health, Coaching, and AI in detail.
+Only then document future domains such as Workout, Nutrition, Health, Coaching, and AI in detail unless product scope changes explicitly.
 
 ## Database + API
 
@@ -48,7 +53,7 @@ After domain ownership is documented:
 - retention
 - API overview
 - API conventions
-- auth
+- authentication
 - endpoints
 - errors
 - pagination
