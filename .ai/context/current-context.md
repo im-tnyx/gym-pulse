@@ -39,6 +39,7 @@ Product foundation and structured product documentation are complete at Draft v1
 - `docs/02-architecture/system-context.md`
 - `docs/02-architecture/container-architecture.md`
 - `docs/02-architecture/component-architecture.md`
+- `docs/02-architecture/data-flow.md`
 
 ## Architecture governance
 
@@ -46,38 +47,63 @@ Canonical decision source:
 
 `docs/00-overview/assumptions.md`
 
-Current structured architecture uses canonical scoped decision IDs only. Legacy `docs/16-open-decisions.md` remains migration input.
+Structured architecture uses canonical scoped decision IDs. Legacy `docs/16-open-decisions.md` remains migration input only.
 
 No provider/runtime selection has been silently finalized.
 
 ## Component architecture established
 
-`component-architecture.md` now defines the C4 Level 3-style internal decomposition of the trusted Application/API and Worker boundaries.
+`component-architecture.md` defines:
 
-Important established boundaries:
+- transport adapters,
+- request/correlation context,
+- Principal Resolver,
+- Tenant Context Resolver,
+- Capability Authorization,
+- contract validation/DTO mapping,
+- application use-case orchestration,
+- Phase 1 domain ownership,
+- Unit of Work,
+- repository/data ports,
+- layered idempotency,
+- provider adapters,
+- audit/events/durable continuation,
+- worker handlers,
+- operational read models.
 
-- transport adapters do not own business rules,
-- Principal Resolver converts verified auth evidence into application principal,
-- Tenant Context Resolver establishes allowed organization/gym/branch scope,
-- Capability Authorization enforces named permissions server-side,
-- boundary schemas validate untrusted inputs,
-- Application Use Cases orchestrate domain modules and transactions,
-- each domain owns its canonical mutations,
-- cross-domain read models may join data but are read-only,
-- Unit of Work protects correctness-sensitive multi-record effects,
-- Idempotency uses durable layered protections rather than process-local locks,
-- provider SDK/payloads remain behind adapters,
-- payment provider-event dedupe is separate from business-effect dedupe,
-- worker handlers reuse application/domain logic rather than duplicate it,
-- audit history is part of required sensitive mutation semantics,
-- durable continuations/outbox-equivalent are required where losing async work would violate requirements.
+Components are source-code/application boundaries, not automatic microservices.
 
-Critical sequences documented:
+## Data-flow architecture established
+
+`data-flow.md` now traces these Phase 1 flows end to end:
 
 ```text
-QR check-in
-Verified renewal payment
+authentication -> principal -> tenant authorization
+member QR check-in
+assisted staff check-in
+scheduled no-show scan -> retention case
+follow-up -> return attendance -> case resolution
+renewal window -> reminder intent
+renewal order -> payment checkout initiation
+verified payment event -> exactly-once membership/add-on effect
+notification intent -> current-policy check -> provider delivery state
+controlled import -> staging/reconciliation -> canonical write
+owner dashboard/action-queue read model
+data-quality scan -> issue lifecycle
 ```
+
+For these flows the document makes explicit:
+
+- canonical vs derived/external data,
+- trust-boundary crossings,
+- authorization checkpoints,
+- transaction boundaries,
+- synchronous vs asynchronous handoffs,
+- durable continuation points,
+- request/domain/provider/business-effect idempotency,
+- failure/retry/reconciliation paths,
+- audit and observability points,
+- gym-local business-time behavior.
 
 ## Architecture direction still Proposed/Open
 
@@ -100,17 +126,21 @@ High-impact choices still requiring decisions/ADRs include:
 ```text
 D-ARCH-001      Monorepo
 D-ARCH-002      PostgreSQL
+D-ARCH-003      JSON HTTP API
 D-ARCH-004      Authentication/session strategy
 D-ARCH-006      API deployment topology
 D-ARCH-007      Job runner
+D-ARCH-008      Redis requirement
 D-ARCH-009      Hosting
 D-ARCH-010      Object storage
 D-ARCH-011      Owner/Staff web framework
 D-ARCH-012      Member mobile framework
 D-ARCH-013      Managed backend
+D-ARCH-014      Package manager
 D-PROVIDER-001  Payment provider
 D-PROVIDER-002  Messaging provider
-D-PROVIDER-006  Observability provider
+D-PROVIDER-005  Product analytics
+D-PROVIDER-006  Observability
 D-SEC-002       Member authentication
 D-SEC-008       RLS strategy
 D-DATA-007      Membership renewal representation
@@ -118,36 +148,43 @@ D-DATA-007      Membership renewal representation
 
 ## Immediate next action
 
-`TASK-DOC-ARCH-006 - Create Architecture Data Flows`
+`TASK-DOC-ARCH-007 - Create Technology Stack Evaluation`
 
 Target:
 
-`docs/02-architecture/data-flow.md`
+`docs/02-architecture/technology-stack.md`
 
-The next document must trace end-to-end Phase 1 flows using the existing System Context, Container, and Component boundaries.
+The next document must evaluate the technology choices required to implement the existing architecture without treating recommendations as accepted decisions.
 
-Minimum flows:
+It should cover at least:
 
-- authentication + principal/tenant authorization context,
-- member QR check-in,
-- assisted check-in,
-- no-show scan -> red-list case,
-- follow-up -> member return resolution,
-- renewal eligibility/reminder,
-- renewal order -> payment initiation,
-- payment webhook -> exactly-once membership/add-on effect,
-- notification intent -> dispatch -> provider delivery status,
-- controlled import,
-- owner dashboard/read-model query,
-- data-quality scan.
+- primary language/runtime,
+- monorepo/package manager,
+- Owner/Staff web framework,
+- member mobile framework,
+- Application/API deployment options,
+- PostgreSQL and data-access approach,
+- managed backend option,
+- authentication/session requirements,
+- job runner/scheduler,
+- payments,
+- messaging,
+- object storage,
+- observability,
+- product analytics,
+- Redis/cache decision posture,
+- local development/testing implications,
+- security/operations implications,
+- alternatives and tradeoffs,
+- canonical decision IDs and planned ADR ownership.
 
 ## Stop condition
 
-After `data-flow.md` is complete:
+After `technology-stack.md` is complete:
 
 - update `.ai/context/documentation-state.md`,
 - update `.ai/task/current.md`,
 - append `.ai/task/completed.md`,
 - update `.ai/memory/session-handoff.md`,
-- set exact next task to `technology-stack.md`,
-- do not begin `technology-stack.md` in the same bounded task unless explicitly requested.
+- move to ADR framework creation,
+- do not silently mark Proposed/Open technologies Accepted.
