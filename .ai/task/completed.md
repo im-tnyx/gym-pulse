@@ -28,6 +28,29 @@ Created `docs/02-architecture/architecture-overview.md`.
 
 Created `docs/02-architecture/system-context.md` as C4 Level 1 context.
 
+### TASK-DOC-ARCH-004
+
+**Target:** `docs/02-architecture/container-architecture.md`
+
+**Completed:** 2026-08-19
+
+Created C4 Level 2 container architecture covering:
+
+- Owner/Staff Web,
+- Member Mobile,
+- Application/API runtime,
+- Worker/Job runtime,
+- PostgreSQL,
+- Object Storage,
+- external Auth, Payment, Messaging, Observability, and Product Analytics systems,
+- trust/data/dependency boundaries,
+- synchronous vs asynchronous interactions,
+- scaling, failure, security, observability, and testing boundaries.
+
+`D-060` API deployment remains Open. Both Option A (Next.js web/server API) and Option B (separate TypeScript API runtime) are documented without final selection.
+
+**Next task:** `TASK-DOC-ARCH-005`
+
 ## Logging rule
 
 When a task is completed, record:
