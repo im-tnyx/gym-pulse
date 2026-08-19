@@ -96,16 +96,35 @@ No architecture technology/provider decision was accepted or changed by this tas
 - documented 12 critical Phase 1 end-to-end data flows,
 - mapped flows to canonical `FR-*` and `NFR-*` requirements,
 - made canonical vs derived/external data explicit,
-- documented trust-boundary crossings and authorization checkpoints,
-- documented transaction boundaries and sync/async handoffs,
-- documented durable continuation requirements,
-- documented request/domain/provider/business-effect idempotency,
-- documented retry, provider uncertainty, reconciliation, audit, and observability behavior,
-- documented gym-local timezone behavior for scheduled work,
+- documented trust, authorization, transaction, async, idempotency, retry, reconciliation, audit, observability, and gym-local timezone behavior,
 - reused existing C4 components without adding new deployable services,
-- used canonical decision IDs only and accepted no Open provider/runtime decision.
+- accepted no Open provider/runtime decision.
 
-**Next task:** `TASK-DOC-ARCH-007`
+### TASK-DOC-ARCH-007
+
+**Title:** Create Technology Stack Evaluation
+
+**Target:** `docs/02-architecture/technology-stack.md`
+
+**Completed:** 2026-08-19
+
+**Result:**
+
+- evaluated the TypeScript application/runtime direction,
+- evaluated monorepo and pnpm assumptions,
+- evaluated Next.js Owner/Staff Web and Expo/React Native Member Mobile directions,
+- documented JSON HTTP typed-contract posture and API deployment Option A vs Option B,
+- evaluated PostgreSQL and SQL-aware data-access/migration options,
+- evaluated managed backend and RLS implications,
+- documented authentication/session requirements without choosing a provider,
+- compared durable managed jobs, Redis-backed queues, and database-backed job approaches,
+- documented Redis as non-mandatory by default,
+- documented payment/messaging/storage/observability/analytics provider selection criteria and adapter boundaries,
+- documented testing, local development, secrets, hosting, CI/CD, connection, and operational implications,
+- defined technology spikes and selection gates before implementation,
+- used canonical decision IDs and did not silently accept any Proposed/Open choice.
+
+**Next task:** `TASK-DOC-ADR-001`
 
 ## Logging rule
 
