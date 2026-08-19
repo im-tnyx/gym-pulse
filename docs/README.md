@@ -40,6 +40,14 @@ No undocumented implementation detail overrides an approved requirement or ADR.
 
 The canonical register contains the migration crosswalk needed while older documents are normalized.
 
+### ADR governance
+
+`docs/adr/README.md` is the canonical ADR framework and index.
+
+It defines ADR statuses, numbering, mandatory sections, evidence expectations, canonical decision-ID linkage, acceptance workflow, rejected/deferred handling, supersession, and cross-document update rules.
+
+An ADR being created, merged, or implemented does not make it `Accepted`. Acceptance requires explicit decision evidence and synchronization with `00-overview/assumptions.md`.
+
 ## Target information architecture
 
 ```text
@@ -146,7 +154,7 @@ Requirement
 
 A major architecture decision is not considered final merely because it appears in a design document. Decisions such as monorepo strategy, database, API style, authentication, job runner, payment provider, hosting platform, AI model strategy, or event architecture require an ADR before they become architectural commitments.
 
-ADRs must reference canonical decision IDs from `00-overview/assumptions.md`.
+ADRs must reference canonical decision IDs from `00-overview/assumptions.md` and follow `adr/README.md`.
 
 Implementation alone does not silently upgrade a Proposed/Open decision to Accepted.
 
@@ -208,12 +216,22 @@ Architecture decision references in these structured documents use canonical sco
 
 `technology-stack.md` evaluates the proposed TypeScript/monorepo/web/mobile/API/database directions, data-access options, managed backend, auth/RLS, durable jobs, Redis posture, payments, messaging, storage, observability, analytics, testing, secrets, hosting, CI/CD, technology spikes, and selection gates. It is an evaluation document, not an ADR substitute.
 
-Continue in this order:
+### `adr/`
 
-8. `docs/adr/README.md`
-9. initial ADRs one bounded decision at a time
+ADR governance framework created:
 
-No technology choice is Accepted merely because it appears in the recommended Phase 1 baseline.
+- `adr/README.md`
+
+The initial ADR candidate index is defined there. No architecture choice has been Accepted by creating the framework.
+
+Next bounded decision task:
+
+```text
+TASK-DOC-ADR-002
+ADR-0001-use-monorepo.md
+Primary decision: D-ARCH-001
+Initial status: Proposed
+```
 
 ## Legacy migration state
 
