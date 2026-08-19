@@ -32,20 +32,22 @@
 
 All planned files complete at Draft v1.x.
 
+`assumptions.md` is the canonical decision register and now includes the legacy decision-ID crosswalk.
+
 ### `01-product`
 
 All planned files complete at Draft v1.x.
 
 ### `02-architecture`
 
-Completed:
+Completed drafts:
 
 - `architecture-principles.md`
 - `architecture-overview.md`
 - `system-context.md`
 - `container-architecture.md`
 
-Remaining:
+Remaining architecture artifacts:
 
 - `component-architecture.md`
 - `data-flow.md`
@@ -53,9 +55,29 @@ Remaining:
 - `architecture-decisions/` index/pointers if retained
 - initial ADRs
 
+## Architecture governance state
+
+Repository audit identified a decision-reference inconsistency:
+
+- legacy `docs/16-open-decisions.md` uses numeric IDs such as `D-060`,
+- canonical `docs/00-overview/assumptions.md` uses scoped IDs such as `D-ARCH-006`,
+- existing structured architecture drafts still contain some legacy IDs.
+
+Completed governance correction:
+
+- canonical decision source explicitly declared,
+- missing canonical IDs added where current architecture required them,
+- legacy-to-canonical crosswalk added,
+- `docs/README.md` source hierarchy refreshed,
+- `.ai` decision memory now points to canonical source.
+
+Current correction task:
+
+Normalize legacy IDs in the four structured architecture drafts before creating new downstream architecture documents.
+
 ## Container architecture state
 
-`container-architecture.md` is now the canonical C4 Level 2 draft.
+`container-architecture.md` is the current C4 Level 2 draft.
 
 It defines:
 
@@ -63,16 +85,16 @@ It defines:
 - Member Mobile logical container,
 - trusted Application/API runtime,
 - Worker/Job runtime,
-- PostgreSQL canonical store,
+- PostgreSQL proposed canonical store,
 - private Object Storage,
 - external Auth, Payment, Messaging, Observability, and Product Analytics boundaries,
 - synchronous vs asynchronous interactions,
 - data ownership,
 - dependency direction,
 - trust/failure/scaling/test boundaries,
-- both `D-060` deployment options without selecting one.
+- both API deployment options without selecting one.
 
-No provider selection or API deployment topology was finalized.
+No provider selection or API deployment topology is final.
 
 ## Legacy flat documents
 
@@ -99,16 +121,18 @@ Canonical requirement IDs exist in `docs/01-product/functional-requirements.md` 
 
 Architecture documents reference requirement drivers where relevant.
 
+Decision traceability is being normalized to canonical scoped IDs before component architecture begins.
+
 ## ADR state
 
 ADR framework not yet created in structured architecture pass.
 
-Initial ADRs planned:
+Initial ADR candidates remain Proposed/Open, not Accepted:
 
 ```text
 ADR-0001-use-monorepo.md
 ADR-0002-use-postgresql.md
-ADR-0003-api-deployment-model.md
+ADR-0003-api-architecture.md
 ADR-0004-authentication-strategy.md
 ADR-0005-managed-backend-platform.md
 ADR-0006-background-job-runner.md
@@ -118,10 +142,17 @@ Provider-specific ADRs for payments, messaging, hosting, and observability shoul
 
 ## Immediate next documentation task
 
-Create `docs/02-architecture/component-architecture.md`.
+Normalize legacy decision references in:
 
-The component architecture should decompose the trusted Application/API and Worker boundaries into application services, domain modules, authorization, repositories/ports, provider adapters, audit/event handling, and job components without converting them into microservices.
+- `docs/02-architecture/architecture-principles.md`
+- `docs/02-architecture/architecture-overview.md`
+- `docs/02-architecture/system-context.md`
+- `docs/02-architecture/container-architecture.md`
+
+Use the crosswalk in `docs/00-overview/assumptions.md`.
+
+After that sweep, resume `TASK-DOC-ARCH-005` for `component-architecture.md`.
 
 ## Last update
 
-C4 Level 2 `container-architecture.md` completed on branch `docs/phase-2-architecture`. Architecture Phase 4 remains in progress.
+Architecture governance reconciliation completed after repository audit. Phase 4 remains in progress on branch `docs/phase-2-architecture`.
