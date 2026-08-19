@@ -1,97 +1,123 @@
 # Current Task
 
-## TASK-DOC-ARCH-006
+## TASK-DOC-ARCH-007
 
-**Title:** Create Architecture Data Flows
+**Title:** Create Technology Stack Evaluation
 
 **Status:** `READY`
 
 **Phase:** `Phase 4 - System Architecture`
 
-**Target file:** `docs/02-architecture/data-flow.md`
+**Target file:** `docs/02-architecture/technology-stack.md`
 
 ## Objective
 
-Trace the important GymPulse Phase 1 end-to-end data flows across actors/clients, trusted Application/API components, domain modules, PostgreSQL, workers, and external providers.
+Evaluate and document the technology stack needed to implement the existing GymPulse architecture while clearly separating required technical capabilities from Proposed, Assumed, and Open technology choices.
 
-The data-flow document must reuse the boundaries defined by the current C4 System Context, Container, and Component architecture. It MUST NOT casually invent new deployable services, providers, or accepted technology decisions.
+The document must not silently convert a recommendation into an Accepted architecture decision. Major choices remain governed by canonical decision IDs and future ADRs.
 
 ## Inputs to read
 
 1. `.ai/context/project-context.md`
 2. `.ai/context/current-context.md`
 3. `docs/00-overview/assumptions.md`
-4. `docs/01-product/user-journeys.md`
-5. `docs/01-product/functional-requirements.md`
-6. `docs/01-product/non-functional-requirements.md`
-7. `docs/02-architecture/architecture-principles.md`
-8. `docs/02-architecture/architecture-overview.md`
-9. `docs/02-architecture/system-context.md`
-10. `docs/02-architecture/container-architecture.md`
-11. `docs/02-architecture/component-architecture.md`
-12. relevant legacy flow/API/automation/payment/security sources where migration detail is useful
+4. `docs/01-product/functional-requirements.md`
+5. `docs/01-product/non-functional-requirements.md`
+6. `docs/02-architecture/architecture-principles.md`
+7. `docs/02-architecture/architecture-overview.md`
+8. `docs/02-architecture/system-context.md`
+9. `docs/02-architecture/container-architecture.md`
+10. `docs/02-architecture/component-architecture.md`
+11. `docs/02-architecture/data-flow.md`
+12. relevant legacy architecture/engineering/provider notes only as migration inputs
 
-## Required flows
+## Required evaluation areas
 
 Document at least:
 
-1. staff/member authentication -> principal resolution -> tenant authorization context,
-2. member QR check-in,
-3. assisted staff check-in,
-4. scheduled no-show scan -> red-list/no-show case,
-5. follow-up recording -> return attendance -> case resolution,
-6. renewal-window evaluation -> reminder intent,
-7. renewal order -> payment checkout initiation,
-8. verified payment webhook -> canonical payment transition -> exactly-once membership/add-on effect,
-9. notification intent -> current policy check -> provider dispatch -> provider delivery status,
-10. controlled import -> validation/staging/reconciliation -> canonical write,
-11. owner dashboard/action-queue read model,
-12. data-quality scan -> issue lifecycle.
+- primary application language/runtime,
+- monorepo strategy and package manager,
+- Owner/Staff web framework,
+- Member mobile framework,
+- API contract/runtime approach,
+- API deployment topology options,
+- PostgreSQL and data-access/migration approach,
+- managed backend platform option,
+- authentication/session strategy requirements,
+- background job/scheduler technology requirements,
+- payment provider requirements and adapter posture,
+- messaging provider requirements and adapter posture,
+- object storage,
+- observability/error monitoring,
+- product analytics,
+- Redis/cache posture,
+- testing/local-development implications,
+- security/secret-management implications,
+- deployment/operational implications.
 
 ## Mandatory design points
 
-- Mermaid sequence/data-flow diagrams where they improve clarity,
-- source and destination of canonical data,
-- trust-boundary crossings,
-- authorization checkpoints,
-- transaction boundaries,
-- synchronous vs asynchronous handoffs,
-- durable continuation/outbox-equivalent points where required,
-- idempotency/deduplication keys or invariants,
-- failure/retry/reconciliation paths,
-- audit and observability points,
-- gym-local timezone behavior for scheduled flows,
-- no client/provider analytics event treated as canonical business truth,
-- cross-domain ownership respected.
+For each meaningful technology choice include where applicable:
 
-## Requirement traceability
-
-Each major flow should reference the most relevant `FR-*` and `NFR-*` IDs.
+1. capability/problem being solved,
+2. current status (`Proposed`, `Assumed`, or `Open`),
+3. recommended direction if one exists,
+4. alternatives considered,
+5. selection criteria,
+6. tradeoffs,
+7. implementation implications,
+8. security/operations implications,
+9. related canonical decision ID,
+10. planned ADR requirement.
 
 ## Decision discipline
 
 Use canonical scoped decision IDs from `docs/00-overview/assumptions.md` only.
 
-Do not introduce legacy numeric IDs into this structured document.
+Relevant IDs include:
 
-Open provider/runtime decisions remain abstract, including authentication, payment, messaging, job runner, hosting, managed backend, object storage, observability, and RLS.
+```text
+D-ARCH-001  Monorepo
+D-ARCH-002  PostgreSQL
+D-ARCH-003  JSON HTTP API
+D-ARCH-004  Authentication/session
+D-ARCH-005  Modular monolith
+D-ARCH-006  API deployment topology
+D-ARCH-007  Job runner
+D-ARCH-008  Redis requirement
+D-ARCH-009  Hosting
+D-ARCH-010  Object storage
+D-ARCH-011  Owner/Staff web framework
+D-ARCH-012  Member mobile framework
+D-ARCH-013  Managed backend
+D-ARCH-014  Package manager
+D-PROVIDER-001 Payment provider
+D-PROVIDER-002 Messaging provider
+D-PROVIDER-005 Product analytics
+D-PROVIDER-006 Observability
+D-SEC-002   Member authentication method
+D-SEC-008   RLS strategy
+```
+
+Do not introduce legacy numeric IDs.
 
 ## Important constraint
 
-`data-flow.md` describes movement and transformation of data across existing components. If a flow appears to require a new component or service, first record the gap and justify it rather than silently changing the architecture.
+`technology-stack.md` is an evaluation and architecture guidance document, not an ADR substitute.
+
+A technology may be recommended as `Proposed` without being accepted.
 
 ## Definition of Done
 
 - file exists at canonical path,
-- all required Phase 1 flows are covered,
-- flows align with component/domain ownership,
-- trust/authorization/transaction/idempotency boundaries are visible,
-- async retries and failure states are explicit,
-- canonical vs derived/non-canonical data is distinguishable,
-- provider choices remain abstract where Open,
-- canonical decision IDs only,
-- Mermaid diagrams are syntactically reasonable,
+- required evaluation areas are covered,
+- choices map to architecture requirements and canonical decision IDs,
+- alternatives and tradeoffs are explicit,
+- no Open/Proposed decision becomes Accepted silently,
+- unresolved provider choices remain abstract where evidence is missing,
+- cross-document terminology remains consistent,
 - `.ai/context/documentation-state.md` updated,
 - this task recorded in `.ai/task/completed.md`,
-- next task becomes `technology-stack.md`,
-- `.ai/context/current-context.md` and `.ai/memory/session-handoff.md` updated.
+- `.ai/context/current-context.md` and `.ai/memory/session-handoff.md` updated,
+- next task becomes ADR framework creation,
+- do not draft/accept ADRs in the same bounded task unless explicitly requested.
