@@ -1,123 +1,76 @@
 # Current Task
 
-## TASK-DOC-ARCH-007
+## TASK-DOC-ADR-001
 
-**Title:** Create Technology Stack Evaluation
+**Title:** Create ADR Framework and Index
 
 **Status:** `READY`
 
 **Phase:** `Phase 4 - System Architecture`
 
-**Target file:** `docs/02-architecture/technology-stack.md`
+**Target file:** `docs/adr/README.md`
 
 ## Objective
 
-Evaluate and document the technology stack needed to implement the existing GymPulse architecture while clearly separating required technical capabilities from Proposed, Assumed, and Open technology choices.
+Create the canonical Architecture Decision Record framework for GymPulse so major technical decisions are proposed, reviewed, accepted, rejected, superseded, and traced consistently.
 
-The document must not silently convert a recommendation into an Accepted architecture decision. Major choices remain governed by canonical decision IDs and future ADRs.
+This task creates governance only. It MUST NOT accept monorepo, PostgreSQL, API topology, authentication, managed backend, job runner, or provider choices merely because they are referenced as candidate ADRs.
 
 ## Inputs to read
 
-1. `.ai/context/project-context.md`
-2. `.ai/context/current-context.md`
-3. `docs/00-overview/assumptions.md`
-4. `docs/01-product/functional-requirements.md`
-5. `docs/01-product/non-functional-requirements.md`
-6. `docs/02-architecture/architecture-principles.md`
-7. `docs/02-architecture/architecture-overview.md`
-8. `docs/02-architecture/system-context.md`
-9. `docs/02-architecture/container-architecture.md`
-10. `docs/02-architecture/component-architecture.md`
-11. `docs/02-architecture/data-flow.md`
-12. relevant legacy architecture/engineering/provider notes only as migration inputs
+1. `docs/README.md`
+2. `docs/00-overview/assumptions.md`
+3. `docs/02-architecture/architecture-principles.md`
+4. `docs/02-architecture/technology-stack.md`
+5. `.ai/context/current-context.md`
+6. legacy `docs/15-engineering-workflow.md` only as migration input
 
-## Required evaluation areas
+## Required output
 
-Document at least:
+`docs/adr/README.md` must define:
 
-- primary application language/runtime,
-- monorepo strategy and package manager,
-- Owner/Staff web framework,
-- Member mobile framework,
-- API contract/runtime approach,
-- API deployment topology options,
-- PostgreSQL and data-access/migration approach,
-- managed backend platform option,
-- authentication/session strategy requirements,
-- background job/scheduler technology requirements,
-- payment provider requirements and adapter posture,
-- messaging provider requirements and adapter posture,
-- object storage,
-- observability/error monitoring,
-- product analytics,
-- Redis/cache posture,
-- testing/local-development implications,
-- security/secret-management implications,
-- deployment/operational implications.
+- ADR purpose and when one is required,
+- source-of-truth relationship with `docs/00-overview/assumptions.md`,
+- status model,
+- numbering and filename convention,
+- mandatory ADR sections,
+- canonical decision-ID linkage,
+- requirement/NFR linkage where relevant,
+- evidence and alternatives expectations,
+- proposal/review/acceptance workflow,
+- rejected/deferred decision handling,
+- supersession/deprecation rules,
+- implementation and documentation update responsibilities,
+- rule that implementation alone does not make an ADR Accepted,
+- initial ADR backlog/index without falsely accepting any decision.
 
-## Mandatory design points
+## Initial ADR candidates
 
-For each meaningful technology choice include where applicable:
+```text
+ADR-0001-use-monorepo.md
+ADR-0002-database-selection.md
+ADR-0003-api-architecture.md
+ADR-0004-authentication-strategy.md
+ADR-0005-managed-backend-platform.md
+ADR-0006-background-job-runner.md
+```
 
-1. capability/problem being solved,
-2. current status (`Proposed`, `Assumed`, or `Open`),
-3. recommended direction if one exists,
-4. alternatives considered,
-5. selection criteria,
-6. tradeoffs,
-7. implementation implications,
-8. security/operations implications,
-9. related canonical decision ID,
-10. planned ADR requirement.
+Provider-specific ADRs should be added when evidence is sufficient.
 
 ## Decision discipline
 
 Use canonical scoped decision IDs from `docs/00-overview/assumptions.md` only.
 
-Relevant IDs include:
-
-```text
-D-ARCH-001  Monorepo
-D-ARCH-002  PostgreSQL
-D-ARCH-003  JSON HTTP API
-D-ARCH-004  Authentication/session
-D-ARCH-005  Modular monolith
-D-ARCH-006  API deployment topology
-D-ARCH-007  Job runner
-D-ARCH-008  Redis requirement
-D-ARCH-009  Hosting
-D-ARCH-010  Object storage
-D-ARCH-011  Owner/Staff web framework
-D-ARCH-012  Member mobile framework
-D-ARCH-013  Managed backend
-D-ARCH-014  Package manager
-D-PROVIDER-001 Payment provider
-D-PROVIDER-002 Messaging provider
-D-PROVIDER-005 Product analytics
-D-PROVIDER-006 Observability
-D-SEC-002   Member authentication method
-D-SEC-008   RLS strategy
-```
-
 Do not introduce legacy numeric IDs.
-
-## Important constraint
-
-`technology-stack.md` is an evaluation and architecture guidance document, not an ADR substitute.
-
-A technology may be recommended as `Proposed` without being accepted.
 
 ## Definition of Done
 
-- file exists at canonical path,
-- required evaluation areas are covered,
-- choices map to architecture requirements and canonical decision IDs,
-- alternatives and tradeoffs are explicit,
-- no Open/Proposed decision becomes Accepted silently,
-- unresolved provider choices remain abstract where evidence is missing,
-- cross-document terminology remains consistent,
+- `docs/adr/README.md` exists,
+- status/numbering/template/workflow/supersession rules are explicit,
+- canonical decision-ID relationship is explicit,
+- initial ADR candidate index exists,
+- no architecture choice becomes Accepted through framework creation,
 - `.ai/context/documentation-state.md` updated,
 - this task recorded in `.ai/task/completed.md`,
 - `.ai/context/current-context.md` and `.ai/memory/session-handoff.md` updated,
-- next task becomes ADR framework creation,
-- do not draft/accept ADRs in the same bounded task unless explicitly requested.
+- next bounded ADR task is selected based on the canonical P0/P1 decision order.
