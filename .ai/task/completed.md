@@ -55,18 +55,6 @@ The API deployment decision remained Open and both deployment options were docum
 
 **Completed:** 2026-08-19
 
-**Files updated:**
-
-- `docs/00-overview/assumptions.md`
-- `docs/README.md`
-- `.ai/memory/decisions.md`
-- `.ai/context/current-context.md`
-- `.ai/context/documentation-state.md`
-- `.ai/task/current.md`
-- `.ai/task/backlog.md`
-- `.ai/task/completed.md`
-- `.ai/memory/session-handoff.md`
-
 **Result:**
 
 - established `docs/00-overview/assumptions.md` as canonical decision register,
@@ -75,11 +63,36 @@ The API deployment decision remained Open and both deployment options were docum
 - added legacy-to-canonical decision-ID crosswalk,
 - refreshed documentation source hierarchy and architecture phase status,
 - corrected AI memory to stop treating `docs/16-open-decisions.md` as canonical,
-- identified existing structured architecture drafts that still need legacy-ID normalization.
+- identified existing structured architecture drafts that still needed legacy-ID normalization.
 
 No architecture technology/provider decision was accepted or changed by this task.
 
-**Next task:** `TASK-DOC-GOV-002`
+### TASK-DOC-GOV-002
+
+**Title:** Normalize Architecture Decision References
+
+**Completed:** 2026-08-19
+
+**Files updated:**
+
+- `docs/02-architecture/architecture-principles.md`
+- `docs/02-architecture/architecture-overview.md`
+- `docs/02-architecture/system-context.md`
+- `docs/02-architecture/container-architecture.md`
+- `.ai/context/current-context.md`
+- `.ai/context/documentation-state.md`
+- `.ai/task/current.md`
+- `.ai/task/completed.md`
+- `.ai/memory/session-handoff.md`
+
+**Result:**
+
+- replaced legacy numeric decision references in structured architecture drafts with canonical scoped IDs,
+- redirected structured architecture related-document links to `docs/00-overview/assumptions.md`,
+- preserved provider/runtime decisions as Open/Proposed/Assumed according to existing documents,
+- introduced no new provider or deployment selection.
+
+**Next task:** `TASK-DOC-ARCH-005`
 
 ## Logging rule
 
