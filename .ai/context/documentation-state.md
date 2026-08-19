@@ -43,15 +43,36 @@ Completed:
 - `architecture-principles.md`
 - `architecture-overview.md`
 - `system-context.md`
+- `container-architecture.md`
 
 Remaining:
 
-- `container-architecture.md`
 - `component-architecture.md`
 - `data-flow.md`
 - `technology-stack.md`
 - `architecture-decisions/` index/pointers if retained
 - initial ADRs
+
+## Container architecture state
+
+`container-architecture.md` is now the canonical C4 Level 2 draft.
+
+It defines:
+
+- Owner/Staff Web logical container,
+- Member Mobile logical container,
+- trusted Application/API runtime,
+- Worker/Job runtime,
+- PostgreSQL canonical store,
+- private Object Storage,
+- external Auth, Payment, Messaging, Observability, and Product Analytics boundaries,
+- synchronous vs asynchronous interactions,
+- data ownership,
+- dependency direction,
+- trust/failure/scaling/test boundaries,
+- both `D-060` deployment options without selecting one.
+
+No provider selection or API deployment topology was finalized.
 
 ## Legacy flat documents
 
@@ -76,7 +97,7 @@ These remain migration inputs. Do not delete them until their material has canon
 
 Canonical requirement IDs exist in `docs/01-product/functional-requirements.md` and `non-functional-requirements.md`.
 
-Architecture documents must reference them where relevant.
+Architecture documents reference requirement drivers where relevant.
 
 ## ADR state
 
@@ -95,6 +116,12 @@ ADR-0006-background-job-runner.md
 
 Provider-specific ADRs for payments, messaging, hosting, and observability should wait until evaluation data exists.
 
+## Immediate next documentation task
+
+Create `docs/02-architecture/component-architecture.md`.
+
+The component architecture should decompose the trusted Application/API and Worker boundaries into application services, domain modules, authorization, repositories/ports, provider adapters, audit/event handling, and job components without converting them into microservices.
+
 ## Last update
 
-Architecture Phase 4 started. C4 Level 1 system context and architecture principles/overview are complete on `docs/phase-2-architecture`.
+C4 Level 2 `container-architecture.md` completed on branch `docs/phase-2-architecture`. Architecture Phase 4 remains in progress.
