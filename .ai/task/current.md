@@ -1,84 +1,80 @@
 # Current Task
 
-## TASK-DOC-ARCH-005
+## TASK-DOC-GOV-002
 
-**Title:** Create C4 Component Architecture
+**Title:** Normalize Architecture Decision References
 
 **Status:** `READY`
 
 **Phase:** `Phase 4 - System Architecture`
 
-**Target file:** `docs/02-architecture/component-architecture.md`
-
 ## Objective
 
-Decompose the trusted GymPulse Application/API and Worker boundaries into implementation-oriented components while preserving the modular-monolith architecture and avoiding premature microservice boundaries.
+Replace legacy decision IDs inside existing structured architecture drafts with canonical scoped decision IDs from `docs/00-overview/assumptions.md`.
+
+This task changes references only. It MUST NOT change decision status, select providers, accept technologies, or alter business requirements.
 
 ## Inputs to read
 
-1. `.ai/context/project-context.md`
-2. `.ai/context/current-context.md`
-3. `docs/01-product/functional-requirements.md`
-4. `docs/01-product/non-functional-requirements.md`
-5. `docs/02-architecture/architecture-principles.md`
-6. `docs/02-architecture/architecture-overview.md`
-7. `docs/02-architecture/system-context.md`
-8. `docs/02-architecture/container-architecture.md`
-9. relevant sections of `docs/16-open-decisions.md`
+1. `docs/README.md`
+2. `docs/00-overview/assumptions.md`
+3. `docs/02-architecture/architecture-principles.md`
+4. `docs/02-architecture/architecture-overview.md`
+5. `docs/02-architecture/system-context.md`
+6. `docs/02-architecture/container-architecture.md`
+7. legacy `docs/16-open-decisions.md` only when crosswalk context is needed
+8. `.ai/context/current-context.md`
 
-## Required output
+## Canonical mapping source
 
-The document must define at least:
+Use section `Legacy Decision ID Migration Crosswalk` in:
 
-- transport/HTTP adapters,
-- authentication/principal resolver,
-- tenant-context resolver,
-- capability authorization component,
-- request validation/contracts,
-- application use-case layer,
-- Phase 1 domain modules,
-- transaction/unit-of-work boundary,
-- repositories/data-access ports,
-- payment adapter and webhook mapper,
-- notification policy/intent and delivery adapter,
-- audit/event components,
-- idempotency/deduplication component,
-- background-job scheduler/handlers,
-- operational read/query components.
+`docs/00-overview/assumptions.md`
 
-## Mandatory design points
+Examples:
 
-- C4 Level 3-style Mermaid diagram(s),
-- explicit dependency direction,
-- which component owns which business rule,
-- shared write restrictions between domains,
-- transaction boundaries,
-- synchronous vs asynchronous component interactions,
-- idempotency locations,
-- authorization enforcement points,
-- provider adapter boundaries,
-- failure propagation rules,
-- test seams,
-- observability hooks,
-- alternatives/tradeoffs,
-- no silent selection of Open providers/runtimes.
+```text
+D-020 -> D-PROD-010
+D-030 -> D-PROVIDER-001
+D-038 -> D-PROVIDER-002
+D-049 -> D-ARCH-004
+D-050 -> D-SEC-002
+D-055 -> D-ARCH-001
+D-056 -> D-ARCH-011
+D-057 -> D-ARCH-012
+D-058 -> D-ARCH-002
+D-059 -> D-ARCH-013
+D-060 -> D-ARCH-006
+D-061 -> D-ARCH-007
+D-062 -> D-ARCH-008
+D-063 -> D-ARCH-010
+D-064 -> D-ARCH-009
+D-065 -> D-PROVIDER-006
+D-066 -> D-PROVIDER-005
+D-068 -> D-SEC-008
+D-069 -> D-DATA-007
+```
 
-## Important constraint
+## Files to update
 
-Components are source-code/application boundaries, not automatic deployable services.
+- `docs/02-architecture/architecture-principles.md`
+- `docs/02-architecture/architecture-overview.md`
+- `docs/02-architecture/system-context.md`
+- `docs/02-architecture/container-architecture.md`
 
-Do not create one service per domain. Preserve `AP-001 Modular Monolith Before Microservices`.
+## Required checks
+
+- no legacy `D-###` reference remains in the four structured architecture files,
+- canonical IDs match the owning decision concern,
+- no decision state changes,
+- no provider selection introduced,
+- no architecture behavior rewritten merely to perform ID migration,
+- cross-document terminology remains unchanged unless needed for the ID correction.
 
 ## Definition of Done
 
-- file exists at canonical path,
-- components align with C4 Level 2 container architecture,
-- domain ownership is explicit,
-- critical mutations show transaction/idempotency ownership,
-- terminology aligns with requirement IDs,
-- provider choices remain abstract where Open,
-- Mermaid diagrams are syntactically reasonable,
-- `.ai/context/documentation-state.md` is updated,
-- this task is recorded in `.ai/task/completed.md`,
-- next task becomes `data-flow.md`,
-- `.ai/context/current-context.md` and `.ai/memory/session-handoff.md` are updated.
+- all four structured architecture documents use canonical decision IDs only,
+- `.ai/context/documentation-state.md` updated,
+- this task recorded in `.ai/task/completed.md`,
+- `.ai/memory/session-handoff.md` updated,
+- current task returns to `TASK-DOC-ARCH-005 - Create C4 Component Architecture`.
