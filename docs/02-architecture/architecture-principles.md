@@ -208,7 +208,7 @@ Jobs must support:
 - correlation IDs,
 - staging/production separation.
 
-The exact job runner remains an open architecture decision (`D-061`).
+The exact job runner remains an open architecture decision (`D-ARCH-007`).
 
 ## 13. Principle AP-011: UTC Storage, Gym-Local Business Time
 
@@ -302,10 +302,10 @@ Do not add infrastructure only because it is common in large systems.
 
 Examples:
 
-- Redis is not required until a real caching/coordination need exists (`D-062`),
+- Redis is not required until a real caching/coordination need exists (`D-ARCH-008`),
 - a distributed event broker is not required for Phase 1,
 - microservices are not the default,
-- offline attendance should not be implemented unless pilot connectivity requires it (`D-020`).
+- offline attendance should not be implemented unless pilot connectivity requires it (`D-PROD-010`).
 
 ## 20. Principle AP-018: Architecture Decisions Must Be Recorded
 
@@ -351,4 +351,4 @@ A Phase 1 implementation is not architecture-complete if any of the following ar
 - `data-flow.md`
 - `technology-stack.md`
 - `../adr/README.md`
-- `../16-open-decisions.md`
+- `../00-overview/assumptions.md`
