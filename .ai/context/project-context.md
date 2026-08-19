@@ -92,6 +92,23 @@ Platform
               -> Staff / Members / Operational Data
 ```
 
+## Current architecture baseline
+
+Structured architecture currently includes:
+
+```text
+docs/02-architecture/
+  architecture-principles.md
+  architecture-overview.md
+  system-context.md
+  container-architecture.md
+  component-architecture.md
+```
+
+The component architecture establishes transport, identity/tenant/authz, application-use-case, domain ownership, transaction, repository/port, provider adapter, idempotency, audit, read-model, and worker boundaries without creating microservices.
+
+The next architecture artifact is `data-flow.md`.
+
 ## Major future domains
 
 ```text
@@ -117,8 +134,19 @@ When information conflicts, use:
 1. accepted ADRs and approved business decisions
 2. structured docs under `docs/00-overview/` through `docs/15-roadmap/`
 3. current requirement IDs/domain specifications
-4. legacy flat docs that are not yet migrated
-5. original Gym App Blueprint source material
+4. explicit assumptions/open decisions in `docs/00-overview/assumptions.md`
+5. legacy flat docs that are not yet migrated
+6. original Gym App Blueprint source material
+
+## Canonical decision register
+
+Use:
+
+`docs/00-overview/assumptions.md`
+
+for current decision IDs, status, owners, and legacy-ID migration crosswalk.
+
+`docs/16-open-decisions.md` is a legacy migration source and MUST NOT be used as the canonical decision register for new structured documentation.
 
 ## Important open decisions
 
@@ -127,9 +155,8 @@ Do not guess these silently:
 - pilot gym and real operating rules
 - freeze expiry effect
 - renewal effective-date policy
-- duplicate attendance window
-- multiple visits per day
-- staff/member authentication provider and method
+- duplicate attendance window / multiple visits per day
+- staff/member authentication strategy and method
 - managed backend
 - API deployment model
 - job runner
@@ -142,4 +169,4 @@ Do not guess these silently:
 - receipt/tax document requirements
 - privacy/jurisdiction requirements
 
-See `docs/16-open-decisions.md` until the decision register is migrated into the structured architecture/ADR system.
+Use canonical scoped decision IDs from `docs/00-overview/assumptions.md` when referencing these choices.
