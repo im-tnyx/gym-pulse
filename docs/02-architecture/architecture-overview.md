@@ -89,7 +89,7 @@ Web and mobile clients own interaction, navigation, and presentation. Server-sid
 
 PostgreSQL is the proposed canonical data store because GymPulse data has strong relationships and transaction-sensitive invariants across memberships, attendance, payments, follow-ups, and audit records.
 
-The choice remains `Proposed` until ADR acceptance (`D-ARCH-002`).
+The choice remains `Assumed` until ADR acceptance (`D-ARCH-002`).
 
 ## 5. Logical Layers
 
@@ -414,7 +414,7 @@ Benefits: clearer runtime boundary and mobile reuse.
 
 Cost: more deployment and local-development complexity.
 
-This decision is tracked by `D-ARCH-006` and must be captured in an ADR before acceptance.
+This decision is tracked by `D-ARCH-006` and must be captured in ADR-0003.
 
 ## 18. Scalability Evolution
 
