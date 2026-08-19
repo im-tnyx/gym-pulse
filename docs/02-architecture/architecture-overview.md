@@ -89,7 +89,7 @@ Web and mobile clients own interaction, navigation, and presentation. Server-sid
 
 PostgreSQL is the proposed canonical data store because GymPulse data has strong relationships and transaction-sensitive invariants across memberships, attendance, payments, follow-ups, and audit records.
 
-The choice remains `Assumed` until ADR acceptance (`D-058`).
+The choice remains `Proposed` until ADR acceptance (`D-ARCH-002`).
 
 ## 5. Logical Layers
 
@@ -214,7 +214,7 @@ Exact implementation may differ, but equivalent scope must exist for protected o
 
 ## 8. Identity and Authorization Architecture
 
-Authentication provider is not yet selected (`D-049`, `D-050`).
+Authentication/session strategy and member authentication method are not yet selected (`D-ARCH-004`, `D-SEC-002`).
 
 Logical separation:
 
@@ -306,7 +306,7 @@ Background work includes:
 - data-quality scans,
 - future PT reminders.
 
-The job runner is an open decision (`D-061`).
+The job runner is an open decision (`D-ARCH-007`).
 
 Required characteristics:
 
@@ -319,7 +319,7 @@ Required characteristics:
 
 ## 13. Payment Architecture
 
-The payment provider is open (`D-030`).
+The payment provider is open (`D-PROVIDER-001`).
 
 Logical flow:
 
@@ -350,7 +350,7 @@ Business trigger
   -> delivery state
 ```
 
-The provider remains open (`D-038`).
+The provider remains open (`D-PROVIDER-002`).
 
 ## 15. Object Storage
 
@@ -364,7 +364,7 @@ Requirements:
 - no secrets embedded in object names,
 - retention/deletion policy aligned with data classification.
 
-Provider is open (`D-063`).
+Provider is open (`D-ARCH-010`).
 
 ## 16. Observability Architecture
 
@@ -379,7 +379,7 @@ Minimum telemetry must cover:
 - data-quality alerts,
 - client crashes/errors.
 
-Exact providers remain open (`D-065`, `D-066`).
+Exact providers remain open (`D-PROVIDER-006`, `D-PROVIDER-005`).
 
 ## 17. Deployment Topology Options
 
@@ -414,7 +414,7 @@ Benefits: clearer runtime boundary and mobile reuse.
 
 Cost: more deployment and local-development complexity.
 
-This decision is tracked by `D-060` and must be captured in ADR-0003.
+This decision is tracked by `D-ARCH-006` and must be captured in an ADR before acceptance.
 
 ## 18. Scalability Evolution
 
@@ -481,17 +481,17 @@ AI cannot directly become canonical payment, entitlement, attendance, authorizat
 
 The architecture cannot be called production-final until the following are resolved or deliberately deferred:
 
-- `D-049` staff auth provider,
-- `D-050` member authentication method,
-- `D-059` managed backend,
-- `D-060` API deployment model,
-- `D-061` job runner,
-- `D-064` hosting,
-- `D-065` observability providers,
-- `D-030` payment provider,
-- `D-038` messaging provider,
-- `D-068` RLS strategy,
-- `D-069` membership renewal representation.
+- `D-ARCH-004` authentication/session strategy,
+- `D-SEC-002` member authentication method,
+- `D-ARCH-013` managed backend,
+- `D-ARCH-006` API deployment model,
+- `D-ARCH-007` job runner,
+- `D-ARCH-009` hosting,
+- `D-PROVIDER-006` observability provider,
+- `D-PROVIDER-001` payment provider,
+- `D-PROVIDER-002` messaging provider,
+- `D-SEC-008` RLS strategy,
+- `D-DATA-007` membership renewal representation.
 
 ## 22. Alternatives Considered
 
@@ -517,5 +517,5 @@ Not recommended for canonical Phase 1 state because critical workflows are relat
 - `technology-stack.md`
 - `../01-product/functional-requirements.md`
 - `../01-product/non-functional-requirements.md`
-- `../16-open-decisions.md`
+- `../00-overview/assumptions.md`
 - `../adr/README.md`
