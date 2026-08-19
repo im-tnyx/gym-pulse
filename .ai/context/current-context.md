@@ -4,7 +4,7 @@
 
 `Phase 4: Design System Architecture`
 
-Product foundation and structured product documentation are complete at Draft v1.x level. Architecture documentation is being created deliberately, one bounded artifact at a time.
+Product foundation and structured product documentation are complete at Draft v1.x level. C4 architecture, Phase 1 data flows, and technology-stack evaluation are now documented. The next bounded work is ADR governance and explicit decision records.
 
 ## Current branch
 
@@ -32,14 +32,15 @@ Product foundation and structured product documentation are complete at Draft v1
 - `non-functional-requirements.md`
 - `success-metrics.md`
 
-## Architecture files completed on current branch
+### `docs/02-architecture/`
 
-- `docs/02-architecture/architecture-principles.md`
-- `docs/02-architecture/architecture-overview.md`
-- `docs/02-architecture/system-context.md`
-- `docs/02-architecture/container-architecture.md`
-- `docs/02-architecture/component-architecture.md`
-- `docs/02-architecture/data-flow.md`
+- `architecture-principles.md`
+- `architecture-overview.md`
+- `system-context.md`
+- `container-architecture.md`
+- `component-architecture.md`
+- `data-flow.md`
+- `technology-stack.md`
 
 ## Architecture governance
 
@@ -49,85 +50,53 @@ Canonical decision source:
 
 Structured architecture uses canonical scoped decision IDs. Legacy `docs/16-open-decisions.md` remains migration input only.
 
-No provider/runtime selection has been silently finalized.
+No provider/runtime/framework recommendation becomes Accepted merely because it appears in `technology-stack.md`.
 
-## Component architecture established
+## Technology evaluation established
 
-`component-architecture.md` defines:
+`technology-stack.md` now distinguishes required capabilities from Proposed/Assumed/Open choices.
 
-- transport adapters,
-- request/correlation context,
-- Principal Resolver,
-- Tenant Context Resolver,
-- Capability Authorization,
-- contract validation/DTO mapping,
-- application use-case orchestration,
-- Phase 1 domain ownership,
-- Unit of Work,
-- repository/data ports,
-- layered idempotency,
-- provider adapters,
-- audit/events/durable continuation,
-- worker handlers,
-- operational read models.
-
-Components are source-code/application boundaries, not automatic microservices.
-
-## Data-flow architecture established
-
-`data-flow.md` now traces these Phase 1 flows end to end:
+Current recommended baseline, still subject to decision/ADR acceptance:
 
 ```text
-authentication -> principal -> tenant authorization
-member QR check-in
-assisted staff check-in
-scheduled no-show scan -> retention case
-follow-up -> return attendance -> case resolution
-renewal window -> reminder intent
-renewal order -> payment checkout initiation
-verified payment event -> exactly-once membership/add-on effect
-notification intent -> current-policy check -> provider delivery state
-controlled import -> staging/reconciliation -> canonical write
-owner dashboard/action-queue read model
-data-quality scan -> issue lifecycle
+Architecture         Modular monolith
+Language             TypeScript
+Monorepo              Turborepo-style workspace
+Package manager       pnpm
+Owner/Staff Web       Next.js + React
+Member Mobile         Expo / React Native when native delivery is active
+API                   JSON HTTP + runtime-validated typed contracts
+Database              PostgreSQL
+Data access           SQL-aware typed repository layer; exact library Open
+Managed backend       Supabase-like option evaluated; Open
+Auth                  Provider/session strategy Open
+Jobs                  Durable managed job/scheduler preferred for pilot; Open
+Redis                 Not required by default; Open
+Payments              Provider adapter; provider Open
+Messaging             Provider adapter; provider/channels Open
+Object storage        Private managed/S3-compatible; Open
+Observability         Centralized error monitoring + structured logs; provider Open
+Product analytics     Privacy-minimized, non-canonical events; provider Open
+Hosting               Managed platform preferred for pilot; provider Open
 ```
 
-For these flows the document makes explicit:
+Important evaluated tradeoffs:
 
-- canonical vs derived/external data,
-- trust-boundary crossings,
-- authorization checkpoints,
-- transaction boundaries,
-- synchronous vs asynchronous handoffs,
-- durable continuation points,
-- request/domain/provider/business-effect idempotency,
-- failure/retry/reconciliation paths,
-- audit and observability points,
-- gym-local business-time behavior.
+- Next.js/server API vs separate TypeScript API,
+- managed backend vs independent platform services,
+- managed durable jobs vs Redis-backed queue vs database-backed jobs,
+- SQL-aware typed data layer vs heavier ORM,
+- responsive member web/PWA vs immediate native mobile,
+- PostgreSQL/indexing first vs Redis cache.
 
-## Architecture direction still Proposed/Open
-
-```text
-Monorepo
-TypeScript
-Modular Monolith
-Owner/Staff Web + Member Mobile
-Trusted Application/API boundary
-Separate logical Worker/Job boundary
-PostgreSQL canonical store
-Provider adapters
-Explicit multi-tenancy
-Capability-based authorization
-Idempotent critical workflows
-```
-
-High-impact choices still requiring decisions/ADRs include:
+## High-impact decisions still requiring ADR work
 
 ```text
 D-ARCH-001      Monorepo
 D-ARCH-002      PostgreSQL
 D-ARCH-003      JSON HTTP API
 D-ARCH-004      Authentication/session strategy
+D-ARCH-005      Modular monolith
 D-ARCH-006      API deployment topology
 D-ARCH-007      Job runner
 D-ARCH-008      Redis requirement
@@ -148,43 +117,38 @@ D-DATA-007      Membership renewal representation
 
 ## Immediate next action
 
-`TASK-DOC-ARCH-007 - Create Technology Stack Evaluation`
+`TASK-DOC-ADR-001 - Create ADR Framework and Index`
 
 Target:
 
-`docs/02-architecture/technology-stack.md`
+`docs/adr/README.md`
 
-The next document must evaluate the technology choices required to implement the existing architecture without treating recommendations as accepted decisions.
+The ADR framework must define:
 
-It should cover at least:
+- ADR purpose and scope,
+- status model such as Proposed/Accepted/Rejected/Superseded/Deprecated,
+- numbering and filename conventions,
+- mandatory ADR sections,
+- canonical decision-ID linkage,
+- evidence and alternatives requirements,
+- review/acceptance workflow,
+- supersession rules,
+- cross-document update rules,
+- rule that implementation alone does not make a decision Accepted.
 
-- primary language/runtime,
-- monorepo/package manager,
-- Owner/Staff web framework,
-- member mobile framework,
-- Application/API deployment options,
-- PostgreSQL and data-access approach,
-- managed backend option,
-- authentication/session requirements,
-- job runner/scheduler,
-- payments,
-- messaging,
-- object storage,
-- observability,
-- product analytics,
-- Redis/cache decision posture,
-- local development/testing implications,
-- security/operations implications,
-- alternatives and tradeoffs,
-- canonical decision IDs and planned ADR ownership.
+## After ADR framework
+
+Proceed one bounded ADR at a time, beginning with the highest-value foundational decisions already listed in the canonical register.
+
+Do not create or accept all ADRs blindly in one task.
 
 ## Stop condition
 
-After `technology-stack.md` is complete:
+After `docs/adr/README.md` is complete:
 
 - update `.ai/context/documentation-state.md`,
 - update `.ai/task/current.md`,
 - append `.ai/task/completed.md`,
 - update `.ai/memory/session-handoff.md`,
-- move to ADR framework creation,
-- do not silently mark Proposed/Open technologies Accepted.
+- set the exact next ADR task,
+- do not silently accept any technology choice while creating the framework.
