@@ -4,7 +4,7 @@
 
 `Phase 4: Design System Architecture`
 
-Product foundation and structured product documentation are complete at Draft v1.x level. Architecture documentation is being created deliberately, one bounded artifact or governance correction at a time.
+Product foundation and structured product documentation are complete at Draft v1.x level. Architecture documentation is being created deliberately, one bounded artifact at a time.
 
 ## Current branch
 
@@ -38,28 +38,48 @@ Product foundation and structured product documentation are complete at Draft v1
 - `docs/02-architecture/architecture-overview.md`
 - `docs/02-architecture/system-context.md`
 - `docs/02-architecture/container-architecture.md`
+- `docs/02-architecture/component-architecture.md`
 
-## Governance normalization completed
-
-Repository documentation audit identified that structured architecture drafts still referenced legacy numeric decision IDs such as `D-060` while the canonical structured decision register uses scoped IDs such as `D-ARCH-006`.
+## Architecture governance
 
 Canonical decision source:
 
 `docs/00-overview/assumptions.md`
 
-Completed corrections:
+Current structured architecture uses canonical scoped decision IDs only. Legacy `docs/16-open-decisions.md` remains migration input.
 
-- canonical decision-ID policy exists,
-- legacy-to-canonical decision crosswalk exists,
-- all four current structured architecture drafts now use canonical scoped decision IDs,
-- related architecture links point to the canonical assumptions register,
-- no provider/runtime selection was introduced by the normalization task.
+No provider/runtime selection has been silently finalized.
 
-Legacy `docs/16-open-decisions.md` remains a migration source and may retain its historical numeric IDs until deprecated safely.
+## Component architecture established
 
-## Current architecture direction
+`component-architecture.md` now defines the C4 Level 3-style internal decomposition of the trusted Application/API and Worker boundaries.
 
-Proposed, not fully accepted yet:
+Important established boundaries:
+
+- transport adapters do not own business rules,
+- Principal Resolver converts verified auth evidence into application principal,
+- Tenant Context Resolver establishes allowed organization/gym/branch scope,
+- Capability Authorization enforces named permissions server-side,
+- boundary schemas validate untrusted inputs,
+- Application Use Cases orchestrate domain modules and transactions,
+- each domain owns its canonical mutations,
+- cross-domain read models may join data but are read-only,
+- Unit of Work protects correctness-sensitive multi-record effects,
+- Idempotency uses durable layered protections rather than process-local locks,
+- provider SDK/payloads remain behind adapters,
+- payment provider-event dedupe is separate from business-effect dedupe,
+- worker handlers reuse application/domain logic rather than duplicate it,
+- audit history is part of required sensitive mutation semantics,
+- durable continuations/outbox-equivalent are required where losing async work would violate requirements.
+
+Critical sequences documented:
+
+```text
+QR check-in
+Verified renewal payment
+```
+
+## Architecture direction still Proposed/Open
 
 ```text
 Monorepo
@@ -75,9 +95,7 @@ Capability-based authorization
 Idempotent critical workflows
 ```
 
-## Canonical high-impact decision references
-
-Use these IDs going forward:
+High-impact choices still requiring decisions/ADRs include:
 
 ```text
 D-ARCH-001      Monorepo
@@ -85,7 +103,6 @@ D-ARCH-002      PostgreSQL
 D-ARCH-004      Authentication/session strategy
 D-ARCH-006      API deployment topology
 D-ARCH-007      Job runner
-D-ARCH-008      Redis requirement
 D-ARCH-009      Hosting
 D-ARCH-010      Object storage
 D-ARCH-011      Owner/Staff web framework
@@ -93,7 +110,6 @@ D-ARCH-012      Member mobile framework
 D-ARCH-013      Managed backend
 D-PROVIDER-001  Payment provider
 D-PROVIDER-002  Messaging provider
-D-PROVIDER-005  Product analytics provider
 D-PROVIDER-006  Observability provider
 D-SEC-002       Member authentication
 D-SEC-008       RLS strategy
@@ -102,40 +118,36 @@ D-DATA-007      Membership renewal representation
 
 ## Immediate next action
 
-Resume:
-
-`TASK-DOC-ARCH-005 - Create C4 Component Architecture`
+`TASK-DOC-ARCH-006 - Create Architecture Data Flows`
 
 Target:
 
-`docs/02-architecture/component-architecture.md`
+`docs/02-architecture/data-flow.md`
 
-The component architecture must decompose the trusted Application/API and Worker logical containers into source-code/application components without turning each domain into a deployable service.
+The next document must trace end-to-end Phase 1 flows using the existing System Context, Container, and Component boundaries.
 
-Required concerns include:
+Minimum flows:
 
-- HTTP/transport adapters,
-- authentication/principal resolution,
-- tenant-context resolution,
-- capability authorization,
-- validation/contracts,
-- application use cases,
-- Phase 1 domain modules,
-- transaction/unit-of-work boundaries,
-- repositories/data-access ports,
-- provider adapters,
-- audit/events,
-- idempotency/deduplication,
-- worker scheduler/handlers,
-- operational read/query components.
+- authentication + principal/tenant authorization context,
+- member QR check-in,
+- assisted check-in,
+- no-show scan -> red-list case,
+- follow-up -> member return resolution,
+- renewal eligibility/reminder,
+- renewal order -> payment initiation,
+- payment webhook -> exactly-once membership/add-on effect,
+- notification intent -> dispatch -> provider delivery status,
+- controlled import,
+- owner dashboard/read-model query,
+- data-quality scan.
 
 ## Stop condition
 
-After `component-architecture.md` is complete:
+After `data-flow.md` is complete:
 
 - update `.ai/context/documentation-state.md`,
 - update `.ai/task/current.md`,
 - append `.ai/task/completed.md`,
 - update `.ai/memory/session-handoff.md`,
-- set exact next task to `data-flow.md`,
-- do not begin `data-flow.md` in the same bounded task unless explicitly requested.
+- set exact next task to `technology-stack.md`,
+- do not begin `technology-stack.md` in the same bounded task unless explicitly requested.
