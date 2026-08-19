@@ -176,6 +176,7 @@ Requirement
   -> Product Capability
   -> Domain
   -> Architecture Component
+  -> Data Flow
   -> Database Entity
   -> API Contract
   -> Security Control
@@ -239,17 +240,19 @@ Completed drafts:
 3. `system-context.md`
 4. `container-architecture.md`
 5. `component-architecture.md`
+6. `data-flow.md`
 
 Architecture decision references in these structured documents use canonical scoped IDs from `00-overview/assumptions.md`.
 
 Continue in this order:
 
-6. `data-flow.md`
 7. `technology-stack.md`
 8. `docs/adr/README.md`
 9. initial ADRs for major decisions
 
-`component-architecture.md` now defines implementation-oriented Application/API and Worker components, domain write ownership, transaction boundaries, layered idempotency, provider adapter boundaries, audit/read-model behavior, failure propagation, observability, and testing seams while preserving the modular-monolith posture.
+`component-architecture.md` defines Application/API and Worker source-code boundaries, domain write ownership, transactions, layered idempotency, provider adapter boundaries, audit/read-model behavior, failure propagation, observability, and test seams.
+
+`data-flow.md` traces the 12 critical Phase 1 flows and makes canonical data, trust/authorization checkpoints, transaction boundaries, sync/async handoffs, durable continuation, retries/reconciliation, audit, observability, and gym-local business-time behavior explicit.
 
 ## Legacy migration state
 
