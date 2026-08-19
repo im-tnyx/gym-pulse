@@ -128,7 +128,7 @@ Dashed edges are future, conditional, or non-canonical analytics paths.
 
 ### Status
 
-`Proposed technology: Next.js + TypeScript`, tracked by `D-056`.
+`Proposed technology: Next.js + TypeScript`, tracked by `D-ARCH-011`.
 
 ### Primary users
 
@@ -195,7 +195,7 @@ The web presentation layer should be horizontally stateless where practical. Use
 
 ### Status
 
-`Proposed technology: Expo / React Native + TypeScript`, tracked by `D-057`.
+`Proposed technology: Expo / React Native + TypeScript`, tracked by `D-ARCH-012`.
 
 A member web experience may coexist later, but Phase 1 architecture must support a mobile client without moving business logic into the client.
 
@@ -226,7 +226,7 @@ A provider SDK/client return value may improve UX, but the mobile client must sh
 
 ### Offline behavior
 
-Offline attendance is not assumed (`D-020`).
+Offline attendance is not assumed (`D-PROD-010`).
 
 If offline behavior is added later:
 
@@ -248,7 +248,7 @@ If offline behavior is added later:
 
 `Required logical boundary`.
 
-Exact deployment form is Open under `D-060`.
+Exact deployment form is Open under `D-ARCH-006`.
 
 ### Responsibilities
 
@@ -346,7 +346,7 @@ If an external provider is unavailable, the API should surface an explicit retry
 
 ### Status
 
-`Required logical capability; technology Open`, tracked by `D-061`.
+`Required logical capability; technology Open`, tracked by `D-ARCH-007`.
 
 The worker may initially share the same source code/packages and even infrastructure account as the Application/API runtime, but scheduled/retryable work should have an explicit operational boundary.
 
@@ -412,7 +412,7 @@ No Phase 1 requirement mandates large-scale worker infrastructure; observability
 
 ### Status
 
-`Proposed / Assumed`, tracked by `D-058`, final acceptance requires ADR.
+`Proposed / Assumed`, tracked by `D-ARCH-002`, final acceptance requires ADR.
 
 ### Responsibility
 
@@ -468,14 +468,14 @@ The database should reinforce race-sensitive invariants with constraints/indexes
 
 - database credentials remain server-side,
 - direct client database access is not assumed,
-- if a managed platform exposes client DB access, RLS strategy becomes P0 (`D-068`),
+- if a managed platform exposes client DB access, RLS strategy becomes P0 (`D-SEC-008`),
 - backups/restore must exist before production.
 
 ## 11. Container C-06: Private Object Storage
 
 ### Status
 
-`Conditional / provider Open`, tracked by `D-063`.
+`Conditional / provider Open`, tracked by `D-ARCH-010`.
 
 ### Intended content
 
@@ -514,7 +514,7 @@ Do not include secrets or unnecessary PII in object keys.
 
 ### Status
 
-Open: `D-049`, `D-050`, related managed-platform decision `D-059`.
+Open: `D-ARCH-004`, `D-SEC-002`, related managed-platform decision `D-ARCH-013`.
 
 ### Provider responsibilities
 
@@ -548,7 +548,7 @@ Provider outage should not be hidden. Existing-session behavior depends on selec
 
 ### Status
 
-Open: `D-030`.
+Open: `D-PROVIDER-001`.
 
 ### Provider responsibilities
 
@@ -583,7 +583,7 @@ A payment-provider timeout must produce `Pending`, `Failed`, or explicitly unkno
 
 ### Status
 
-Open: `D-038`, initial channels `D-039`.
+Open: `D-PROVIDER-002`, initial channels `D-PROD-011`.
 
 ### Transport responsibilities
 
@@ -614,7 +614,7 @@ Provider failure must leave an actionable/retryable notification record. Messagi
 
 ### Status
 
-Open: `D-065`.
+Open: `D-PROVIDER-006`.
 
 ### Data sent
 
@@ -647,7 +647,7 @@ Observability failure must not block core business transactions unless a deliber
 
 ### Status
 
-Optional/Open: `D-066`.
+Optional/Open: `D-PROVIDER-005`.
 
 ### Purpose
 
@@ -819,9 +819,9 @@ Controls:
 - no credentials/secrets,
 - canonical workflows do not depend on analytics delivery.
 
-## 22. Deployment Topology Decision D-060
+## 22. Deployment Topology Decision D-ARCH-006
 
-`D-060` remains Open. Two Phase 1 deployment forms are architecturally acceptable if they preserve the boundaries above.
+`D-ARCH-006` remains Open. Two Phase 1 deployment forms are architecturally acceptable if they preserve the boundaries above.
 
 ## 22.1 Option A: Next.js Web + Server/API Initially
 
@@ -1299,23 +1299,23 @@ Moving everything to jobs would increase complexity. Keep correctness-critical s
 
 This document intentionally leaves the following unresolved:
 
-- `D-030` payment provider
-- `D-038` messaging provider
-- `D-049` staff auth provider
-- `D-050` member authentication method
-- `D-055` monorepo final acceptance
-- `D-056` owner/staff web framework final acceptance
-- `D-057` member mobile framework final acceptance
-- `D-058` PostgreSQL final acceptance
-- `D-059` managed backend selection
-- `D-060` API deployment model
-- `D-061` job runner
-- `D-062` Redis requirement
-- `D-063` object storage
-- `D-064` hosting
-- `D-065` observability providers
-- `D-066` product analytics provider
-- `D-068` RLS strategy
+- `D-PROVIDER-001` payment provider
+- `D-PROVIDER-002` messaging provider
+- `D-ARCH-004` authentication/session strategy
+- `D-SEC-002` member authentication method
+- `D-ARCH-001` monorepo final acceptance
+- `D-ARCH-011` owner/staff web framework final acceptance
+- `D-ARCH-012` member mobile framework final acceptance
+- `D-ARCH-002` PostgreSQL final acceptance
+- `D-ARCH-013` managed backend selection
+- `D-ARCH-006` API deployment model
+- `D-ARCH-007` job runner
+- `D-ARCH-008` Redis requirement
+- `D-ARCH-010` object storage
+- `D-ARCH-009` hosting
+- `D-PROVIDER-006` observability provider
+- `D-PROVIDER-005` product analytics provider
+- `D-SEC-008` RLS strategy
 
 No provider/runtime option above should be interpreted as accepted merely because it appears in a diagram.
 
@@ -1344,7 +1344,7 @@ Each extraction should receive its own architecture decision and migration plan.
 - `technology-stack.md`
 - `../01-product/functional-requirements.md`
 - `../01-product/non-functional-requirements.md`
-- `../16-open-decisions.md`
+- `../00-overview/assumptions.md`
 - `../adr/README.md`
 
 ## 35. Definition of Container Architecture Complete
