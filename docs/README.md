@@ -46,21 +46,7 @@ The canonical register contains the migration crosswalk needed while older docum
 docs/
 ├── README.md
 ├── 00-overview/
-│   ├── project-overview.md
-│   ├── vision.md
-│   ├── goals.md
-│   ├── scope.md
-│   ├── glossary.md
-│   └── assumptions.md
 ├── 01-product/
-│   ├── product-requirements.md
-│   ├── personas.md
-│   ├── user-roles.md
-│   ├── user-journeys.md
-│   ├── feature-catalog.md
-│   ├── functional-requirements.md
-│   ├── non-functional-requirements.md
-│   └── success-metrics.md
 ├── 02-architecture/
 │   ├── architecture-overview.md
 │   ├── system-context.md
@@ -71,35 +57,9 @@ docs/
 │   ├── technology-stack.md
 │   └── architecture-decisions/
 ├── 03-applications/
-│   ├── web-app.md
-│   ├── mobile-app.md
-│   ├── admin-panel.md
-│   └── coach-dashboard.md
 ├── 04-backend/
-│   ├── backend-architecture.md
-│   ├── services.md
-│   ├── modules.md
-│   ├── background-jobs.md
-│   ├── caching.md
-│   ├── events.md
-│   └── error-handling.md
 ├── 05-database/
-│   ├── database-overview.md
-│   ├── schema-design.md
-│   ├── entities.md
-│   ├── relationships.md
-│   ├── indexing.md
-│   ├── migrations.md
-│   └── data-retention.md
 ├── 06-api/
-│   ├── api-overview.md
-│   ├── api-conventions.md
-│   ├── authentication.md
-│   ├── endpoints.md
-│   ├── errors.md
-│   ├── pagination.md
-│   ├── rate-limits.md
-│   └── versioning.md
 ├── 07-domains/
 │   ├── identity/
 │   ├── members/
@@ -161,8 +121,6 @@ FR-MEMBERSHIP-001
 FR-ATTENDANCE-001
 FR-RETENTION-001
 FR-PAYMENT-001
-FR-WORKOUT-001
-FR-NUTRITION-001
 NFR-SECURITY-001
 NFR-PERFORMANCE-001
 ```
@@ -177,6 +135,7 @@ Requirement
   -> Domain
   -> Architecture Component
   -> Data Flow
+  -> Technology / ADR
   -> Database Entity
   -> API Contract
   -> Security Control
@@ -188,6 +147,8 @@ Requirement
 A major architecture decision is not considered final merely because it appears in a design document. Decisions such as monorepo strategy, database, API style, authentication, job runner, payment provider, hosting platform, AI model strategy, or event architecture require an ADR before they become architectural commitments.
 
 ADRs must reference canonical decision IDs from `00-overview/assumptions.md`.
+
+Implementation alone does not silently upgrade a Proposed/Open decision to Accepted.
 
 ## Documentation quality rules
 
@@ -241,18 +202,18 @@ Completed drafts:
 4. `container-architecture.md`
 5. `component-architecture.md`
 6. `data-flow.md`
+7. `technology-stack.md`
 
 Architecture decision references in these structured documents use canonical scoped IDs from `00-overview/assumptions.md`.
 
+`technology-stack.md` evaluates the proposed TypeScript/monorepo/web/mobile/API/database directions, data-access options, managed backend, auth/RLS, durable jobs, Redis posture, payments, messaging, storage, observability, analytics, testing, secrets, hosting, CI/CD, technology spikes, and selection gates. It is an evaluation document, not an ADR substitute.
+
 Continue in this order:
 
-7. `technology-stack.md`
 8. `docs/adr/README.md`
-9. initial ADRs for major decisions
+9. initial ADRs one bounded decision at a time
 
-`component-architecture.md` defines Application/API and Worker source-code boundaries, domain write ownership, transactions, layered idempotency, provider adapter boundaries, audit/read-model behavior, failure propagation, observability, and test seams.
-
-`data-flow.md` traces the 12 critical Phase 1 flows and makes canonical data, trust/authorization checkpoints, transaction boundaries, sync/async handoffs, durable continuation, retries/reconciliation, audit, observability, and gym-local business-time behavior explicit.
+No technology choice is Accepted merely because it appears in the recommended Phase 1 baseline.
 
 ## Legacy migration state
 
@@ -287,4 +248,4 @@ The confirmed source-derived Phase 1 product centers on:
 - owner operational dashboard,
 - notifications, consent, data-quality controls, and audit history.
 
-Workout programming, detailed nutrition tracking, health metrics, coaching platforms, multi-branch SaaS, and AI are broader GymPulse capabilities that must remain `Proposed` or `Future` until their product requirements are explicitly approved.
+Workout programming, detailed nutrition tracking, health metrics, coaching platforms, multi-branch SaaS, and AI remain broader capabilities until their product requirements are explicitly approved.
