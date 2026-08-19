@@ -34,18 +34,7 @@ Created `docs/02-architecture/system-context.md` as C4 Level 1 context.
 
 **Completed:** 2026-08-19
 
-Created C4 Level 2 container architecture covering:
-
-- Owner/Staff Web,
-- Member Mobile,
-- Application/API runtime,
-- Worker/Job runtime,
-- PostgreSQL,
-- Object Storage,
-- external Auth, Payment, Messaging, Observability, and Product Analytics systems,
-- trust/data/dependency boundaries,
-- synchronous vs asynchronous interactions,
-- scaling, failure, security, observability, and testing boundaries.
+Created C4 Level 2 container architecture covering clients, trusted runtime boundaries, PostgreSQL, workers, external providers, trust/data/dependency boundaries, failures, scaling, observability, and testing.
 
 The API deployment decision remained Open and both deployment options were documented without final selection.
 
@@ -58,12 +47,9 @@ The API deployment decision remained Open and both deployment options were docum
 **Result:**
 
 - established `docs/00-overview/assumptions.md` as canonical decision register,
-- added canonical decision-ID policy,
-- added missing canonical IDs needed by current architecture,
-- added legacy-to-canonical decision-ID crosswalk,
-- refreshed documentation source hierarchy and architecture phase status,
-- corrected AI memory to stop treating `docs/16-open-decisions.md` as canonical,
-- identified existing structured architecture drafts that still needed legacy-ID normalization.
+- added canonical decision-ID policy and migration crosswalk,
+- refreshed documentation source hierarchy,
+- identified structured architecture references requiring normalization.
 
 No architecture technology/provider decision was accepted or changed by this task.
 
@@ -73,26 +59,33 @@ No architecture technology/provider decision was accepted or changed by this tas
 
 **Completed:** 2026-08-19
 
-**Files updated:**
-
-- `docs/02-architecture/architecture-principles.md`
-- `docs/02-architecture/architecture-overview.md`
-- `docs/02-architecture/system-context.md`
-- `docs/02-architecture/container-architecture.md`
-- `.ai/context/current-context.md`
-- `.ai/context/documentation-state.md`
-- `.ai/task/current.md`
-- `.ai/task/completed.md`
-- `.ai/memory/session-handoff.md`
-
 **Result:**
 
 - replaced legacy numeric decision references in structured architecture drafts with canonical scoped IDs,
 - redirected structured architecture related-document links to `docs/00-overview/assumptions.md`,
-- preserved provider/runtime decisions as Open/Proposed/Assumed according to existing documents,
+- preserved provider/runtime decisions as Open/Proposed/Assumed,
 - introduced no new provider or deployment selection.
 
-**Next task:** `TASK-DOC-ARCH-005`
+### TASK-DOC-ARCH-005
+
+**Title:** Create C4 Component Architecture
+
+**Target:** `docs/02-architecture/component-architecture.md`
+
+**Completed:** 2026-08-19
+
+**Result:**
+
+- created C4 Level 3-style decomposition for the trusted Application/API and Worker boundaries,
+- defined transport, principal, tenant, authorization, validation, application-use-case, domain, repository, transaction, idempotency, provider, audit, query, and worker components,
+- established explicit Phase 1 domain write ownership and read-model rules,
+- documented QR check-in and verified renewal-payment critical sequences,
+- separated provider-event dedupe from business-effect dedupe,
+- documented transaction boundaries, async durability, failure propagation, observability hooks, and test seams,
+- preserved modular-monolith boundaries without creating microservices,
+- used canonical decision IDs only and accepted no Open provider/runtime decision.
+
+**Next task:** `TASK-DOC-ARCH-006`
 
 ## Logging rule
 
