@@ -173,11 +173,44 @@ A major architecture decision is not considered final merely because it appears 
 - Avoid repeating the same rule in many places; link to the canonical owning document.
 - When a canonical rule changes, identify and update all dependent documents in the same change set.
 
-## Current migration state
+## Current structured-document status
 
-The repository currently contains a substantial flat-document foundation covering product blueprint, product requirements, roles, flows, screens, system architecture, database, API contracts, automations, payments, notifications, analytics, security, testing, roadmap, engineering workflow, and open decisions.
+### Completed foundation
 
-These files are inputs to the structured documentation migration. They are not being discarded. Each will be decomposed into the new information architecture and then marked deprecated or replaced by a pointer once its content has a canonical destination.
+`00-overview/` is complete at Draft v1.x level:
+
+- `project-overview.md`
+- `vision.md`
+- `goals.md`
+- `scope.md`
+- `glossary.md`
+- `assumptions.md`
+
+`01-product/` is complete at Draft v1.x level:
+
+- `product-requirements.md`
+- `personas.md`
+- `user-roles.md`
+- `user-journeys.md`
+- `feature-catalog.md`
+- `functional-requirements.md`
+- `non-functional-requirements.md`
+- `success-metrics.md`
+
+### Next documentation phase
+
+The next canonical phase is `02-architecture/`:
+
+1. `architecture-principles.md`
+2. `architecture-overview.md`
+3. `system-context.md`
+4. `container-architecture.md`
+5. `component-architecture.md`
+6. `data-flow.md`
+7. `technology-stack.md`
+8. initial ADRs for major decisions
+
+The legacy flat files remain migration inputs until their material has canonical structured destinations and they are explicitly marked deprecated.
 
 ## Current delivery boundary
 
