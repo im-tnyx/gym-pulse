@@ -47,13 +47,13 @@ Completed drafts:
 - `system-context.md`
 - `container-architecture.md`
 - `component-architecture.md`
+- `data-flow.md`
 
 Remaining architecture artifacts:
 
-- `data-flow.md`
 - `technology-stack.md`
 - `architecture-decisions/` index/pointers if retained
-- initial ADRs
+- ADR framework and initial ADRs
 
 ## Architecture governance state
 
@@ -63,41 +63,40 @@ Completed:
 - missing canonical decision IDs added where current architecture required them,
 - legacy-to-canonical decision-ID crosswalk added,
 - structured architecture drafts normalized to canonical scoped decision IDs,
-- architecture related-document links point to the canonical assumptions register,
-- no provider/runtime decision was accepted as part of normalization.
+- no provider/runtime decision accepted implicitly.
 
-Legacy `docs/16-open-decisions.md` remains a migration input and may retain historical numeric IDs until its content has canonical destinations and deprecation pointers.
+Legacy `docs/16-open-decisions.md` remains migration input until its content has canonical destinations and deprecation pointers.
 
 ## Component architecture state
 
-`component-architecture.md` is now the canonical C4 Level 3-style draft for trusted Application/API and Worker internals.
+`component-architecture.md` is the canonical C4 Level 3-style draft for trusted Application/API and Worker internals.
 
-It defines:
+It defines transport, principal/tenant resolution, capability authorization, validation, use cases, domain ownership, transactions, repositories, layered idempotency, provider adapters, audit/events, worker handlers, operational read models, failure propagation, observability, and test seams.
 
-- transport adapters and request/correlation context,
-- principal and tenant-context resolution,
-- capability authorization,
-- contract validation and DTO mapping,
-- application use-case/orchestration layer,
-- Phase 1 domain ownership,
-- transaction/unit-of-work boundaries,
-- repository/data-access ports,
-- layered request/domain/provider/business-effect idempotency,
-- payment adapter and verified webhook mapper,
-- notification policy/intent vs transport separation,
-- audit recorder and data-quality component,
-- operational query/read models,
-- worker scheduler/handlers,
-- cross-domain write restrictions,
-- synchronous vs asynchronous interaction rules,
-- failure propagation,
-- observability hooks and test seams.
+## Data-flow architecture state
 
-The document does not make components separate services and does not finalize open providers/runtimes.
+`data-flow.md` is now the canonical Phase 1 end-to-end data-flow draft.
+
+It covers:
+
+1. authentication -> principal -> tenant authorization,
+2. member QR check-in,
+3. assisted check-in,
+4. scheduled no-show scan,
+5. follow-up -> return resolution,
+6. renewal-window -> reminder intent,
+7. renewal order -> payment checkout,
+8. verified payment -> exactly-once business effect,
+9. notification intent -> provider delivery state,
+10. controlled import,
+11. owner dashboard/action queues,
+12. data-quality scan/issue lifecycle.
+
+The document makes canonical data, trust boundaries, authorization, transactions, idempotency, durable continuation, retries, reconciliation, audit, observability, and gym-local time behavior explicit.
 
 ## Legacy flat documents
 
-The repository still contains legacy flat documents such as:
+High-value migration sources still include:
 
 - `docs/05-system-architecture.md`
 - `docs/06-database-schema.md`
@@ -112,23 +111,27 @@ The repository still contains legacy flat documents such as:
 - `docs/15-engineering-workflow.md`
 - `docs/16-open-decisions.md`
 
-These remain migration inputs. Do not delete them until their material has canonical destinations and deprecation pointers exist.
+Do not delete them until their material has canonical destinations and deprecation pointers exist.
 
 ## Requirement traceability state
 
-Canonical requirement IDs exist in `docs/01-product/functional-requirements.md` and `non-functional-requirements.md`.
+Canonical `FR-*` and `NFR-*` IDs are now referenced by component and data-flow architecture.
 
-Architecture documents reference requirement drivers where relevant.
+Target traceability remains:
 
-`component-architecture.md` now maps requirements into application/domain components and explicit critical sequence flows.
-
-Structured architecture decision traceability uses canonical scoped decision IDs from `docs/00-overview/assumptions.md`.
+```text
+Requirement
+  -> Domain
+  -> Component
+  -> Data flow
+  -> Database/API/Security/Test artifacts
+```
 
 ## ADR state
 
-ADR framework not yet created in the structured architecture pass.
+ADR framework has not yet been created.
 
-Initial ADR candidates remain Proposed/Open, not Accepted:
+Initial candidates remain Proposed/Open, not Accepted:
 
 ```text
 ADR-0001-use-monorepo.md
@@ -139,18 +142,16 @@ ADR-0005-managed-backend-platform.md
 ADR-0006-background-job-runner.md
 ```
 
-Provider-specific ADRs for payments, messaging, hosting, and observability should wait until evaluation data exists.
-
 ## Immediate next documentation task
 
-`TASK-DOC-ARCH-006 - Create Architecture Data Flows`
+`TASK-DOC-ARCH-007 - Create Technology Stack Evaluation`
 
 Target:
 
-`docs/02-architecture/data-flow.md`
+`docs/02-architecture/technology-stack.md`
 
-The document should trace concrete Phase 1 end-to-end data flows across clients, Application/API components, domain ownership, PostgreSQL, workers, and external providers. It must reuse the boundaries already defined rather than inventing new services casually.
+The next document must distinguish required technical capabilities from Proposed/Open technology choices, compare alternatives and tradeoffs, map them to canonical decision IDs, and avoid marking any technology Accepted before ADR approval.
 
 ## Last update
 
-C4 Level 3-style `component-architecture.md` completed on branch `docs/phase-2-architecture`. Architecture Phase 4 remains in progress.
+C4 component and Phase 1 data-flow architecture are complete at Draft v1.0 level. Architecture Phase 4 remains in progress on branch `docs/phase-2-architecture`.
