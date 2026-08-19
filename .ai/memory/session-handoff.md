@@ -1,53 +1,112 @@
 # GymPulse Session Handoff
 
-## Last completed work
+## Last completed task
 
-Created the `.ai/` repository-persisted continuity system and began Architecture Phase 4.
+`TASK-DOC-ARCH-004 - Create C4 Container Architecture`
 
-Architecture files already created on branch `docs/phase-2-architecture`:
+Created:
 
-- `docs/02-architecture/architecture-principles.md`
-- `docs/02-architecture/architecture-overview.md`
-- `docs/02-architecture/system-context.md`
+`docs/02-architecture/container-architecture.md`
 
-AI continuity files now track project context, documentation state, current task, backlog, completed work, and decision memory.
+on branch:
+
+`docs/phase-2-architecture`
+
+## Files changed in the last bounded task
+
+- `docs/02-architecture/container-architecture.md`
+- `.ai/context/documentation-state.md`
+- `.ai/context/current-context.md`
+- `.ai/task/current.md`
+- `.ai/task/completed.md`
+- `.ai/memory/session-handoff.md`
+
+## What the container architecture established
+
+The C4 Level 2 draft now defines:
+
+- Owner/Staff Web logical container,
+- Member Mobile logical container,
+- trusted Application/API runtime,
+- Worker/Job runtime,
+- PostgreSQL canonical data boundary,
+- private Object Storage,
+- external Authentication Provider,
+- external Payment Provider,
+- external Messaging Provider,
+- Observability and Product Analytics boundaries,
+- controlled import boundary for existing gym data.
+
+It also defines:
+
+- dependency direction,
+- canonical data ownership,
+- synchronous vs asynchronous interactions,
+- trust boundaries,
+- failure/degradation behavior,
+- scaling implications,
+- observability expectations,
+- testing seams.
+
+## Important decision state
+
+No major provider/runtime decision was silently finalized.
+
+`D-060` remains Open.
+
+Both deployment options remain valid pending ADR:
+
+```text
+Option A: Next.js Web + Server/API initially
+Option B: separate TypeScript API runtime
+```
+
+PostgreSQL, Next.js, Expo, monorepo tooling, managed backend, job runner, payment provider, messaging provider, hosting, observability, Redis, and RLS remain Proposed/Assumed/Open according to the decision register.
 
 ## Current task
 
 Read `.ai/task/current.md`.
 
-Current target:
+Current task:
 
-`docs/02-architecture/container-architecture.md`
+`TASK-DOC-ARCH-005 - Create C4 Component Architecture`
+
+Target:
+
+`docs/02-architecture/component-architecture.md`
 
 ## Exact next action
 
-Create C4 Level 2 container architecture without finalizing the still-open API deployment model.
+Decompose the trusted Application/API and Worker boundaries into implementation-oriented components without making them separate services.
 
-The document must compare:
+Must include:
 
-- Option A: Next.js web/server API initially
-- Option B: separate TypeScript API runtime
+- HTTP/transport adapters,
+- auth/principal resolver,
+- tenant-context resolver,
+- capability authorization,
+- validation/contracts,
+- application use cases,
+- domain modules,
+- transaction/unit-of-work boundary,
+- repository/provider ports,
+- provider adapters,
+- audit/events,
+- idempotency/dedupe,
+- worker schedulers/handlers,
+- operational read/query components.
 
 ## Do not forget
 
 - `docs/` is canonical truth.
-- `.ai/` is working continuity, not replacement documentation.
-- major architecture choices require ADRs.
-- provider and hosting choices remain open unless explicitly accepted.
-- do not skip into Database/API/AI docs before Architecture and Domain boundaries are sufficiently defined.
+- `.ai/` is execution continuity, not canonical architecture.
+- components are code boundaries, not automatic microservices.
+- provider decisions remain Open until accepted through ADRs.
+- preserve requirement traceability.
+- do not begin `data-flow.md` until the component task is completed and context files are updated.
 
-## Blocking decisions
+## Blockers/open questions
 
-No blocker prevents writing the logical container architecture. Provider-specific selections can remain abstract/open.
+No blocker prevents writing logical component architecture.
 
-## Handoff update rule
-
-At the end of each session replace this content with:
-
-- last completed task
-- files changed
-- important decisions/assumptions affected
-- exact next task
-- blockers/open questions
-- branch/PR state
+The API deployment model and provider choices can remain abstract.
