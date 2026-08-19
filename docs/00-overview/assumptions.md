@@ -4,13 +4,14 @@
 
 - Status: `Active decision register`
 - Scope: Product, architecture, pilot, security, provider, and operational assumptions
+- Canonical decision IDs: this document
 - Migration Source: `../16-open-decisions.md`
 
 ## 1. Purpose
 
 Track information that is not yet confirmed so the project does not silently convert uncertainty into business logic or infrastructure commitments.
 
-This document is the canonical high-level register. Detailed architecture choices will also receive ADRs when decided.
+This document is the canonical high-level decision register. Detailed architecture choices will also receive ADRs when decided.
 
 ## 2. Status Model
 
@@ -27,12 +28,27 @@ BLOCKED   work cannot safely continue until resolved
 
 ```text
 P0  blocks safe architecture or production security/correctness
-P1  blocks a Phase 1 product workflow
+P1  blocks a Phase 1 product workflow or important architecture path
 P2  safe temporary default may be used for prototype/pilot
 P3  later-phase decision
 ```
 
-## 4. Pilot Business Decisions
+## 4. Canonical Decision ID Policy
+
+New structured documentation MUST reference the canonical decision IDs defined in this file.
+
+Legacy flat documentation may still contain historical IDs such as `D-060`. Those IDs are migration aliases only and MUST NOT be introduced into new canonical documents.
+
+Rules:
+
+1. A canonical decision ID is never reused for a different decision.
+2. Renaming a decision preserves its canonical ID unless the decision is genuinely split into separate concerns.
+3. If one legacy decision contained multiple concerns, the migration crosswalk may map it to more than one canonical ID.
+4. A legacy ID does not become canonical merely because an older architecture document references it.
+5. ADRs MUST reference canonical decision IDs, not legacy aliases.
+6. Requirement, architecture, security, database, API, and test documentation should link to the same canonical decision ID where the same unresolved choice affects them.
+
+## 5. Pilot Business Decisions
 
 | ID | Priority | Status | Question / Assumption | Decision Owner |
 |---|---:|---|---|---|
@@ -52,7 +68,7 @@ P3  later-phase decision
 | D-BIZ-014 | P1 | OPEN | How is member communication consent currently captured? | Gym Owner |
 | D-BIZ-015 | P1 | OPEN | Which five operational numbers are most important to the owner each day? | Gym Owner |
 
-## 5. Product Boundary Decisions
+## 6. Product Boundary Decisions
 
 | ID | Priority | Status | Question / Assumption |
 |---|---:|---|---|
@@ -65,8 +81,10 @@ P3  later-phase decision
 | D-PROD-007 | P3 | OPEN | What is the primary AI value proposition: owner analytics, trainer assistance, member coach, or a phased combination? |
 | D-PROD-008 | P3 | OPEN | Which countries/regions are targeted after the initial pilot? |
 | D-PROD-009 | P3 | OPEN | Is white-labeling a strategic requirement or optional enterprise feature? |
+| D-PROD-010 | P2 | OPEN | Is offline attendance queue/sync required for Phase 1, or can the pilot require network-confirmed check-in? |
+| D-PROD-011 | P1 | OPEN | Which launch communication channels are enabled: WhatsApp, in-app, SMS, email, push, or a subset? |
 
-## 6. Architecture Decisions Requiring ADRs
+## 7. Architecture Decisions Requiring ADRs
 
 The following must not become final merely because they appear in a design proposal.
 
@@ -78,12 +96,16 @@ The following must not become final merely because they appear in a design propo
 | D-ARCH-004 | P0 | OPEN | Select authentication/session strategy supporting web and mobile. | `ADR-0004-authentication-strategy.md` |
 | D-ARCH-005 | P1 | PROPOSED | Use a modular monolith before microservices. | future ADR |
 | D-ARCH-006 | P1 | OPEN | Decide whether the initial API is deployed independently or within the web runtime while retaining domain separation. | future ADR |
-| D-ARCH-007 | P1 | OPEN | Select durable background-job/scheduler technology. | future ADR |
+| D-ARCH-007 | P1 | OPEN | Select durable background-job/scheduler technology. | `ADR-0006-background-job-runner.md` |
 | D-ARCH-008 | P2 | OPEN | Determine whether Redis is required in Phase 1. | future ADR if selected |
 | D-ARCH-009 | P1 | OPEN | Select hosting/deployment platform. | future ADR |
 | D-ARCH-010 | P1 | OPEN | Select object storage provider. | future ADR |
+| D-ARCH-011 | P0 | PROPOSED | Select the Owner/Staff web application framework; current recommendation is Next.js + TypeScript. | future ADR |
+| D-ARCH-012 | P1 | PROPOSED | Select the Member mobile application framework; current recommendation is Expo / React Native + TypeScript. | future ADR |
+| D-ARCH-013 | P0 | OPEN | Decide whether to use a managed backend platform and which responsibilities it owns, such as PostgreSQL, Auth, Storage, or RLS. | `ADR-0005-managed-backend-platform.md` |
+| D-ARCH-014 | P1 | ASSUMED | Select package manager; current working assumption is pnpm. | may be captured with monorepo/tooling ADR |
 
-## 7. Provider Decisions
+## 8. Provider Decisions
 
 | ID | Priority | Status | Decision Required |
 |---|---:|---|---|
@@ -96,7 +118,7 @@ The following must not become final merely because they appear in a design propo
 | D-PROVIDER-007 | P3 | OPEN | AI model/provider strategy |
 | D-PROVIDER-008 | P3 | OPEN | Wearable/health integration providers |
 
-## 8. Security and Privacy Decisions
+## 9. Security and Privacy Decisions
 
 | ID | Priority | Status | Decision Required |
 |---|---:|---|---|
@@ -107,8 +129,9 @@ The following must not become final merely because they appear in a design propo
 | D-SEC-005 | P1 | OPEN | Data deletion/export workflow and authority |
 | D-SEC-006 | P1 | OPEN | Retention periods for audit, attendance, payment, notification, and future health data |
 | D-SEC-007 | P3 | OPEN | Whether future health data requires additional encryption, consent, access controls, or regional hosting |
+| D-SEC-008 | P0 when client-accessible managed database patterns are used | OPEN | Define PostgreSQL Row Level Security strategy and its relationship to application-layer capability authorization. |
 
-## 9. Data Model Assumptions
+## 10. Data Model Assumptions
 
 | ID | Priority | Status | Assumption / Decision |
 |---|---:|---|---|
@@ -118,8 +141,11 @@ The following must not become final merely because they appear in a design propo
 | D-DATA-004 | P1 | PROPOSED | `Member` and authenticated `User/AuthIdentity` are separate concepts linked explicitly. |
 | D-DATA-005 | P1 | PROPOSED | Critical provider events retain immutable external references for reconciliation. |
 | D-DATA-006 | P1 | PROPOSED | Financial and sensitive operational history is not hard-deleted merely for reporting cleanliness. |
+| D-DATA-007 | P1 | OPEN | Decide membership renewal representation: create a new membership period or extend the existing membership while preserving immutable renewal history. |
+| D-DATA-008 | P2 | OPEN | Choose PostgreSQL status/enum representation strategy based on migration ergonomics and validation needs. |
+| D-DATA-009 | P2 | OPEN | Choose pilot inventory representation: simple stock state or inventory movement ledger when stock becomes financially material. |
 
-## 10. AI Assumptions
+## 11. AI Assumptions
 
 All AI items are `Future` unless explicitly promoted into a product phase.
 
@@ -131,7 +157,43 @@ All AI items are `Future` unless explicitly promoted into a product phase.
 | D-AI-004 | P3 | OPEN | Define health/nutrition safety boundaries before AI member guidance is enabled. |
 | D-AI-005 | P3 | OPEN | Define evaluation datasets and acceptance thresholds per AI capability. |
 
-## 11. Decision Workflow
+## 12. Legacy Decision ID Migration Crosswalk
+
+`docs/16-open-decisions.md` remains a legacy migration source. The following aliases normalize legacy IDs currently referenced by architecture/data documents into canonical IDs.
+
+| Legacy ID | Canonical ID | Notes |
+|---|---|---|
+| D-020 | D-PROD-010 | Offline attendance requirement |
+| D-030 | D-PROVIDER-001 | Online payment provider |
+| D-038 | D-PROVIDER-002 | Messaging provider |
+| D-039 | D-PROD-011 | Launch messaging channels |
+| D-049 | D-ARCH-004 | Staff authentication/provider/session strategy |
+| D-050 | D-SEC-002 | Member authentication method |
+| D-054 | D-ARCH-014 | Package manager |
+| D-055 | D-ARCH-001 | Monorepo strategy |
+| D-056 | D-ARCH-011 | Owner/Staff web framework |
+| D-057 | D-ARCH-012 | Member mobile framework |
+| D-058 | D-ARCH-002 | PostgreSQL/database selection |
+| D-059 | D-ARCH-013 | Managed backend platform |
+| D-060 | D-ARCH-006 | API deployment topology |
+| D-061 | D-ARCH-007 | Background job runner |
+| D-062 | D-ARCH-008 | Redis requirement |
+| D-063 | D-ARCH-010 | Object storage provider |
+| D-064 | D-ARCH-009 | Hosting/deployment platform |
+| D-065 | D-PROVIDER-006 | Observability/error monitoring provider |
+| D-066 | D-PROVIDER-005 | Product analytics provider |
+| D-067 | D-DATA-008 | PostgreSQL enum/status strategy |
+| D-068 | D-SEC-008 | RLS strategy |
+| D-069 | D-DATA-007 | Membership renewal representation |
+| D-070 | D-DATA-009 | Inventory model |
+
+Migration rule:
+
+- Existing legacy files may retain historical IDs until migrated.
+- Existing structured files that still reference legacy IDs are migration defects and should be normalized before new downstream architecture documents depend on them.
+- New structured documents MUST use canonical IDs only.
+
+## 13. Decision Workflow
 
 For each unresolved P0/P1 item:
 
@@ -144,17 +206,17 @@ For each unresolved P0/P1 item:
 7. add validation/test implications,
 8. record the decision date.
 
-## 12. Rules for Assumptions
+## 14. Rules for Assumptions
 
 - An assumption must never be described as a universal fact.
 - Assumptions affecting money, access control, data deletion, or health safety require explicit resolution before production.
 - A prototype may use a safe temporary default only when the behavior is visibly configurable or clearly marked.
 - No assumption can silently become `DECIDED` because implementation exists.
 
-## 13. Related Documents
+## 15. Related Documents
 
 - `project-overview.md`
 - `scope.md`
 - `../README.md`
-- legacy: `../16-open-decisions.md`
-- future: `../adr/README.md`
+- legacy migration source: `../16-open-decisions.md`
+- future ADR store: `../adr/README.md`
