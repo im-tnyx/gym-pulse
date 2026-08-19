@@ -48,22 +48,22 @@ Completed drafts:
 - `container-architecture.md`
 - `component-architecture.md`
 - `data-flow.md`
-
-Remaining architecture artifacts:
-
 - `technology-stack.md`
-- `architecture-decisions/` index/pointers if retained
-- ADR framework and initial ADRs
+
+Remaining Phase 4 architecture work:
+
+- ADR framework/index
+- initial ADRs for major architecture decisions
+- optional `architecture-decisions/` pointer/index only if it adds navigation value beyond `docs/adr/`
 
 ## Architecture governance state
 
 Completed:
 
 - canonical decision source explicitly declared,
-- missing canonical decision IDs added where current architecture required them,
 - legacy-to-canonical decision-ID crosswalk added,
-- structured architecture drafts normalized to canonical scoped decision IDs,
-- no provider/runtime decision accepted implicitly.
+- structured architecture drafts use canonical scoped decision IDs,
+- provider/runtime recommendations remain Proposed/Open/Assumed until decision/ADR acceptance.
 
 Legacy `docs/16-open-decisions.md` remains migration input until its content has canonical destinations and deprecation pointers.
 
@@ -75,24 +75,40 @@ It defines transport, principal/tenant resolution, capability authorization, val
 
 ## Data-flow architecture state
 
-`data-flow.md` is now the canonical Phase 1 end-to-end data-flow draft.
+`data-flow.md` is the canonical Phase 1 end-to-end data-flow draft.
+
+It covers authentication, attendance, retention, renewal/payment, notification, import, owner-read-model, and data-quality flows with explicit trust, transaction, idempotency, retry, reconciliation, audit, observability, and gym-local time boundaries.
+
+## Technology stack state
+
+`technology-stack.md` is now the canonical architecture-level technology evaluation.
 
 It covers:
 
-1. authentication -> principal -> tenant authorization,
-2. member QR check-in,
-3. assisted check-in,
-4. scheduled no-show scan,
-5. follow-up -> return resolution,
-6. renewal-window -> reminder intent,
-7. renewal order -> payment checkout,
-8. verified payment -> exactly-once business effect,
-9. notification intent -> provider delivery state,
-10. controlled import,
-11. owner dashboard/action queues,
-12. data-quality scan/issue lifecycle.
+- TypeScript runtime direction,
+- monorepo and package manager,
+- Next.js Owner/Staff Web direction,
+- Expo/React Native Member Mobile direction,
+- JSON HTTP typed contracts,
+- API deployment Option A vs Option B,
+- PostgreSQL,
+- data-access/migration approach options,
+- managed backend platform evaluation,
+- auth/session requirements,
+- RLS posture,
+- durable job/scheduler options,
+- Redis posture,
+- payment and messaging adapter requirements,
+- object storage,
+- observability,
+- product analytics,
+- testing/local-development tooling,
+- secret/configuration rules,
+- hosting/deployment requirements,
+- CI/CD implications,
+- technology spikes and selection gates.
 
-The document makes canonical data, trust boundaries, authorization, transactions, idempotency, durable continuation, retries, reconciliation, audit, observability, and gym-local time behavior explicit.
+No Open/Proposed technology was marked Accepted. Exact library/framework versions are intentionally left to implementation dependency policy rather than architecture documentation.
 
 ## Legacy flat documents
 
@@ -115,7 +131,7 @@ Do not delete them until their material has canonical destinations and deprecati
 
 ## Requirement traceability state
 
-Canonical `FR-*` and `NFR-*` IDs are now referenced by component and data-flow architecture.
+Canonical `FR-*` and `NFR-*` IDs are referenced by component/data-flow/technology architecture where relevant.
 
 Target traceability remains:
 
@@ -124,6 +140,7 @@ Requirement
   -> Domain
   -> Component
   -> Data flow
+  -> Technology/ADR
   -> Database/API/Security/Test artifacts
 ```
 
@@ -135,23 +152,25 @@ Initial candidates remain Proposed/Open, not Accepted:
 
 ```text
 ADR-0001-use-monorepo.md
-ADR-0002-use-postgresql.md
+ADR-0002-database-selection.md
 ADR-0003-api-architecture.md
 ADR-0004-authentication-strategy.md
 ADR-0005-managed-backend-platform.md
 ADR-0006-background-job-runner.md
 ```
 
+Provider-specific ADRs for payments, messaging, hosting, observability, and product analytics should be created when evidence is sufficient.
+
 ## Immediate next documentation task
 
-`TASK-DOC-ARCH-007 - Create Technology Stack Evaluation`
+`TASK-DOC-ADR-001 - Create ADR Framework and Index`
 
 Target:
 
-`docs/02-architecture/technology-stack.md`
+`docs/adr/README.md`
 
-The next document must distinguish required technical capabilities from Proposed/Open technology choices, compare alternatives and tradeoffs, map them to canonical decision IDs, and avoid marking any technology Accepted before ADR approval.
+The ADR framework must define status semantics, numbering/naming, required sections, canonical decision-ID linkage, proposal/acceptance/deprecation workflow, supersession rules, evidence requirements, and cross-document update expectations. It must not accept any architecture choice merely by creating the framework.
 
 ## Last update
 
-C4 component and Phase 1 data-flow architecture are complete at Draft v1.0 level. Architecture Phase 4 remains in progress on branch `docs/phase-2-architecture`.
+Technology stack evaluation completed on branch `docs/phase-2-architecture`. Phase 4 remains in progress until ADR framework and the planned initial decision records are addressed.
