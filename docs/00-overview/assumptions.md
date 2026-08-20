@@ -2,17 +2,18 @@
 
 ## Document Control
 
-- Status: `Active decision register`
-- Scope: Product, architecture, pilot, security, provider, and operational assumptions
+- Document Maturity: `Draft`
+- Scope: Product, architecture, pilot, security, provider, data, and operational assumptions
+- Canonical Decision Register: `This document`
 - Migration Source: `../16-open-decisions.md`
 
 ## 1. Purpose
 
 Track information that is not yet confirmed so the project does not silently convert uncertainty into business logic or infrastructure commitments.
 
-This document is the canonical high-level register. Detailed architecture choices will also receive ADRs when decided.
+This document is the canonical high-level decision register. Detailed architecture choices receive ADRs when they are reviewed and accepted or rejected.
 
-## 2. Status Model
+## 2. Decision Status Model
 
 ```text
 OPEN      unresolved question
@@ -23,11 +24,13 @@ DEFERRED  intentionally postponed
 BLOCKED   work cannot safely continue until resolved
 ```
 
+These are decision statuses, not document maturity or product scope labels.
+
 ## 3. Priority Model
 
 ```text
 P0  blocks safe architecture or production security/correctness
-P1  blocks a Phase 1 product workflow
+P1  blocks a Phase 1 workflow or important architecture path
 P2  safe temporary default may be used for prototype/pilot
 P3  later-phase decision
 ```
@@ -68,20 +71,25 @@ P3  later-phase decision
 
 ## 6. Architecture Decisions Requiring ADRs
 
-The following must not become final merely because they appear in a design proposal.
+The following must not become final merely because they appear in a legacy architecture or engineering recommendation.
 
-| ID | Priority | Status | Decision Required | Planned ADR |
+| ID | Priority | Status | Decision Required | Current Direction / Constraint |
 |---|---:|---|---|---|
-| D-ARCH-001 | P0 | PROPOSED | Use a monorepo and define package boundaries. | `ADR-0001-use-monorepo.md` |
-| D-ARCH-002 | P0 | PROPOSED | Use PostgreSQL as canonical relational store. | `ADR-0002-database-selection.md` |
-| D-ARCH-003 | P0 | PROPOSED | Use JSON HTTP API with typed contracts for primary client/server interface. | `ADR-0003-api-architecture.md` |
-| D-ARCH-004 | P0 | OPEN | Select authentication/session strategy supporting web and mobile. | `ADR-0004-authentication-strategy.md` |
-| D-ARCH-005 | P1 | PROPOSED | Use a modular monolith before microservices. | future ADR |
-| D-ARCH-006 | P1 | OPEN | Decide whether the initial API is deployed independently or within the web runtime while retaining domain separation. | future ADR |
-| D-ARCH-007 | P1 | OPEN | Select durable background-job/scheduler technology. | future ADR |
-| D-ARCH-008 | P2 | OPEN | Determine whether Redis is required in Phase 1. | future ADR if selected |
-| D-ARCH-009 | P1 | OPEN | Select hosting/deployment platform. | future ADR |
-| D-ARCH-010 | P1 | OPEN | Select object storage provider. | future ADR |
+| D-ARCH-001 | P0 | PROPOSED | Repository strategy and package boundaries. | Monorepo is recommended; no repository tool is accepted yet. |
+| D-ARCH-002 | P0 | PROPOSED | Canonical database engine. | PostgreSQL is the current recommendation, not an accepted decision. |
+| D-ARCH-003 | P0 | PROPOSED | Primary client/server contract architecture. | JSON HTTP with typed/runtime-validated contracts is recommended. |
+| D-ARCH-004 | P0 | OPEN | Authentication/session strategy supporting staff web and member access. | Must support revocation and server-side principal resolution. |
+| D-ARCH-005 | P1 | PROPOSED | System decomposition style for Phase 1. | Modular monolith before microservices is recommended. |
+| D-ARCH-006 | P1 | OPEN | API deployment boundary. | Decide web-runtime API vs independently deployed API while preserving domain separation. |
+| D-ARCH-007 | P1 | OPEN | Durable background-job/scheduler technology. | Must support retries, visibility, tenant scope, and deterministic dedupe. |
+| D-ARCH-008 | P2 | OPEN | Whether Redis/cache/ephemeral coordination is required in Phase 1. | Do not add without demonstrated need. |
+| D-ARCH-009 | P1 | OPEN | Hosting/deployment platform. | No provider selected. |
+| D-ARCH-010 | P1 | OPEN | Object storage provider and protected-access model. | No provider selected. |
+| D-ARCH-011 | P1 | ASSUMED | Package manager for a future workspace/monorepo. | Legacy working assumption is `pnpm`; not accepted. |
+| D-ARCH-012 | P0 | PROPOSED | Owner/Staff web application framework. | Next.js + TypeScript is a candidate recommendation only. |
+| D-ARCH-013 | P1 | PROPOSED | Member client delivery/framework strategy. | Responsive web/PWA vs Expo/React Native must follow validated delivery needs; Expo/RN is not accepted. |
+| D-ARCH-014 | P0 | OPEN | Whether to use a managed backend platform and which responsibilities it owns. | Database/Auth/Storage/RLS responsibilities must not be bundled implicitly. |
+| D-ARCH-015 | P0 | PROPOSED | Authorization implementation boundary. | Central server-side capability + tenant/resource-scope enforcement is required; exact policy/library/storage implementation remains open. |
 
 ## 7. Provider Decisions
 
@@ -107,8 +115,9 @@ The following must not become final merely because they appear in a design propo
 | D-SEC-005 | P1 | OPEN | Data deletion/export workflow and authority |
 | D-SEC-006 | P1 | OPEN | Retention periods for audit, attendance, payment, notification, and future health data |
 | D-SEC-007 | P3 | OPEN | Whether future health data requires additional encryption, consent, access controls, or regional hosting |
+| D-SEC-008 | P0 when client-accessible database patterns are used | OPEN | Define data-layer tenant-isolation/RLS strategy and its relationship to application capability authorization. |
 
-## 9. Data Model Assumptions
+## 9. Data Model Assumptions and Decisions
 
 | ID | Priority | Status | Assumption / Decision |
 |---|---:|---|---|
@@ -118,6 +127,21 @@ The following must not become final merely because they appear in a design propo
 | D-DATA-004 | P1 | PROPOSED | `Member` and authenticated `User/AuthIdentity` are separate concepts linked explicitly. |
 | D-DATA-005 | P1 | PROPOSED | Critical provider events retain immutable external references for reconciliation. |
 | D-DATA-006 | P1 | PROPOSED | Financial and sensitive operational history is not hard-deleted merely for reporting cleanliness. |
+| D-DATA-007 | P1 | PROPOSED | Clarify state ownership so `Membership` owns entitlement states (`Pending`, `Active`, `Frozen`, `Expired`, `Cancelled`) and `Member` status represents an independent member-record/relationship state rather than duplicating entitlement. `FR-MEMBER-004` requires review before this becomes decided. |
+
+### D-DATA-007 clarification note
+
+Current structured requirements define `Member.status` as `Active`, `Paused`, `Expired`, `Cancelled`, `Blocked`, while `Membership.status` separately defines `Pending`, `Active`, `Frozen`, `Expired`, `Cancelled`.
+
+This creates ambiguous ownership for `Paused/Expired/Cancelled` and can cause contradictory states such as an administratively active member with an expired membership or a member with historical/renewed membership periods.
+
+Cleaner proposed ownership:
+
+- `Membership` determines entitlement and attendance/renewal eligibility.
+- `Member` status should describe the member record/relationship or administrative access state only.
+- No-show eligibility should derive from the relevant membership plus explicit member-level administrative exclusions, not from duplicated expiry/pause semantics.
+
+This is a proposal only. `FR-MEMBER-004` must be explicitly revised if the decision is approved.
 
 ## 10. AI Assumptions
 
@@ -131,7 +155,32 @@ All AI items are `Future` unless explicitly promoted into a product phase.
 | D-AI-004 | P3 | OPEN | Define health/nutrition safety boundaries before AI member guidance is enabled. |
 | D-AI-005 | P3 | OPEN | Define evaluation datasets and acceptance thresholds per AI capability. |
 
-## 11. Decision Workflow
+## 11. Legacy Architecture Decision Mapping
+
+`../16-open-decisions.md` remains a migration source. These legacy IDs map to the canonical decisions above and must not be introduced into new structured architecture documents.
+
+| Legacy ID | Canonical ID | Topic |
+|---|---|---|
+| D-030 | D-PROVIDER-001 | Payment provider |
+| D-038 | D-PROVIDER-002 | Messaging provider |
+| D-049 | D-ARCH-004 | Staff authentication/session architecture |
+| D-050 | D-SEC-002 | Member authentication method |
+| D-054 | D-ARCH-011 | Package manager |
+| D-055 | D-ARCH-001 | Monorepo/repository strategy |
+| D-056 | D-ARCH-012 | Owner/Staff web framework |
+| D-057 | D-ARCH-013 | Member mobile/client framework |
+| D-058 | D-ARCH-002 | Database engine |
+| D-059 | D-ARCH-014 | Managed backend platform |
+| D-060 | D-ARCH-006 | API deployment boundary |
+| D-061 | D-ARCH-007 | Background jobs |
+| D-062 | D-ARCH-008 | Redis/cache requirement |
+| D-063 | D-ARCH-010 | Object storage |
+| D-064 | D-ARCH-009 | Hosting |
+| D-065 | D-PROVIDER-006 | Observability provider |
+| D-066 | D-PROVIDER-005 | Product analytics provider |
+| D-068 | D-SEC-008 | RLS/data-layer tenant isolation |
+
+## 12. Decision Workflow
 
 For each unresolved P0/P1 item:
 
@@ -144,17 +193,17 @@ For each unresolved P0/P1 item:
 7. add validation/test implications,
 8. record the decision date.
 
-## 12. Rules for Assumptions
+## 13. Rules for Assumptions
 
 - An assumption must never be described as a universal fact.
 - Assumptions affecting money, access control, data deletion, or health safety require explicit resolution before production.
 - A prototype may use a safe temporary default only when the behavior is visibly configurable or clearly marked.
 - No assumption can silently become `DECIDED` because implementation exists.
 
-## 13. Related Documents
+## 14. Related Documents
 
 - `project-overview.md`
 - `scope.md`
 - `../README.md`
-- legacy: `../16-open-decisions.md`
-- future: `../adr/README.md`
+- legacy migration source: `../16-open-decisions.md`
+- ADR governance: `../adr/README.md`
