@@ -23,10 +23,11 @@ Completed Draft architecture documents:
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
 docs/02-architecture/system-context.md
+docs/02-architecture/container-architecture.md
 docs/adr/README.md
 ```
 
-`system-context.md` is the current C4 Level 1 context. It treats GymPulse as a black-box Phase 1 system and defines active human actors, external systems, trust relationships, authoritative-state boundaries, high-level information flows, failure/degradation expectations, tenant/time context, and open-decision dependencies.
+`container-architecture.md` is the current C4 Level 2 view. It defines the Member Client, Owner/Staff Application, Trusted Application/API, Background Execution, Canonical Persistence, conditional Protected Object Storage, external provider boundaries, API deployment alternatives, transaction/idempotency boundaries, authorization enforcement points, failure behavior, observability, and testing seams without selecting unresolved technologies.
 
 ## Important Confirmed Boundaries
 
@@ -37,17 +38,21 @@ docs/adr/README.md
 - Tenant isolation and server-side authorization are mandatory.
 - Capability-based permissions are the product authorization model.
 - Authentication proves identity/session state; GymPulse still owns business authorization.
+- Member/Staff clients are untrusted for canonical business truth.
+- Trusted Application/API owns interactive authorization, application orchestration, domain execution, transaction ownership, canonical mutation, and safe provider interaction.
+- Background execution reuses the same domain/application rules and must remain scoped, retry-safe, and observable.
 - Payment initiation/client success is not canonical payment success.
 - Critical effects must be idempotent and concurrency-safe.
 - Sensitive operational/financial changes must remain auditable.
 - Gym-local timezone controls business-day/week rules; canonical event timestamps use UTC.
 - Canonical state is server-side; dashboards/read models and telemetry are derived/non-authoritative.
 - External provider state must be verified/translated before mutating canonical state.
+- Canonical persistence is the protected system-of-record boundary; exact database engine remains unresolved/proposed.
 - Future workout, advanced nutrition, health, coaching, multi-branch product workflows, and AI scope must not leak into Phase 1.
 
-## C4 Level 1 External Relationships
+## Current C4 Model
 
-Current context-level external systems/supporting dependencies:
+### C4 Level 1 external relationships
 
 ```text
 Authentication / Identity Provider
@@ -58,7 +63,31 @@ Operational Telemetry / Analytics
 Pilot Import Source
 ```
 
-No provider product is selected by the System Context.
+### C4 Level 2 GymPulse container responsibilities
+
+```text
+Member Client Application
+Owner / Staff Application
+Trusted Application / API Runtime
+Background Execution Runtime
+Canonical Persistence
+Protected Object Storage (conditional)
+```
+
+No provider product or runtime technology is selected by the C4 documents.
+
+## API Deployment Boundary
+
+`D-ARCH-006` remains `OPEN`.
+
+Both high-level mappings remain valid candidates:
+
+```text
+A. Owner/Staff web server runtime co-hosts trusted application/API responsibilities
+B. Owner/Staff web UI and trusted API are independently deployed
+```
+
+The final mapping must preserve domain separation, server-only secrets, authorization, testable contracts, background execution independence, and future extractability.
 
 ## Important Open P0/P1 Decisions
 
@@ -74,6 +103,7 @@ D-ARCH-004  authentication/session                  P0 OPEN
 D-ARCH-005  modular-monolith architecture style     P1 PROPOSED
 D-ARCH-006  API deployment boundary                 P1 OPEN
 D-ARCH-007  background jobs                         P1 OPEN
+D-ARCH-008  Redis/cache/broker requirement          P2 OPEN
 D-ARCH-009  hosting                                 P1 OPEN
 D-ARCH-010  object storage                          P1 OPEN
 D-ARCH-012  Owner/Staff web framework               P0 PROPOSED
@@ -107,11 +137,11 @@ Important contradiction remains:
 
 ## Last Completed Task
 
-`0003-system-context.md`
+`0004-container-architecture.md`
 
 Created:
 
-`docs/02-architecture/system-context.md`
+`docs/02-architecture/container-architecture.md`
 
 ## Current Task
 
@@ -119,17 +149,49 @@ None in progress.
 
 ## Next Task
 
-Task `0004-container-architecture`.
+Task `0005-component-architecture`.
 
 Create only:
 
-`docs/02-architecture/container-architecture.md`
+`docs/02-architecture/component-architecture.md`
 
-The document should provide C4 Level 2 decomposition while keeping unresolved runtime/provider choices explicit. It should distinguish logical/deployable responsibilities such as member-facing client, owner/staff client, trusted application/API boundary, durable background execution, canonical persistence, and provider adapters without silently selecting a framework, database engine, hosting platform, managed backend, or job technology.
+The document should provide a C4 Level 3-style decomposition of the Trusted Application/API and Background Execution responsibilities into implementation-oriented source-code/application components.
 
-It must explicitly preserve the open API deployment question under `D-ARCH-006` rather than assuming the API is embedded in or separate from the web runtime.
+Required areas include:
 
-Do not proceed automatically to component architecture in the same bounded task.
+```text
+transport/application-entry adapters
+authentication/principal resolver
+tenant/resource-context resolver
+capability authorization
+request validation/contracts
+application use cases
+Phase 1 domain modules
+transaction/unit-of-work boundary
+repositories/data-access ports
+payment adapter and webhook normalization
+notification policy/intent and provider adapter
+audit/event components
+idempotency/deduplication
+background scheduler/handlers
+operational read/query components
+observability hooks and test seams
+```
+
+The component architecture must:
+
+- preserve `D-ARCH-005` as Proposed rather than assume microservices,
+- preserve `D-ARCH-006` deployment neutrality,
+- show explicit dependency direction,
+- identify domain ownership and cross-domain write restrictions,
+- define transaction ownership,
+- distinguish sync vs async component interaction,
+- show idempotency and authorization enforcement points,
+- keep provider adapters at integration boundaries,
+- define failure propagation and test seams,
+- keep `D-DATA-007` visible until state ownership is resolved.
+
+Do not proceed automatically to data-flow or technology-stack documentation in the same bounded task.
 
 ## Files To Read Next
 
@@ -138,13 +200,12 @@ docs/README.md
 docs/00-overview/project-overview.md
 docs/00-overview/scope.md
 docs/00-overview/assumptions.md
-docs/01-product/user-roles.md
-docs/01-product/user-journeys.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
 docs/02-architecture/system-context.md
+docs/02-architecture/container-architecture.md
 docs/adr/README.md
 
 legacy migration inputs only as needed:
@@ -155,5 +216,6 @@ docs/08-automations.md
 docs/09-payments-billing.md
 docs/10-notifications-whatsapp.md
 docs/12-security-audit.md
+docs/13-testing-qa.md
 docs/15-engineering-workflow.md
 ```
