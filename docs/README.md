@@ -73,6 +73,17 @@ No undocumented implementation detail overrides an approved requirement or ADR.
 
 `docs/16-open-decisions.md` is a legacy migration source. New structured documents must use canonical scoped IDs such as `D-ARCH-006`, not legacy IDs such as `D-060`.
 
+Task 0008 normalized the material technology gaps identified during Task 0007 into canonical IDs:
+
+```text
+D-ARCH-016  Primary implementation language/runtime
+D-ARCH-017  Data-access/query/migration strategy
+D-ARCH-018  Core automated testing toolchain
+D-ARCH-019  CI/CD + production release/secrets tooling
+```
+
+These IDs register decisions for governance only. Their candidate technologies remain unresolved according to the statuses in `assumptions.md`.
+
 ## Target Information Architecture
 
 ```text
@@ -191,9 +202,9 @@ Requirement
 
 ## ADR Policy
 
-A major architecture decision is not considered final merely because it appears in a design or legacy implementation-planning document.
+A major architecture decision is not considered final merely because it appears in a design, technology evaluation, or legacy implementation-planning document.
 
-Decisions such as architecture style, repository strategy, database, API style, authentication, authorization implementation, job runner, payment provider, hosting platform, or required infrastructure dependency require explicit decision governance and an ADR when material.
+Decisions such as architecture style, language/runtime, repository strategy, database, data-access/migration strategy, API style, authentication, authorization implementation, job runner, payment provider, hosting platform, production release/secrets architecture, or required infrastructure dependency require explicit decision governance and an ADR when material.
 
 ADR governance lives in `adr/README.md`.
 
@@ -224,7 +235,7 @@ Complete at Draft v1.x foundation level:
 - `glossary.md`
 - `assumptions.md`
 
-`assumptions.md` also owns the normalized architecture-decision inventory and the Member-vs-Membership state-ownership ambiguity.
+`assumptions.md` owns the canonical decision inventory, including the normalized technology decisions `D-ARCH-016` through `D-ARCH-019`, and the unresolved Member-vs-Membership state-ownership ambiguity.
 
 ### `01-product/`
 
@@ -269,15 +280,23 @@ docs/adr/README.md
 
 `data-flow.md` traces the major Phase 1 end-to-end flows across actors, client/container/component boundaries, canonical persistence, external providers, transaction boundaries, idempotency/deduplication, retries/reconciliation, audit, observability, gym-local time, and durable async continuation. It covers authentication/authorization, attendance, retention, renewal, payment, notifications, import, dashboard/read models, and data-quality lifecycle while preserving unresolved technology decisions.
 
-`technology-stack.md` evaluates the implementation stack against those established boundaries. It recommends directions such as TypeScript/Node.js, monorepo/pnpm, Next.js for Owner/Staff, web/PWA-first member delivery, JSON HTTP contracts, PostgreSQL, SQL-aware persistence tooling, durable Postgres-backed background work, and provider-neutral integrations while explicitly preserving every canonical Open/Proposed/Assumed status. It also records technology decision dependencies, Decision Register Gaps, ADR readiness, `D-DATA-007` impacts, official ecosystem verification, and implementation blockers.
+`technology-stack.md` evaluates the implementation stack against those established boundaries. It recommends directions such as TypeScript/Node.js, monorepo/pnpm, Next.js for Owner/Staff, web/PWA-first member delivery, JSON HTTP contracts, PostgreSQL, SQL-aware persistence tooling, durable Postgres-backed background work, and provider-neutral integrations while explicitly preserving every Open/Proposed/Assumed status. Its original `Decision Register Gap` labels for language/runtime, persistence tooling, testing, and CI/CD describe the Task 0007 evaluation-time state; Task 0008 has now assigned the canonical IDs in `assumptions.md` without approving the candidate technologies.
+
+Technology decision-register normalization and ADR backlog reconciliation are complete.
 
 The next bounded architecture-governance task is:
 
 ```text
-Task 0008: Technology Decision Register Gap Normalization
+Task 0009: Draft Phase 1 Architecture Style ADR
 ```
 
-It should update the canonical decision register with the material technology decisions that currently lack IDs, reconcile the ADR queue/dependencies, and preserve unresolved statuses. It must not accept ADRs or begin application scaffolding automatically.
+Create only a `Proposed` ADR for `D-ARCH-005` at:
+
+```text
+docs/adr/ADR-0001-modular-monolith.md
+```
+
+Do not accept the ADR automatically and do not draft the remaining foundation ADRs in the same bounded task.
 
 ## Legacy Migration State
 
