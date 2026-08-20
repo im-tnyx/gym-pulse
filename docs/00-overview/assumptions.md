@@ -71,7 +71,7 @@ P3  later-phase decision
 
 ## 6. Architecture Decisions Requiring ADRs
 
-The following must not become final merely because they appear in a legacy architecture or engineering recommendation.
+The following must not become final merely because they appear in a legacy architecture, engineering recommendation, or technology evaluation.
 
 | ID | Priority | Status | Decision Required | Current Direction / Constraint |
 |---|---:|---|---|---|
@@ -90,6 +90,23 @@ The following must not become final merely because they appear in a legacy archi
 | D-ARCH-013 | P1 | PROPOSED | Member client delivery/framework strategy. | Responsive web/PWA vs Expo/React Native must follow validated delivery needs; Expo/RN is not accepted. |
 | D-ARCH-014 | P0 | OPEN | Whether to use a managed backend platform and which responsibilities it owns. | Database/Auth/Storage/RLS responsibilities must not be bundled implicitly. |
 | D-ARCH-015 | P0 | PROPOSED | Authorization implementation boundary. | Central server-side capability + tenant/resource-scope enforcement is required; exact policy/library/storage implementation remains open. |
+| D-ARCH-016 | P0 | PROPOSED | Primary implementation language and server runtime. | Strict TypeScript with a supported Node.js LTS runtime is recommended; exact runtime/version is not accepted or pinned. |
+| D-ARCH-017 | P1 | PROPOSED | Data-access, query, transaction, and migration tooling strategy. | Prefer a SQL-aware typed layer with explicit committed migrations and raw-SQL escape hatch; Drizzle/Kysely lead the current evaluation, Prisma remains a credible alternative. |
+| D-ARCH-018 | P1 | PROPOSED | Core automated testing toolchain for application, database, authorization, provider, worker, and web E2E coverage. | TS-native unit/application tests + real PostgreSQL integration tests + Playwright-style browser E2E is the current direction; exact tools are not accepted. |
+| D-ARCH-019 | P1 | OPEN | CI/CD, production release-gate, and secrets-management tooling baseline. | Required capabilities are defined; GitHub-native CI is a leading candidate, but hosting/runtime/security dependencies must be resolved before final selection. |
+
+### Technology decision-gap normalization note
+
+Task `0008-technology-decision-register-normalization` assigns canonical IDs to the four material gaps identified by `../02-architecture/technology-stack.md`:
+
+```text
+Primary language/runtime                 -> D-ARCH-016
+Data-access/query/migration strategy     -> D-ARCH-017
+Core testing toolchain                   -> D-ARCH-018
+CI/CD + release/secrets tooling          -> D-ARCH-019
+```
+
+This registration does **not** approve TypeScript, Node.js, Drizzle, Kysely, Prisma, Vitest, Playwright, GitHub Actions, or any other candidate. Any earlier `Decision Register Gap` label in the technology evaluation should be read as the state at the time Task 0007 was written; this register is now authoritative for the canonical IDs and statuses.
 
 ## 7. Provider Decisions
 
@@ -205,5 +222,6 @@ For each unresolved P0/P1 item:
 - `project-overview.md`
 - `scope.md`
 - `../README.md`
+- `../02-architecture/technology-stack.md`
 - legacy migration source: `../16-open-decisions.md`
 - ADR governance: `../adr/README.md`
