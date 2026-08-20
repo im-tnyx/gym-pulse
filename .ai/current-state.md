@@ -25,10 +25,11 @@ docs/02-architecture/architecture-overview.md
 docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
 docs/02-architecture/component-architecture.md
+docs/02-architecture/data-flow.md
 docs/adr/README.md
 ```
 
-`component-architecture.md` is the current C4 Level 3-style view for the Trusted Application/API and Background Execution responsibilities. It defines dependency direction, entry adapters, authentication/principal resolution, tenant/resource scope, capability authorization, validation, command/query handlers, Phase 1 domain ownership, cross-domain write restrictions, Unit of Work, repositories, request idempotency vs business-effect dedupe, provider ports/adapters, notification policy, audit/events, business time, background handlers, observability, failure propagation, and testing seams.
+`data-flow.md` is the current end-to-end architecture view. It traces the critical Phase 1 flows across human actors, client/container/component boundaries, canonical persistence, external providers, transaction boundaries, idempotency/deduplication, retries/reconciliation, audit, observability, gym-local time, and durable async continuation.
 
 ## Important Confirmed Boundaries
 
@@ -42,21 +43,23 @@ docs/adr/README.md
 - Clients are untrusted for canonical business truth.
 - Authentication verification, principal resolution, tenant/resource resolution, capability authorization, contract validation, and domain rules are separate component responsibilities.
 - Application command handlers own cross-domain orchestration and correctness-sensitive transaction boundaries.
-- Domain modules own their canonical state; arbitrary cross-domain direct writes are not allowed by the component model.
-- Background execution reuses the same application/domain rules and must remain scoped, retry-safe, and observable.
-- Request idempotency and business-effect/domain uniqueness are separate protections.
+- Domain modules own their canonical state; arbitrary cross-domain direct writes are not allowed.
+- Background execution reuses application/domain rules and must remain scoped, retry-safe, and observable.
+- Request idempotency, job dedupe, provider-event dedupe, and business-effect uniqueness are separate protections.
 - Payment provider adapters verify/normalize evidence but cannot directly grant entitlement.
 - Notification policy/intent is separate from messaging-provider delivery.
-- Payment initiation/client success is not canonical payment success.
-- Critical effects must be idempotent and concurrency-safe.
+- Payment checkout/client success is not canonical payment success.
+- Verified payment effect applies membership/add-on value exactly once through the owning domain.
 - Sensitive operational/financial changes must remain auditable.
 - Gym-local timezone controls business-day/week rules; canonical event timestamps use UTC.
 - Canonical state is server-side; read models and telemetry are non-authoritative for writes.
 - External provider state must be verified/translated before mutating canonical state.
+- External calls do not participate in local atomic transactions; retries/reconciliation handle cross-system uncertainty.
+- Read models and data-quality components may inspect several domains but do not become alternate write owners.
 - Canonical persistence is the protected system-of-record boundary; exact database engine remains unresolved/proposed.
 - Future workout, advanced nutrition, health, coaching, multi-branch product workflows, and AI scope must not leak into Phase 1.
 
-## Current C4 Model
+## Current Architecture Model
 
 ### C4 Level 1
 
@@ -98,7 +101,24 @@ Scheduler / Job Entry / Retry Coordinator / Background Handlers
 Observability Hooks
 ```
 
-No provider product, framework, database engine, job technology, cache/broker, or deployment topology is selected by the C4 documents.
+### End-to-end data flows
+
+```text
+Authentication + tenant/resource authorization
+QR check-in
+Assisted attendance
+No-show scan
+Follow-up + member return resolution
+Renewal-stage reminder
+Renewal order + checkout initialization
+Verified payment webhook + exactly-once entitlement effect
+Notification dispatch + delivery callback
+Pilot member import
+Owner dashboard / read-model query
+Data-quality scan + resolution
+```
+
+No provider product, framework, database engine, job technology, cache/broker, or deployment topology is selected by the architecture documents.
 
 ## API Deployment Boundary
 
@@ -111,7 +131,7 @@ A. Owner/Staff web server runtime co-hosts trusted application/API responsibilit
 B. Owner/Staff web UI and trusted API are independently deployed
 ```
 
-The same component ownership, domain rules, server-only secrets, authorization, contracts, and background-execution boundaries must survive either mapping.
+The same component ownership, security, domain rules, contracts, transaction/idempotency semantics, and background-execution behavior must survive either mapping.
 
 ## Important Open P0/P1 Decisions
 
@@ -130,6 +150,7 @@ D-ARCH-007  background jobs                         P1 OPEN
 D-ARCH-008  Redis/cache/broker requirement          P2 OPEN
 D-ARCH-009  hosting                                 P1 OPEN
 D-ARCH-010  object storage                          P1 OPEN
+D-ARCH-011  package manager                         P1 ASSUMED
 D-ARCH-012  Owner/Staff web framework               P0 PROPOSED
 D-ARCH-013  member client/framework strategy        P1 PROPOSED
 D-ARCH-014  managed backend platform                P0 OPEN
@@ -139,6 +160,7 @@ D-SEC-002   member authentication                   P0 OPEN
 D-SEC-008   RLS/data-layer tenant isolation         conditional P0 OPEN
 D-PROVIDER-001 payment provider                     P1 OPEN
 D-PROVIDER-002 messaging provider                   P1 OPEN
+D-PROVIDER-005 product analytics provider           P2 OPEN
 D-PROVIDER-006 observability provider               P1 OPEN
 D-DATA-007  Member vs Membership state ownership    P1 PROPOSED
 ```
@@ -161,11 +183,11 @@ Important contradiction remains:
 
 ## Last Completed Task
 
-`0005-component-architecture.md`
+`0006-data-flow.md`
 
 Created:
 
-`docs/02-architecture/component-architecture.md`
+`docs/02-architecture/data-flow.md`
 
 ## Current Task
 
@@ -173,41 +195,60 @@ None in progress.
 
 ## Next Task
 
-Task `0006-data-flow`.
+Task `0007-technology-stack`.
 
 Create only:
 
-`docs/02-architecture/data-flow.md`
+`docs/02-architecture/technology-stack.md`
 
-The document should trace the major Phase 1 end-to-end flows across actors, client/container/component boundaries, canonical persistence, external providers, transaction boundaries, idempotency/deduplication, retries/reconciliation, audit, observability, gym-local time, and durable asynchronous continuation.
+The document should evaluate candidate technologies against the established requirements and architecture rather than merely listing tools.
 
-Minimum flows to cover:
+Required evaluation areas include:
 
 ```text
-authentication + tenant/resource authorization
-QR check-in
-assisted attendance
-no-show scan
-follow-up + member return resolution
-renewal-stage reminder
-renewal order + checkout initialization
-verified payment webhook + exactly-once entitlement effect
-notification dispatch + delivery callback
-pilot member import
-owner dashboard/read-model query
-data-quality scan/resolution
+language/runtime
+repository/workspace strategy
+package manager
+Owner/Staff web framework
+Member delivery/framework strategy
+API contract architecture and deployment topology
+canonical database engine
+data-access/migration approach
+managed backend responsibilities
+authentication/session
+member authentication
+capability authorization implementation boundary
+data-layer tenant isolation/RLS
+background jobs/scheduler
+Redis/cache/broker need
+payment integration/provider boundary
+messaging/provider boundary
+protected object storage
+observability and product analytics
+testing stack
+hosting/deployment
+CI/CD and secrets posture
 ```
 
-The data-flow document must remain technology/provider neutral and must keep `D-ARCH-006`, `D-ARCH-007`, `D-SEC-008`, and `D-DATA-007` explicit.
+Each technology recommendation must state:
 
-Do not proceed automatically to technology-stack evaluation in the same bounded task.
+- canonical decision ID,
+- current decision status,
+- requirement/architecture drivers,
+- recommended direction,
+- alternatives,
+- tradeoffs,
+- security/reliability/operations impact,
+- validation/spike needs,
+- ADR requirement.
+
+Do not mark any Open/Proposed/Assumed technology decision Accepted/Decided in the technology-stack document.
 
 ## Files To Read Next
 
 ```text
 docs/README.md
 docs/00-overview/assumptions.md
-docs/01-product/user-journeys.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
 docs/02-architecture/architecture-principles.md
@@ -215,13 +256,18 @@ docs/02-architecture/architecture-overview.md
 docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
 docs/02-architecture/component-architecture.md
+docs/02-architecture/data-flow.md
 docs/adr/README.md
 
-legacy migration inputs only as needed:
+legacy migration inputs only as evidence/candidate history:
+docs/05-system-architecture.md
+docs/06-database-schema.md
 docs/07-api-contracts.md
 docs/08-automations.md
 docs/09-payments-billing.md
 docs/10-notifications-whatsapp.md
 docs/12-security-audit.md
 docs/13-testing-qa.md
+docs/15-engineering-workflow.md
+docs/16-open-decisions.md
 ```
