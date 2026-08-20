@@ -91,7 +91,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-The filenames above are naming examples only until the corresponding ADR is created.
+`ADR-0001-modular-monolith.md` now exists. Later filenames above remain examples until those ADRs are actually drafted.
 
 ## 5. When an ADR Is Required
 
@@ -250,13 +250,21 @@ D-ARCH-019  CI/CD + production release/secrets tooling
 
 Their registration means future ADRs can reference canonical IDs. It does not mean TypeScript/Node.js, Drizzle/Kysely/Prisma, Vitest/Playwright, GitHub Actions, or any other candidate is accepted.
 
-## 12. Ordered ADR Backlog
+## 12. Current ADR Index
 
-The order reflects current GymPulse dependency reasoning after the technology evaluation. Presence in this backlog does not mean acceptance, and an ADR number is assigned only when a file is actually drafted.
+| ADR | Primary Decision | Status | Summary |
+|---|---|---|---|
+| `ADR-0001-modular-monolith.md` | `D-ARCH-005` | Proposed | Proposes a Phase 1 modular monolith with explicit domain/application/component boundaries; compares Phase 1 microservices and an unstructured single application. No acceptance evidence exists yet. |
+
+No ADR is currently `Accepted`.
+
+## 13. Ordered ADR Backlog
+
+The order reflects current GymPulse dependency reasoning after the technology evaluation. Presence in this backlog does not mean acceptance. Item 1 has now been drafted as `ADR-0001`; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
-| 1 | Phase 1 architecture style: modular monolith before microservices | `D-ARCH-005` | PROPOSED | Establishes decomposition and state-ownership boundaries before implementation structure. |
+| 1 | Phase 1 architecture style: modular monolith before microservices | `D-ARCH-005` | PROPOSED / ADR-0001 drafted | Establishes decomposition and state-ownership boundaries before implementation structure. |
 | 2 | Primary implementation language/runtime | `D-ARCH-016` | PROPOSED | Cross-cuts web, API, jobs, provider adapters, testing, and deployment; should be explicit before scaffold commitments. |
 | 3 | Repository/monorepo strategy | `D-ARCH-001` | PROPOSED | Determines shared source/package boundaries and how independently deployable applications evolve together. |
 | 4 | Canonical database engine | `D-ARCH-002` | PROPOSED | Transactions, constraints, idempotency, reconciliation, reporting, and tenant isolation depend on persistence capabilities. |
@@ -283,16 +291,16 @@ The order reflects current GymPulse dependency reasoning after the technology ev
 | 25 | Redis/cache requirement | `D-ARCH-008` | OPEN | Decide only after a measured cache/queue/coordination need exists. |
 | 26 | Member vs Membership state ownership | `D-DATA-007` | PROPOSED | Resolve before canonical domain/schema/state-machine finalization; it can proceed in parallel with early platform ADRs but blocks schema semantics. |
 
-## 13. ADR Batch Readiness
+## 14. ADR Batch Readiness
 
 No ADR is accepted by this README.
 
 ### First foundation batch
 
-The smallest high-value foundation group is now:
+The foundation group is:
 
 ```text
-D-ARCH-005  Phase 1 architecture style
+D-ARCH-005  Phase 1 architecture style           ADR-0001 drafted, Proposed
 D-ARCH-016  Primary implementation language/runtime
 D-ARCH-001  Repository/workspace strategy
 D-ARCH-002  Canonical database engine
@@ -300,7 +308,7 @@ D-ARCH-002  Canonical database engine
 
 These decisions define the initial implementation envelope without selecting auth, provider, job, or hosting products.
 
-Draft them as separate `Proposed` ADRs so each can be reviewed independently. Do not mark any as `Accepted` merely because the recommendation is strong.
+Draft and review them separately. Do not mark any as `Accepted` merely because the recommendation is strong.
 
 ### Second dependency batch
 
@@ -331,30 +339,30 @@ D-PROVIDER-006 Observability provider
 
 Payment and messaging provider ADRs should follow confirmed pilot methods/channels and provider-specific evidence rather than being forced into the foundation batch.
 
-## 14. Current Governance Gate
+## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, and technology evaluation are complete at Draft level. The canonical decision gaps identified by Task 0007 now have IDs.
+The C4 architecture, data-flow architecture, technology evaluation, and technology decision-gap normalization are complete at Draft level. `ADR-0001` now exists as a `Proposed` architecture-style decision record.
 
-The repository is **not** thereby implementation-ready. P0/P1 decisions still require review and, where material, ADRs/approval evidence.
+The repository is **not** thereby implementation-ready. `D-ARCH-005` remains `PROPOSED` because no authorized approval evidence exists, and other P0/P1 decisions remain unresolved.
 
 The exact next bounded governance task is:
 
 ```text
 Draft one Proposed ADR only:
-D-ARCH-005 - Phase 1 architecture style
+D-ARCH-016 - Primary implementation language/runtime
 ```
 
 Suggested target when the task begins:
 
 ```text
-docs/adr/ADR-0001-modular-monolith.md
+docs/adr/ADR-0002-primary-language-runtime.md
 ```
 
-The ADR must compare modular monolith, service-per-domain/microservices, and an unstructured single application; preserve C4/component/domain boundaries; reference actual FR/NFR drivers; and remain `Proposed` until explicit approval exists.
+The ADR must compare the TypeScript + supported Node.js LTS direction with credible alternatives, preserve framework/database/provider independence, reference actual requirements, and remain `Proposed` until explicit approval exists.
 
-Do not draft the remaining foundation ADRs in the same bounded task.
+Do not draft repository or database ADRs in the same bounded task.
 
-## 15. Related Documents
+## 16. Related Documents
 
 - `../README.md`
 - `../00-overview/assumptions.md`
@@ -366,6 +374,7 @@ Do not draft the remaining foundation ADRs in the same bounded task.
 - `../02-architecture/component-architecture.md`
 - `../02-architecture/data-flow.md`
 - `../02-architecture/technology-stack.md`
+- `ADR-0001-modular-monolith.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../15-engineering-workflow.md`
 - legacy migration source: `../16-open-decisions.md`
