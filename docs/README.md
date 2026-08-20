@@ -250,6 +250,7 @@ docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
 docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
+docs/02-architecture/technology-stack.md
 ```
 
 ADR governance exists at:
@@ -268,13 +269,15 @@ docs/adr/README.md
 
 `data-flow.md` traces the major Phase 1 end-to-end flows across actors, client/container/component boundaries, canonical persistence, external providers, transaction boundaries, idempotency/deduplication, retries/reconciliation, audit, observability, gym-local time, and durable async continuation. It covers authentication/authorization, attendance, retention, renewal, payment, notifications, import, dashboard/read models, and data-quality lifecycle while preserving unresolved technology decisions.
 
-The next bounded architecture document is:
+`technology-stack.md` evaluates the implementation stack against those established boundaries. It recommends directions such as TypeScript/Node.js, monorepo/pnpm, Next.js for Owner/Staff, web/PWA-first member delivery, JSON HTTP contracts, PostgreSQL, SQL-aware persistence tooling, durable Postgres-backed background work, and provider-neutral integrations while explicitly preserving every canonical Open/Proposed/Assumed status. It also records technology decision dependencies, Decision Register Gaps, ADR readiness, `D-DATA-007` impacts, official ecosystem verification, and implementation blockers.
+
+The next bounded architecture-governance task is:
 
 ```text
-docs/02-architecture/technology-stack.md
+Task 0008: Technology Decision Register Gap Normalization
 ```
 
-The technology-stack document should evaluate candidates against the established architecture and canonical decision register. Recommendations must not become Accepted/Decided merely because they are documented.
+It should update the canonical decision register with the material technology decisions that currently lack IDs, reconcile the ADR queue/dependencies, and preserve unresolved statuses. It must not accept ADRs or begin application scaffolding automatically.
 
 ## Legacy Migration State
 
