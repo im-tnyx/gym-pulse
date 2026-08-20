@@ -52,33 +52,26 @@ After Phase 1 proves daily usage, GymPulse can expand into:
 
 ## Documentation
 
-The complete product and technical specification lives in [`docs/`](./docs).
+**Canonical documentation entry point:** [`docs/README.md`](./docs/README.md)
 
-| Document | Purpose |
-| --- | --- |
-| [`00-product-blueprint.md`](./docs/00-product-blueprint.md) | Product vision, business model, scope, principles, domain, and success definition |
-| [`01-product-requirements.md`](./docs/01-product-requirements.md) | Functional and non-functional product requirements |
-| [`02-user-roles-permissions.md`](./docs/02-user-roles-permissions.md) | Role hierarchy, permissions, tenancy boundaries, and authorization rules |
-| [`03-user-flows.md`](./docs/03-user-flows.md) | End-to-end member, staff, owner, payment, and retention journeys |
-| [`04-screen-specifications.md`](./docs/04-screen-specifications.md) | Screen inventory, components, states, actions, and UX requirements |
-| [`05-system-architecture.md`](./docs/05-system-architecture.md) | Recommended platform architecture, service boundaries, and runtime design |
-| [`06-database-schema.md`](./docs/06-database-schema.md) | Relational data model, enums, constraints, indexes, and tenant isolation |
-| [`07-api-contracts.md`](./docs/07-api-contracts.md) | API conventions, endpoint contracts, errors, idempotency, and webhooks |
-| [`08-automations.md`](./docs/08-automations.md) | Scheduled jobs, workflow rules, retries, and automation idempotency |
-| [`09-payments-billing.md`](./docs/09-payments-billing.md) | Member payment lifecycle, refunds, receipts, reconciliation, and SaaS billing boundary |
-| [`10-notifications-whatsapp.md`](./docs/10-notifications-whatsapp.md) | Transactional messaging, consent, templates, deduplication, and delivery tracking |
-| [`11-analytics-kpis.md`](./docs/11-analytics-kpis.md) | KPI definitions, formulas, event model, and operational reporting |
-| [`12-security-audit.md`](./docs/12-security-audit.md) | Security model, auditability, privacy, and operational controls |
-| [`13-testing-qa.md`](./docs/13-testing-qa.md) | Test strategy, critical scenarios, release gates, and pilot QA |
-| [`14-roadmap.md`](./docs/14-roadmap.md) | Delivery phases, milestones, sprints, and pilot sequence |
-| [`15-engineering-workflow.md`](./docs/15-engineering-workflow.md) | Monorepo conventions, branching, CI, environments, and definition of done |
-| [`16-open-decisions.md`](./docs/16-open-decisions.md) | Product and implementation decisions that must be confirmed before production |
+Use the structured documentation first:
+
+| Area | Purpose |
+|---|---|
+| [`docs/00-overview/`](./docs/00-overview/) | Vision, goals, scope, terminology, assumptions, and canonical open decisions |
+| [`docs/01-product/`](./docs/01-product/) | Product requirements, roles, journeys, features, FRs/NFRs, and success metrics |
+| [`docs/02-architecture/`](./docs/02-architecture/) | Architecture principles and subsequent architecture documents |
+| [`docs/adr/`](./docs/adr/) | Architecture Decision Record governance and accepted/proposed decision history |
+
+The older flat files under `docs/` remain **legacy migration sources** until their useful content is migrated and explicitly deprecated. They are not the preferred entry point when a structured canonical document covers the same topic.
 
 ## Current status
 
-`Product architecture and specification`
+`Architecture Foundation Gate`
 
-Implementation should begin only after Phase 0 decisions marked as blocking in `docs/16-open-decisions.md` are resolved or explicitly accepted as assumptions.
+Product foundation is documented. Architecture work has begun with technology-neutral principles and ADR governance. Application implementation, database migrations, and API scaffolding should not begin merely because a legacy document recommends a technology.
+
+Open architecture, security, provider, and pilot decisions are tracked canonically in [`docs/00-overview/assumptions.md`](./docs/00-overview/assumptions.md).
 
 ## Source basis
 
