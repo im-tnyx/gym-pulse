@@ -224,7 +224,7 @@ Complete at Draft v1.x foundation level:
 - `glossary.md`
 - `assumptions.md`
 
-`assumptions.md` now also owns the normalized architecture-decision inventory and the Member-vs-Membership state-ownership ambiguity.
+`assumptions.md` also owns the normalized architecture-decision inventory and the Member-vs-Membership state-ownership ambiguity.
 
 ### `01-product/`
 
@@ -239,24 +239,30 @@ Complete at Draft v1.x foundation level:
 - `non-functional-requirements.md`
 - `success-metrics.md`
 
-### Architecture Foundation Gate
+### `02-architecture/`
 
-Created:
+Completed Draft architecture foundation documents:
 
 ```text
 docs/02-architecture/architecture-principles.md
-docs/adr/README.md
-```
-
-This foundation establishes technology-neutral architecture principles and ADR governance without accepting any Open/Proposed technology choice.
-
-The next bounded architecture document is normally:
-
-```text
 docs/02-architecture/architecture-overview.md
 ```
 
-Do not create later architecture documents automatically before this foundation is reviewed for consistency.
+ADR governance exists at:
+
+```text
+docs/adr/README.md
+```
+
+The architecture overview defines technology-neutral logical boundaries, trust boundaries, domain ownership, synchronous/asynchronous interaction patterns, consistency expectations, failure isolation, and deployment neutrality without accepting Open/Proposed technology choices.
+
+The next bounded architecture document is:
+
+```text
+docs/02-architecture/system-context.md
+```
+
+Do not create container/component/data-flow/technology-stack documents automatically before the C4 System Context is reviewed for consistency.
 
 ## Legacy Migration State
 
