@@ -270,6 +270,14 @@ ADR governance exists at:
 docs/adr/README.md
 ```
 
+Current decision ADRs:
+
+```text
+docs/adr/ADR-0001-modular-monolith.md   Proposed   D-ARCH-005
+```
+
+`ADR-0001` proposes a Phase 1 modular monolith with explicit domain/application/component boundaries. It compares premature service-per-domain/microservices and an unstructured single application, documents consequences and service-extraction criteria, and remains `Proposed` because no authorized acceptance evidence exists.
+
 `architecture-overview.md` defines technology-neutral logical boundaries, trust boundaries, domain ownership, synchronous/asynchronous interaction patterns, consistency expectations, failure isolation, and deployment neutrality.
 
 `system-context.md` is the C4 Level 1 system view. It defines GymPulse as a black-box Phase 1 system, active human actors, external provider/supporting systems, trust relationships, authoritative-state boundaries, high-level information flows, tenant/time context, and failure/degradation expectations without selecting providers or runtime technologies.
@@ -282,21 +290,21 @@ docs/adr/README.md
 
 `technology-stack.md` evaluates the implementation stack against those established boundaries. It recommends directions such as TypeScript/Node.js, monorepo/pnpm, Next.js for Owner/Staff, web/PWA-first member delivery, JSON HTTP contracts, PostgreSQL, SQL-aware persistence tooling, durable Postgres-backed background work, and provider-neutral integrations while explicitly preserving every Open/Proposed/Assumed status. Its original `Decision Register Gap` labels for language/runtime, persistence tooling, testing, and CI/CD describe the Task 0007 evaluation-time state; Task 0008 has now assigned the canonical IDs in `assumptions.md` without approving the candidate technologies.
 
-Technology decision-register normalization and ADR backlog reconciliation are complete.
+Technology decision-register normalization is complete. The first architecture-style ADR has now been drafted but not accepted.
 
 The next bounded architecture-governance task is:
 
 ```text
-Task 0009: Draft Phase 1 Architecture Style ADR
+Task 0010: Draft Primary Language / Runtime ADR
 ```
 
-Create only a `Proposed` ADR for `D-ARCH-005` at:
+Create only a `Proposed` ADR for `D-ARCH-016` at:
 
 ```text
-docs/adr/ADR-0001-modular-monolith.md
+docs/adr/ADR-0002-primary-language-runtime.md
 ```
 
-Do not accept the ADR automatically and do not draft the remaining foundation ADRs in the same bounded task.
+Do not accept `ADR-0001` automatically, and do not draft repository or database ADRs in the same bounded task.
 
 ## Legacy Migration State
 
