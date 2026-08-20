@@ -12,7 +12,7 @@
 
 An ADR records one material technical decision, why it exists, the evidence and constraints considered, alternatives, the selected outcome when accepted, and the consequences of that outcome.
 
-A technology appearing in a legacy architecture, schema, API, or engineering document does **not** make it an accepted architectural decision.
+A technology appearing in a legacy architecture, schema, API, engineering document, or technology-evaluation document does **not** make it an accepted architectural decision.
 
 ## 2. Relationship to the Decision Register
 
@@ -78,8 +78,8 @@ Use monotonically increasing four-digit numbers:
 
 ```text
 ADR-0001-modular-monolith.md
-ADR-0002-monorepo-strategy.md
-ADR-0003-database-engine.md
+ADR-0002-primary-language-runtime.md
+ADR-0003-monorepo-strategy.md
 ```
 
 Rules:
@@ -88,8 +88,10 @@ Rules:
 2. Number indicates creation order, not importance.
 3. Use lower-case kebab-case after the number.
 4. Renaming keeps the original ADR number.
-5. A materially replacement decision receives a new number.
+5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
+
+The filenames above are naming examples only until the corresponding ADR is created.
 
 ## 5. When an ADR Is Required
 
@@ -98,8 +100,10 @@ Create an ADR when a decision is expensive to reverse, affects several domains/r
 Typical examples:
 
 - architecture style,
+- primary implementation language/runtime,
 - monorepo/repository strategy,
 - database engine,
+- data-access/migration strategy when it materially constrains persistence,
 - managed backend/platform responsibility,
 - authentication/session architecture,
 - authorization implementation model,
@@ -109,9 +113,10 @@ Typical examples:
 - hosting,
 - payment/messaging providers,
 - required cache/broker infrastructure,
-- major state-model representation decisions.
+- major state-model representation decisions,
+- production release/secrets architecture when it creates material provider/security coupling.
 
-Routine refactors, small UI-library choices, and low-impact reversible tooling usually do not need separate ADRs.
+Routine refactors, small UI-library choices, formatter/lint preferences, and low-impact reversible tooling usually do not need separate ADRs.
 
 ## 6. Required ADR Sections
 
@@ -200,7 +205,7 @@ Canonical decision exists
   -> validate through tests/operations
 ```
 
-A merged file, prototype, deployed package, or provisioned provider is not acceptance evidence by itself.
+A merged file, prototype, deployed package, provisioned provider, or technology recommendation is not acceptance evidence by itself.
 
 ## 9. Acceptance Requirements
 
@@ -232,54 +237,135 @@ To replace it:
 
 Use `Deprecated` when a decision becomes irrelevant without a direct replacement.
 
-## 11. Initial Ordered ADR Backlog
+## 11. Technology-Evaluation Normalization
 
-The order reflects current GymPulse dependencies. Presence in this backlog does not mean acceptance.
+Task `0007-technology-stack` identified four material decisions that previously had no canonical IDs. Task `0008-technology-decision-register-normalization` registers them in `../00-overview/assumptions.md` without approving any candidate:
+
+```text
+D-ARCH-016  Primary implementation language/runtime
+D-ARCH-017  Data-access/query/migration strategy
+D-ARCH-018  Core automated testing toolchain
+D-ARCH-019  CI/CD + production release/secrets tooling
+```
+
+Their registration means future ADRs can reference canonical IDs. It does not mean TypeScript/Node.js, Drizzle/Kysely/Prisma, Vitest/Playwright, GitHub Actions, or any other candidate is accepted.
+
+## 12. Ordered ADR Backlog
+
+The order reflects current GymPulse dependency reasoning after the technology evaluation. Presence in this backlog does not mean acceptance, and an ADR number is assigned only when a file is actually drafted.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
-| 1 | Phase 1 architecture style: modular monolith before microservices | `D-ARCH-005` | PROPOSED | Establishes decomposition assumptions before repository/runtime choices. |
-| 2 | Repository/monorepo strategy | `D-ARCH-001` | PROPOSED | Determines shared source/package boundaries for clients, domain logic, and docs. |
-| 3 | Canonical database engine | `D-ARCH-002` | PROPOSED | Transaction/integrity requirements affect later data and tenancy design. |
-| 4 | Managed backend/platform responsibilities | `D-ARCH-014` | OPEN | May own database hosting, auth, storage, or data-layer controls and therefore affects several later choices. |
-| 5 | Authentication/session architecture | `D-ARCH-004` | OPEN | Required before protected client/runtime architecture is final. |
-| 6 | Member authentication method | `D-SEC-002` | OPEN | Depends on authentication architecture and product UX/security needs. |
-| 7 | Authorization implementation boundary | `D-ARCH-015` | PROPOSED | Must preserve capability + tenant/resource scope independently of auth provider. |
-| 8 | Data-layer tenant isolation / RLS | `D-SEC-008` | OPEN | Depends on database/managed-backend topology; defense-in-depth only. |
-| 9 | Primary API contract architecture | `D-ARCH-003` | PROPOSED | Defines client/server contract shape after core trust boundaries are clear. |
-| 10 | API deployment boundary | `D-ARCH-006` | OPEN | Separate from API contract style; depends on web/runtime/hosting constraints. |
-| 11 | Background jobs/scheduler | `D-ARCH-007` | OPEN | Needed for no-show, renewal, notifications, reconciliation, and data quality. |
-| 12 | Hosting/deployment platform | `D-ARCH-009` | OPEN | Evaluate after runtime, database, auth, and job needs are known. |
-| 13 | Owner/Staff web framework | `D-ARCH-012` | PROPOSED | Next.js is a candidate, not accepted. |
-| 14 | Member client framework/delivery | `D-ARCH-013` | PROPOSED | Decide responsive web/PWA vs native app according to validated member needs. |
-| 15 | Package manager | `D-ARCH-011` | ASSUMED | Low-cost choice; finalize with repository/tooling decision rather than treating legacy pnpm use as fact. |
-| 16 | Object storage | `D-ARCH-010` | OPEN | Required when receipts/exports/protected files need durable storage. |
-| 17 | Payment provider | `D-PROVIDER-001` | OPEN | Depends on pilot payment methods, webhook/refund/reconciliation requirements. |
-| 18 | Messaging provider | `D-PROVIDER-002` | OPEN | Depends on approved launch channels and consent policy. |
-| 19 | Observability provider | `D-PROVIDER-006` | OPEN | Select after runtime/job/hosting topology is understood. |
-| 20 | Product analytics provider | `D-PROVIDER-005` | OPEN | Non-canonical analytics can remain provider-neutral until instrumentation needs are concrete. |
-| 21 | Redis/cache requirement | `D-ARCH-008` | OPEN | Decide only after measured cache/queue/coordination need exists. |
-| 22 | Member vs Membership state ownership | `D-DATA-007` | PROPOSED | Resolve before canonical domain/schema/state-machine design. |
+| 1 | Phase 1 architecture style: modular monolith before microservices | `D-ARCH-005` | PROPOSED | Establishes decomposition and state-ownership boundaries before implementation structure. |
+| 2 | Primary implementation language/runtime | `D-ARCH-016` | PROPOSED | Cross-cuts web, API, jobs, provider adapters, testing, and deployment; should be explicit before scaffold commitments. |
+| 3 | Repository/monorepo strategy | `D-ARCH-001` | PROPOSED | Determines shared source/package boundaries and how independently deployable applications evolve together. |
+| 4 | Canonical database engine | `D-ARCH-002` | PROPOSED | Transactions, constraints, idempotency, reconciliation, reporting, and tenant isolation depend on persistence capabilities. |
+| 5 | Data-access/query/migration strategy | `D-ARCH-017` | PROPOSED | Depends on the database choice and affects transactions, migrations, constraints, raw SQL, and RLS integration. |
+| 6 | Managed backend/platform responsibilities | `D-ARCH-014` | OPEN | May own database hosting, auth, storage, queues/cron, or data-layer controls and therefore affects later choices. |
+| 7 | Authentication/session architecture | `D-ARCH-004` | OPEN | Required before protected client/runtime/session implementation is final. |
+| 8 | Member authentication method | `D-SEC-002` | OPEN | Depends on authentication architecture and pilot UX/security/abuse requirements. |
+| 9 | Authorization implementation boundary | `D-ARCH-015` | PROPOSED | Must preserve capability + tenant/resource scope independently of auth provider/framework. |
+| 10 | Data-layer tenant isolation / RLS | `D-SEC-008` | OPEN | Depends on database/managed-backend/service-role topology; defense in depth only. |
+| 11 | Primary API contract architecture | `D-ARCH-003` | PROPOSED | Defines client/server contract shape independently of deployment topology. |
+| 12 | Owner/Staff web framework | `D-ARCH-012` | PROPOSED | Depends on language/runtime and must preserve thin framework boundaries. |
+| 13 | Member client framework/delivery | `D-ARCH-013` | PROPOSED | Decide responsive web/PWA vs native according to validated QR/auth/notification/offline needs. |
+| 14 | API deployment boundary | `D-ARCH-006` | OPEN | Separate from API contract style; depends on web/runtime/auth/hosting constraints. |
+| 15 | Background jobs/scheduler | `D-ARCH-007` | OPEN | Needed for no-show, renewal, notifications, reconciliation, owner summaries, and data quality. |
+| 16 | Hosting/deployment platform | `D-ARCH-009` | OPEN | Evaluate after API, jobs, database/managed backend, and jurisdiction constraints are narrowed. |
+| 17 | CI/CD + production release/secrets tooling | `D-ARCH-019` | OPEN | Production pipeline binding depends on runtime/hosting while security gates must remain explicit. |
+| 18 | Core testing toolchain | `D-ARCH-018` | PROPOSED | Tooling should fit approved runtime/database/web choices while preserving real DB and negative authorization coverage. |
+| 19 | Package manager | `D-ARCH-011` | ASSUMED | Low-cost choice; finalize with repository/tooling decision rather than treating legacy pnpm use as fact. |
+| 20 | Observability provider | `D-PROVIDER-006` | OPEN | Select after runtime/job/hosting topology is understood; capability requirements already exist. |
+| 21 | Object storage | `D-ARCH-010` | OPEN | Required only when receipts/exports/protected files need durable object storage. |
+| 22 | Payment provider | `D-PROVIDER-001` | OPEN | Depends on pilot payment methods, webhook/refund/reconciliation, fees, settlement, and support requirements. |
+| 23 | Messaging provider | `D-PROVIDER-002` | OPEN | Depends on approved launch channels, templates, consent/service policy, and operational support. |
+| 24 | Product analytics provider | `D-PROVIDER-005` | OPEN | Non-canonical analytics can remain provider-neutral until pilot instrumentation questions are concrete. |
+| 25 | Redis/cache requirement | `D-ARCH-008` | OPEN | Decide only after a measured cache/queue/coordination need exists. |
+| 26 | Member vs Membership state ownership | `D-DATA-007` | PROPOSED | Resolve before canonical domain/schema/state-machine finalization; it can proceed in parallel with early platform ADRs but blocks schema semantics. |
 
-## 12. Current Foundation Gate
+## 13. ADR Batch Readiness
 
 No ADR is accepted by this README.
 
-The next architecture document after the foundation gate is expected to be:
+### First foundation batch
+
+The smallest high-value foundation group is now:
 
 ```text
-../02-architecture/architecture-overview.md
+D-ARCH-005  Phase 1 architecture style
+D-ARCH-016  Primary implementation language/runtime
+D-ARCH-001  Repository/workspace strategy
+D-ARCH-002  Canonical database engine
 ```
 
-Create it only after the current architecture foundation passes consistency review.
+These decisions define the initial implementation envelope without selecting auth, provider, job, or hosting products.
 
-## 13. Related Documents
+Draft them as separate `Proposed` ADRs so each can be reviewed independently. Do not mark any as `Accepted` merely because the recommendation is strong.
+
+### Second dependency batch
+
+After the foundation direction is reviewed:
+
+```text
+D-ARCH-017  Data-access/query/migration strategy
+D-ARCH-014  Managed backend responsibilities
+D-ARCH-004  Authentication/session
+D-SEC-002   Member authentication
+D-ARCH-015  Authorization implementation
+D-SEC-008   RLS/data-layer tenant isolation
+```
+
+### Third runtime/operations batch
+
+```text
+D-ARCH-003     API contract architecture
+D-ARCH-012     Owner/Staff framework
+D-ARCH-013     Member client strategy
+D-ARCH-006     API deployment topology
+D-ARCH-007     Background jobs
+D-ARCH-009     Hosting
+D-ARCH-019     CI/CD + release/secrets tooling
+D-ARCH-018     Testing toolchain
+D-PROVIDER-006 Observability provider
+```
+
+Payment and messaging provider ADRs should follow confirmed pilot methods/channels and provider-specific evidence rather than being forced into the foundation batch.
+
+## 14. Current Governance Gate
+
+The C4 architecture, data-flow architecture, and technology evaluation are complete at Draft level. The canonical decision gaps identified by Task 0007 now have IDs.
+
+The repository is **not** thereby implementation-ready. P0/P1 decisions still require review and, where material, ADRs/approval evidence.
+
+The exact next bounded governance task is:
+
+```text
+Draft one Proposed ADR only:
+D-ARCH-005 - Phase 1 architecture style
+```
+
+Suggested target when the task begins:
+
+```text
+docs/adr/ADR-0001-modular-monolith.md
+```
+
+The ADR must compare modular monolith, service-per-domain/microservices, and an unstructured single application; preserve C4/component/domain boundaries; reference actual FR/NFR drivers; and remain `Proposed` until explicit approval exists.
+
+Do not draft the remaining foundation ADRs in the same bounded task.
+
+## 15. Related Documents
 
 - `../README.md`
 - `../00-overview/assumptions.md`
 - `../01-product/functional-requirements.md`
 - `../01-product/non-functional-requirements.md`
 - `../02-architecture/architecture-principles.md`
+- `../02-architecture/architecture-overview.md`
+- `../02-architecture/container-architecture.md`
+- `../02-architecture/component-architecture.md`
+- `../02-architecture/data-flow.md`
+- `../02-architecture/technology-stack.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../15-engineering-workflow.md`
 - legacy migration source: `../16-open-decisions.md`
