@@ -4,15 +4,13 @@
 
 This `docs/` directory is the canonical Docs-as-Code knowledge base for GymPulse. It is intended to let product, design, engineering, QA, security, operations, and future contributors understand why the product exists, how it should behave, how it is designed, and how it is operated.
 
-The documentation is being migrated from an initial flat set of planning files into a domain-oriented structure. During migration, files in the new folder structure take precedence over legacy flat files when both describe the same topic.
+Structured documents take precedence over legacy flat files when both describe the same topic.
 
 ## Documentation Taxonomy
 
-The word `Status` previously mixed several different concepts. New or materially revised documents should use an explicit label instead of a bare `Status` field where ambiguity is possible.
+Use explicit labels when `Status` could be ambiguous.
 
 ### Document Maturity
-
-Describes the maturity of the document itself:
 
 ```text
 Draft
@@ -21,23 +19,18 @@ Approved
 Deprecated
 ```
 
-`Deprecated` means the document is retained for history/traceability and is no longer canonical.
-
 ### Scope Status
-
-Describes whether a capability belongs to the referenced delivery phase:
 
 ```text
 In Scope
 Future
 Out of Scope
+Conditional
 ```
-
-`Conditional` may be used for a capability that enters scope only if an explicit business/pilot decision enables it.
 
 ### Decision Status
 
-Canonical architecture/product/security decisions are tracked in `00-overview/assumptions.md` using:
+Canonical decisions in `00-overview/assumptions.md` use:
 
 ```text
 Open
@@ -48,11 +41,7 @@ Blocked
 Deferred
 ```
 
-### Requirement / Content Status
-
-Existing structured product documents also use terms such as `Confirmed`, `Conditional`, and `Open` to describe requirement confidence or applicability. These meanings are preserved during migration.
-
-Do not mechanically rewrite every existing document merely to change labels. When a file is materially revised, prefer fields such as `Document Maturity`, `Scope Status`, `Decision Status`, or `Requirement Status` so the meaning is explicit.
+Existing product documents may also use `Confirmed`, `Conditional`, and `Open` for requirement confidence/applicability. Do not mechanically rewrite stable documents only to change labels.
 
 ## Source Hierarchy
 
@@ -71,18 +60,18 @@ No undocumented implementation detail overrides an approved requirement or ADR.
 
 `docs/00-overview/assumptions.md` is the canonical decision and assumption register.
 
-`docs/16-open-decisions.md` is a legacy migration source. New structured documents must use canonical scoped IDs such as `D-ARCH-006`, not legacy IDs such as `D-060`.
+`docs/16-open-decisions.md` is a legacy migration source. New structured documents must use canonical scoped IDs rather than legacy numeric IDs.
 
-Task 0008 normalized the material technology gaps identified during Task 0007 into canonical IDs:
+Task 0008 normalized these technology-governance decisions:
 
 ```text
 D-ARCH-016  Primary implementation language/runtime
 D-ARCH-017  Data-access/query/migration strategy
 D-ARCH-018  Core automated testing toolchain
-D-ARCH-019  CI/CD + production release/secrets tooling
+D-ARCH-019  CI/CD + production release tooling
 ```
 
-These IDs register decisions for governance only. Their candidate technologies remain unresolved according to the statuses in `assumptions.md`.
+Registration of an ID does not accept its candidate technology.
 
 ## Target Information Architecture
 
@@ -90,21 +79,7 @@ These IDs register decisions for governance only. Their candidate technologies r
 docs/
 ├── README.md
 ├── 00-overview/
-│   ├── project-overview.md
-│   ├── vision.md
-│   ├── goals.md
-│   ├── scope.md
-│   ├── glossary.md
-│   └── assumptions.md
 ├── 01-product/
-│   ├── product-requirements.md
-│   ├── personas.md
-│   ├── user-roles.md
-│   ├── user-journeys.md
-│   ├── feature-catalog.md
-│   ├── functional-requirements.md
-│   ├── non-functional-requirements.md
-│   └── success-metrics.md
 ├── 02-architecture/
 │   ├── architecture-principles.md
 │   ├── architecture-overview.md
@@ -118,23 +93,6 @@ docs/
 ├── 05-database/
 ├── 06-api/
 ├── 07-domains/
-│   ├── identity/
-│   ├── members/
-│   ├── memberships/
-│   ├── attendance/
-│   ├── retention/
-│   ├── payments/
-│   ├── workouts/
-│   ├── exercises/
-│   ├── nutrition/
-│   ├── meals/
-│   ├── health/
-│   ├── progress/
-│   ├── coaching/
-│   ├── ai/
-│   ├── notifications/
-│   ├── subscriptions/
-│   └── analytics/
 ├── 08-ai/
 ├── 09-security/
 ├── 10-infrastructure/
@@ -150,11 +108,7 @@ docs/
 
 `docs/adr/` is the single canonical ADR store. Do not create a competing ADR directory under `02-architecture/`.
 
-The domain tree deliberately includes `memberships`, `attendance`, `retention`, and `payments` because these are core GymPulse Phase 1 business domains.
-
 ## Documentation Creation Sequence
-
-Documentation is created and reviewed in this order:
 
 1. Existing-information assessment and information architecture.
 2. Project overview, vision, goals, scope, terminology, assumptions.
@@ -184,9 +138,7 @@ NFR-SECURITY-001
 NFR-PERFORMANCE-001
 ```
 
-Architecture documents and ADRs should reference the requirement IDs they satisfy. Tests should reference requirement or acceptance-criterion IDs where practical.
-
-Target traceability direction:
+Target traceability:
 
 ```text
 Requirement
@@ -202,69 +154,73 @@ Requirement
 
 ## ADR Policy
 
-A major architecture decision is not considered final merely because it appears in a design, technology evaluation, or legacy implementation-planning document.
-
-Decisions such as architecture style, language/runtime, repository strategy, database, data-access/migration strategy, API style, authentication, authorization implementation, job runner, payment provider, hosting platform, production release/secrets architecture, or required infrastructure dependency require explicit decision governance and an ADR when material.
+Major architecture commitments require explicit governance and an ADR when material. Architecture style, primary runtime, repository strategy, database, persistence tooling, API architecture, authentication/authorization, jobs, hosting, providers, and release infrastructure must not become accepted merely because they appear in planning or implementation.
 
 ADR governance lives in `adr/README.md`.
-
-Implementation alone does not convert an Open/Proposed/Assumed decision into an Accepted/Decided decision.
 
 ## Documentation Quality Rules
 
 - Prefer precise behavior over aspirational language.
-- Explain selected designs, reasoning, alternatives, tradeoffs, and implications.
-- Do not fabricate missing business rules. Record them as assumptions or open decisions.
+- Explain decisions, alternatives, tradeoffs, and implications.
+- Do not fabricate missing business rules; record assumptions/open decisions.
 - Keep deterministic business logic separate from probabilistic AI behavior.
-- Security, privacy, tenancy, idempotency, auditability, and observability are cross-cutting concerns.
-- Use Mermaid diagrams when a diagram is clearer than prose.
-- Avoid repeating the same rule in many places; link to the canonical owning document.
-- When a canonical rule changes, identify and update all dependent documents in the same change set.
-- New structured documents must not introduce legacy decision IDs.
+- Treat tenancy, authorization, idempotency, auditability, privacy, and observability as cross-cutting concerns.
+- Use Mermaid when diagrams improve clarity.
+- Avoid duplicating the same canonical rule across many files.
+- Update dependent documentation when a canonical rule changes.
+- Do not introduce legacy decision IDs into structured docs.
 
 ## Current Structured-Document Status
 
 ### `00-overview/`
 
-Complete at Draft v1.x foundation level:
+Draft foundation complete:
 
-- `project-overview.md`
-- `vision.md`
-- `goals.md`
-- `scope.md`
-- `glossary.md`
-- `assumptions.md`
+```text
+project-overview.md
+vision.md
+goals.md
+scope.md
+glossary.md
+assumptions.md
+```
 
-`assumptions.md` owns the canonical decision inventory, including the normalized technology decisions `D-ARCH-016` through `D-ARCH-019`, and the unresolved Member-vs-Membership state-ownership ambiguity.
+`assumptions.md` owns canonical decision status, including `D-ARCH-016..019` and unresolved `D-DATA-007` Member-vs-Membership state ownership.
 
 ### `01-product/`
 
-Complete at Draft v1.x foundation level:
+Draft foundation complete:
 
-- `product-requirements.md`
-- `personas.md`
-- `user-roles.md`
-- `user-journeys.md`
-- `feature-catalog.md`
-- `functional-requirements.md`
-- `non-functional-requirements.md`
-- `success-metrics.md`
+```text
+product-requirements.md
+personas.md
+user-roles.md
+user-journeys.md
+feature-catalog.md
+functional-requirements.md
+non-functional-requirements.md
+success-metrics.md
+```
 
 ### `02-architecture/`
 
 Completed Draft architecture documents:
 
 ```text
-docs/02-architecture/architecture-principles.md
-docs/02-architecture/architecture-overview.md
-docs/02-architecture/system-context.md
-docs/02-architecture/container-architecture.md
-docs/02-architecture/component-architecture.md
-docs/02-architecture/data-flow.md
-docs/02-architecture/technology-stack.md
+architecture-principles.md
+architecture-overview.md
+system-context.md
+container-architecture.md
+component-architecture.md
+data-flow.md
+technology-stack.md
 ```
 
-ADR governance exists at:
+These establish the Phase 1 technology-neutral architecture, C4 views, component ownership, critical data flows, and technology evaluation while preserving unresolved decision status.
+
+### ADRs
+
+ADR governance:
 
 ```text
 docs/adr/README.md
@@ -273,69 +229,75 @@ docs/adr/README.md
 Current decision ADRs:
 
 ```text
-docs/adr/ADR-0001-modular-monolith.md   Proposed   D-ARCH-005
+docs/adr/ADR-0001-modular-monolith.md          Proposed   D-ARCH-005
+docs/adr/ADR-0002-primary-language-runtime.md  Proposed   D-ARCH-016
 ```
 
-`ADR-0001` proposes a Phase 1 modular monolith with explicit domain/application/component boundaries. It compares premature service-per-domain/microservices and an unstructured single application, documents consequences and service-extraction criteria, and remains `Proposed` because no authorized acceptance evidence exists.
+`ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
 
-`architecture-overview.md` defines technology-neutral logical boundaries, trust boundaries, domain ownership, synchronous/asynchronous interaction patterns, consistency expectations, failure isolation, and deployment neutrality.
+`ADR-0002` proposes strict TypeScript with a supported Node.js LTS runtime, while keeping framework, repository, database, hosting, job-runner, test-tool, and provider choices separate. It requires runtime validation and explicit client-safe/server-only source boundaries. It remains unaccepted.
 
-`system-context.md` is the C4 Level 1 system view. It defines GymPulse as a black-box Phase 1 system, active human actors, external provider/supporting systems, trust relationships, authoritative-state boundaries, high-level information flows, tenant/time context, and failure/degradation expectations without selecting providers or runtime technologies.
+No decision ADR is currently `Accepted`.
 
-`container-architecture.md` is the C4 Level 2 view. It defines Member Client, Owner/Staff Application, Trusted Application/API, Background Execution, Canonical Persistence, conditional Protected Object Storage, external-provider boundaries, deployment alternatives, transaction/idempotency boundaries, authorization enforcement points, observability, failure behavior, and testing seams while keeping `D-ARCH-006` and other runtime/provider decisions explicit.
+## Current Architecture Governance Position
 
-`component-architecture.md` is the C4 Level 3-style view for Trusted Application/API and Background Execution responsibilities. It defines entry adapters, authentication/principal resolution, tenant/resource scope, capability authorization, validation, command/query handlers, Phase 1 domain ownership, cross-domain write restrictions, Unit of Work, repositories, idempotency, provider ports/adapters, notification policy, audit/events, business-time support, background handlers, observability, failure propagation, and test seams without selecting unresolved technologies.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first two foundation ADR drafts are complete.
 
-`data-flow.md` traces the major Phase 1 end-to-end flows across actors, client/container/component boundaries, canonical persistence, external providers, transaction boundaries, idempotency/deduplication, retries/reconciliation, audit, observability, gym-local time, and durable async continuation. It covers authentication/authorization, attendance, retention, renewal, payment, notifications, import, dashboard/read models, and data-quality lifecycle while preserving unresolved technology decisions.
+This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
-`technology-stack.md` evaluates the implementation stack against those established boundaries. It recommends directions such as TypeScript/Node.js, monorepo/pnpm, Next.js for Owner/Staff, web/PWA-first member delivery, JSON HTTP contracts, PostgreSQL, SQL-aware persistence tooling, durable Postgres-backed background work, and provider-neutral integrations while explicitly preserving every Open/Proposed/Assumed status. Its original `Decision Register Gap` labels for language/runtime, persistence tooling, testing, and CI/CD describe the Task 0007 evaluation-time state; Task 0008 has now assigned the canonical IDs in `assumptions.md` without approving the candidate technologies.
-
-Technology decision-register normalization is complete. The first architecture-style ADR has now been drafted but not accepted.
-
-The next bounded architecture-governance task is:
+The exact next bounded governance task is:
 
 ```text
-Task 0010: Draft Primary Language / Runtime ADR
+Task 0011: Draft Repository / Workspace ADR
 ```
 
-Create only a `Proposed` ADR for `D-ARCH-016` at:
+Create only:
 
 ```text
-docs/adr/ADR-0002-primary-language-runtime.md
+docs/adr/ADR-0003-monorepo-strategy.md
 ```
 
-Do not accept `ADR-0001` automatically, and do not draft repository or database ADRs in the same bounded task.
+Primary decision:
+
+```text
+D-ARCH-001
+```
+
+The ADR must compare:
+
+```text
+A. Explicit monorepo with apps/packages boundaries
+B. Multiple repositories per deployable/application
+C. Single repository without deliberate reusable package boundaries
+```
+
+Repository organization must remain separate from runtime deployment topology under `D-ARCH-006`. Do not accept the package manager, workspace orchestrator, framework, database, hosting, or other unresolved choices through the repository ADR.
+
+Do not draft the database ADR in the same bounded task.
 
 ## Legacy Migration State
 
-Legacy flat files remain migration inputs until their useful material has canonical structured destinations and they are explicitly marked Deprecated or replaced by a pointer.
+Legacy flat architecture/database/API/automation/payment/notification/security/testing/engineering/open-decision files remain migration inputs until their useful material has canonical structured destinations and they are explicitly deprecated or replaced by pointers.
 
-High-value architecture migration sources include:
+High-value migration sources include:
 
-- `05-system-architecture.md`
-- `06-database-schema.md`
-- `07-api-contracts.md`
-- `08-automations.md`
-- `09-payments-billing.md`
-- `10-notifications-whatsapp.md`
-- `12-security-audit.md`
-- `13-testing-qa.md`
-- `15-engineering-workflow.md`
-- `16-open-decisions.md`
+```text
+05-system-architecture.md
+06-database-schema.md
+07-api-contracts.md
+08-automations.md
+09-payments-billing.md
+10-notifications-whatsapp.md
+12-security-audit.md
+13-testing-qa.md
+15-engineering-workflow.md
+16-open-decisions.md
+```
 
-Do not delete or deprecate them merely because architecture foundation documents now exist.
+Do not delete or deprecate them merely because structured architecture documents now exist.
 
 ## Current Delivery Boundary
 
-The confirmed source-derived Phase 1 product centers on:
+Phase 1 centers on member/membership management, QR and assisted attendance, inactivity detection, follow-up/return, renewals, verified payments, basic add-ons, owner operational views, notifications, consent, data quality, and audit history.
 
-- member and membership management,
-- QR and assisted attendance,
-- inactivity/no-show detection,
-- staff follow-up and member return tracking,
-- renewal reminders and verified payment state,
-- basic PT, diet/nutrition, and product add-ons,
-- owner operational dashboard,
-- notifications, consent, data-quality controls, and audit history.
-
-Workout programming, detailed nutrition tracking, health metrics, coaching platforms, multi-branch SaaS, and AI remain `Future` or otherwise outside active Phase 1 requirements until explicitly approved.
+Workout programming, detailed nutrition tracking, health metrics, coaching platforms, advanced multi-branch workflows, and AI remain Future or outside active Phase 1 requirements until explicitly approved.
