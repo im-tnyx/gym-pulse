@@ -26,32 +26,20 @@ docs/adr/README.md
 ```text
 ADR-0001-modular-monolith.md
 Primary decision: D-ARCH-005
-ADR status: Proposed
-Canonical decision status: PROPOSED
+Status: Proposed
+Accepted: No
+
+ADR-0002-primary-language-runtime.md
+Primary decision: D-ARCH-016
+Status: Proposed
 Accepted: No
 ```
 
-`ADR-0001` proposes a Phase 1 modular monolith with explicit domain/application/component boundaries. It compares:
+`ADR-0001` proposes a Phase 1 modular monolith with explicit domain/application/component boundaries and rejects premature service-per-domain decomposition or an unstructured monolith as current recommendations.
 
-```text
-A. Modular monolith with explicit boundaries
-B. Service-per-domain / microservices from Phase 1
-C. Unstructured single application with weak boundaries
-```
+`ADR-0002` proposes strict TypeScript with a supported Node.js LTS line as the primary implementation language/server runtime. It compares JVM, Go, Python, and untyped JavaScript alternatives while preserving runtime validation, framework independence, deployment neutrality, and client-safe/server-only boundaries.
 
-The proposal preserves:
-
-- domain write ownership,
-- application command/query orchestration,
-- tenant/resource/capability authorization,
-- local correctness-sensitive transaction boundaries,
-- request/job/provider/business-effect idempotency separation,
-- provider ports/adapters,
-- background handlers reusing application/domain rules,
-- deployment neutrality,
-- future service extraction only after evidence and a later Accepted ADR.
-
-No decision-owner approval evidence exists, so `D-ARCH-005` remains `PROPOSED` and ADR-0001 remains `Proposed`.
+No authorized approval evidence exists for either ADR, so `D-ARCH-005` and `D-ARCH-016` remain `PROPOSED`.
 
 ## Important Architecture Boundaries
 
@@ -67,17 +55,17 @@ No decision-owner approval evidence exists, so `D-ARCH-005` remains `PROPOSED` a
 - External provider calls do not participate in local database transactions.
 - Gym-local timezone controls business calendar logic; event timestamps remain UTC.
 - Read models, telemetry, analytics, and data-quality views are non-authoritative for writes.
+- Static TypeScript types do not replace runtime validation, authorization, transactions, idempotency, or database constraints.
+- Client code must not import server-only database/provider/configuration modules.
 - `D-DATA-007` remains unresolved and still blocks final Member/Membership state-machine/schema semantics.
 
 ## Technology Governance State
 
-Task 0008 registered:
-
 ```text
-D-ARCH-016  P0 PROPOSED  Primary implementation language/runtime
+D-ARCH-016  P0 PROPOSED  Primary implementation language/runtime / ADR-0002 drafted
 D-ARCH-017  P1 PROPOSED  Data-access/query/migration strategy
 D-ARCH-018  P1 PROPOSED  Core automated testing toolchain
-D-ARCH-019  P1 OPEN      CI/CD + production release/secrets tooling
+D-ARCH-019  P1 OPEN      CI/CD + production release tooling
 ```
 
 Key unresolved P0/P1 decisions still include:
@@ -95,10 +83,10 @@ D-ARCH-012  Owner/Staff web framework            P0 PROPOSED
 D-ARCH-013  member client strategy               P1 PROPOSED
 D-ARCH-014  managed backend responsibilities     P0 OPEN
 D-ARCH-015  authorization implementation         P0 PROPOSED
-D-ARCH-016  primary language/runtime             P0 PROPOSED
+D-ARCH-016  primary language/runtime             P0 PROPOSED / ADR-0002 drafted
 D-ARCH-017  data access/migrations               P1 PROPOSED
 D-ARCH-018  testing toolchain                    P1 PROPOSED
-D-ARCH-019  CI/CD + release/secrets              P1 OPEN
+D-ARCH-019  CI/CD + release tooling              P1 OPEN
 D-SEC-001   jurisdiction/privacy                 P0 OPEN
 D-SEC-002   member authentication                P0 OPEN
 D-SEC-004   session lifecycle                    P1 OPEN
@@ -113,24 +101,22 @@ D-DATA-007  Member vs Membership state ownership P1 PROPOSED
 
 ## Last Completed Task
 
-`0009-draft-phase1-architecture-style-adr`
+`0010-draft-primary-language-runtime-adr`
 
 Created:
 
 ```text
-docs/adr/ADR-0001-modular-monolith.md
-.ai/task/0009-draft-phase1-architecture-style-adr.md
+docs/adr/ADR-0002-primary-language-runtime.md
+.ai/task/0010-draft-primary-language-runtime-adr.md
 ```
 
-Continuity/index updated:
+ADR governance/index updated:
 
 ```text
 docs/adr/README.md
-docs/README.md
-.ai/current-state.md
 ```
 
-No product requirement, canonical decision status, technology/provider selection, application code, schema/migration, API route, deployment configuration, or infrastructure was changed.
+No product requirement, canonical decision status, framework/provider selection, repository scaffold, schema/migration, API route, deployment configuration, or infrastructure was changed.
 
 ## Current Task
 
@@ -138,18 +124,18 @@ None in progress.
 
 ## Next Task
 
-Task `0010-draft-primary-language-runtime-adr`.
+Task `0011-draft-repository-workspace-adr`.
 
 Create only:
 
 ```text
-docs/adr/ADR-0002-primary-language-runtime.md
+docs/adr/ADR-0003-monorepo-strategy.md
 ```
 
 Primary canonical decision:
 
 ```text
-D-ARCH-016
+D-ARCH-001
 ```
 
 Initial ADR status:
@@ -158,34 +144,30 @@ Initial ADR status:
 Proposed
 ```
 
-The ADR should evaluate the current strict TypeScript + supported Node.js LTS recommendation against credible alternatives while preserving separation from:
+Required comparison:
 
 ```text
-D-ARCH-012  Next.js Owner/Staff framework
-D-ARCH-013  member client strategy
-D-ARCH-001  repository/workspace strategy
-D-ARCH-002  database engine
-D-ARCH-006  API deployment topology
-D-ARCH-009  hosting
-provider selections
+A. Explicit monorepo with apps/packages boundaries
+B. Multiple repositories per deployable/application
+C. Single repository without deliberate reusable package boundaries
 ```
 
-Do not draft the repository or database ADR in the same bounded task.
+The ADR must keep source organization separate from runtime deployment topology. It must preserve client-safe vs server-only dependency boundaries and must not accept the package manager, workspace orchestrator, web framework, API deployment topology, database, or hosting decisions.
+
+Do not draft the database ADR in the same bounded task.
 
 ## Files To Read Next
 
 ```text
-.ai/README.md
 .ai/current-state.md
-.ai/task/0009-draft-phase1-architecture-style-adr.md
+.ai/task/0010-draft-primary-language-runtime-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
-docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
 docs/02-architecture/architecture-principles.md
-docs/02-architecture/architecture-overview.md
 docs/02-architecture/component-architecture.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
 docs/adr/ADR-0001-modular-monolith.md
+docs/adr/ADR-0002-primary-language-runtime.md
 ```
