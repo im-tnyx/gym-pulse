@@ -249,6 +249,7 @@ docs/02-architecture/architecture-overview.md
 docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
 docs/02-architecture/component-architecture.md
+docs/02-architecture/data-flow.md
 ```
 
 ADR governance exists at:
@@ -265,13 +266,15 @@ docs/adr/README.md
 
 `component-architecture.md` is the C4 Level 3-style view for Trusted Application/API and Background Execution responsibilities. It defines entry adapters, authentication/principal resolution, tenant/resource scope, capability authorization, validation, command/query handlers, Phase 1 domain ownership, cross-domain write restrictions, Unit of Work, repositories, idempotency, provider ports/adapters, notification policy, audit/events, business-time support, background handlers, observability, failure propagation, and test seams without selecting unresolved technologies.
 
+`data-flow.md` traces the major Phase 1 end-to-end flows across actors, client/container/component boundaries, canonical persistence, external providers, transaction boundaries, idempotency/deduplication, retries/reconciliation, audit, observability, gym-local time, and durable async continuation. It covers authentication/authorization, attendance, retention, renewal, payment, notifications, import, dashboard/read models, and data-quality lifecycle while preserving unresolved technology decisions.
+
 The next bounded architecture document is:
 
 ```text
-docs/02-architecture/data-flow.md
+docs/02-architecture/technology-stack.md
 ```
 
-Do not create technology-stack documentation automatically before the architecture data-flow document is reviewed for consistency.
+The technology-stack document should evaluate candidates against the established architecture and canonical decision register. Recommendations must not become Accepted/Decided merely because they are documented.
 
 ## Legacy Migration State
 
