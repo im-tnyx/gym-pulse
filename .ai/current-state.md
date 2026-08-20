@@ -30,7 +30,7 @@ docs/02-architecture/technology-stack.md
 docs/adr/README.md
 ```
 
-`technology-stack.md` is the current technology-evaluation view. It evaluates implementation candidates against the established C4/component/data-flow architecture without accepting any Open/Proposed/Assumed choice.
+Technology evaluation and technology decision-register gap normalization are complete. No technology recommendation is accepted solely because it appears in an architecture document.
 
 ## Important Confirmed Boundaries
 
@@ -95,44 +95,44 @@ Observability
 Current recommendations only, not accepted decisions:
 
 ```text
-Primary language/runtime    TypeScript + supported Node.js LTS (Decision Register Gap)
-Repository                 Monorepo with explicit boundaries; Turborepo candidate
-Package manager            pnpm candidate
-Owner/Staff web            Next.js + TypeScript candidate
-Member Phase 1             Responsive web/PWA first if target-device QR/auth tests pass
-Member native evolution    Expo / React Native when native requirements justify it
-API contract               JSON HTTP + typed/runtime-validated contracts
-API deployment             Co-hosted vs separate remains OPEN
-Canonical database         PostgreSQL recommendation
-Data access                SQL-aware typed layer; Drizzle/Kysely lead candidates, Prisma alternative
-Managed backend            Supabase strong candidate by separable responsibility, not one indivisible bundle
-Authentication             Managed auth preferred; provider/session/member method OPEN
-Authorization              GymPulse-owned principal + scope + capability
-RLS                        PostgreSQL RLS defense in depth where applicable; never authz replacement
-Jobs                       Prefer Postgres-backed durable jobs/outbox for Phase 1 if PostgreSQL accepted
-Redis                      Do not add without demonstrated requirement
-Payments                   Razorpay/Cashfree sandbox shortlist; provider OPEN
-Messaging                  WhatsApp-capable provider/BSP shortlist after channels/policy confirmed
-Object storage             Conditional; do not provision before artifact need exists
-Observability              Structured correlation + managed errors; OTel-compatible server instrumentation
-Product analytics          Defer provider; non-canonical/privacy-minimized only
-Testing                    TS unit/application + real PostgreSQL integration + Playwright web E2E candidate
-Hosting                    Decide after API/jobs/managed backend/jurisdiction constraints
-CI/CD                      GitHub-native candidate; production release/secrets decision gap remains
+Primary language/runtime    TypeScript + supported Node.js LTS candidate
+Repository                  Monorepo with explicit boundaries; Turborepo candidate
+Package manager             pnpm candidate
+Owner/Staff web             Next.js + TypeScript candidate
+Member Phase 1              Responsive web/PWA first if target-device QR/auth tests pass
+Member native evolution     Expo / React Native when native requirements justify it
+API contract                JSON HTTP + typed/runtime-validated contracts
+API deployment              Co-hosted vs separate remains OPEN
+Canonical database          PostgreSQL recommendation
+Data access                 SQL-aware typed layer; Drizzle/Kysely lead candidates, Prisma alternative
+Managed backend             Supabase strong candidate by separable responsibility, not one indivisible bundle
+Authentication              Managed auth preferred; provider/session/member method OPEN
+Authorization               GymPulse-owned principal + scope + capability
+RLS                         PostgreSQL RLS defense in depth where applicable; never authz replacement
+Jobs                        Prefer Postgres-backed durable jobs/outbox for Phase 1 if PostgreSQL accepted
+Redis                       Do not add without demonstrated requirement
+Payments                    Razorpay/Cashfree sandbox shortlist; provider OPEN
+Messaging                   WhatsApp-capable provider/BSP shortlist after channels/policy confirmed
+Object storage              Conditional; do not provision before artifact need exists
+Observability               Structured correlation + managed errors; OTel-compatible server instrumentation
+Product analytics           Defer provider; non-canonical/privacy-minimized only
+Testing                     TS unit/application + real PostgreSQL integration + Playwright web E2E candidate
+Hosting                     Decide after API/jobs/managed backend/jurisdiction constraints
+CI/CD                       GitHub-native candidate; final production tooling OPEN
 ```
 
-## Technology Decision Register Gaps
+## Technology Decision Register Normalization
 
-`technology-stack.md` identified material choices that currently lack canonical decision IDs:
+Task 0008 registered the four material Task 0007 gaps without accepting their candidate technologies:
 
 ```text
-Primary implementation language/runtime       P0 suggested Architecture family
-Data-access/query/migration strategy           P1 suggested Architecture/Data family
-Core testing toolchain                         P1 engineering/architecture governance
-CI/CD + production release/secrets tooling     P1 engineering/architecture/security governance
+D-ARCH-016  P0 PROPOSED  Primary implementation language/runtime
+D-ARCH-017  P1 PROPOSED  Data-access/query/migration strategy
+D-ARCH-018  P1 PROPOSED  Core automated testing toolchain
+D-ARCH-019  P1 OPEN      CI/CD + production release/secrets tooling
 ```
 
-No IDs were invented and `docs/00-overview/assumptions.md` was not modified by Task 0007.
+`docs/00-overview/assumptions.md` is authoritative for these IDs/statuses. The earlier `Decision Register Gap` wording in `technology-stack.md` reflects its evaluation-time state and is not a current absence of canonical IDs.
 
 ## D-DATA-007 Gate
 
@@ -187,6 +187,10 @@ D-ARCH-012  Owner/Staff web framework               P0 PROPOSED
 D-ARCH-013  member client/framework strategy        P1 PROPOSED
 D-ARCH-014  managed backend responsibilities        P0 OPEN
 D-ARCH-015  authorization implementation boundary   P0 PROPOSED
+D-ARCH-016  primary language/runtime                P0 PROPOSED
+D-ARCH-017  data-access/query/migrations             P1 PROPOSED
+D-ARCH-018  core testing toolchain                  P1 PROPOSED
+D-ARCH-019  CI/CD + release/secrets tooling         P1 OPEN
 D-SEC-001   launch jurisdiction/privacy obligations P0 OPEN
 D-SEC-002   member authentication                   P0 OPEN
 D-SEC-004   session lifecycle                       P1 OPEN
@@ -203,17 +207,20 @@ D-DATA-007  Member vs Membership state ownership    P1 PROPOSED
 
 No decision ADR has been created or accepted.
 
-ADR governance exists at:
+ADR governance and current dependency order live at:
 
 `docs/adr/README.md`
 
-After Decision Register Gap normalization, the recommended smallest first ADR batch is:
+First foundation group after normalization:
 
 ```text
 D-ARCH-005  Phase 1 architecture style
-D-ARCH-001  repository/workspace strategy
-D-ARCH-002  canonical database engine
+D-ARCH-016  Primary implementation language/runtime
+D-ARCH-001  Repository/workspace strategy
+D-ARCH-002  Canonical database engine
 ```
+
+These should be drafted as separate Proposed ADRs. The next bounded task drafts only the first one.
 
 Provider ADRs should wait for pilot methods/channels and provider-specific evidence.
 
@@ -227,23 +234,29 @@ Important contradiction remains:
 
 ## Last Completed Task
 
-`0007-technology-stack.md`
+`0008-technology-decision-register-normalization.md`
+
+Updated canonical governance:
+
+```text
+docs/00-overview/assumptions.md
+docs/adr/README.md
+```
 
 Created:
 
 ```text
-docs/02-architecture/technology-stack.md
-.ai/task/0007-technology-stack.md
+.ai/task/0008-technology-decision-register-normalization.md
 ```
 
-Updated:
+Continuity/index updated:
 
 ```text
 docs/README.md
 .ai/current-state.md
 ```
 
-No product requirements, canonical decision statuses, ADRs, application code, migrations, provider accounts, deployment configuration, or infrastructure were changed.
+No product requirements, accepted ADRs, application code, migrations, provider accounts, deployment configuration, production infrastructure, or Accepted/Decided technology choices were created.
 
 ## Current Task
 
@@ -251,39 +264,53 @@ None in progress.
 
 ## Next Task
 
-Task `0008-technology-decision-register-normalization`.
+Task `0009-draft-phase1-architecture-style-adr`.
 
-Canonical targets:
-
-```text
-docs/00-overview/assumptions.md
-docs/adr/README.md
-```
-
-Working-context target:
+Create only:
 
 ```text
-.ai/task/0008-technology-decision-register-normalization.md
+docs/adr/ADR-0001-modular-monolith.md
 ```
 
-Goal:
+Primary canonical decision:
 
-- add canonical decision entries for material technology gaps identified by Task 0007,
-- reconcile ADR ordering/dependencies after technology evaluation,
-- preserve Open/Proposed/Assumed status semantics,
-- prepare the first ADR batch,
-- accept no ADR and create no application scaffold.
+```text
+D-ARCH-005
+```
 
-Do not proceed automatically into ADR drafting or implementation in the same bounded task.
+Initial ADR status:
+
+```text
+Proposed
+```
+
+Required comparison:
+
+```text
+A. Modular monolith with explicit domain/component boundaries
+B. Service-per-domain / microservices from Phase 1
+C. Unstructured single application with weak internal boundaries
+```
+
+The ADR must preserve the existing C4/container/component/data-flow architecture; reference actual FR/NFR and architecture-principle drivers; cover security, reliability, operations, testing, migration/reversibility, and future extraction criteria; and contain no acceptance claim without explicit decision-owner evidence.
+
+Do not draft `D-ARCH-016`, `D-ARCH-001`, or `D-ARCH-002` ADRs in the same bounded task.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0007-technology-stack.md
+.ai/task/0008-technology-decision-register-normalization.md
 docs/README.md
 docs/00-overview/assumptions.md
+docs/01-product/functional-requirements.md
+docs/01-product/non-functional-requirements.md
+docs/02-architecture/architecture-principles.md
+docs/02-architecture/architecture-overview.md
+docs/02-architecture/container-architecture.md
+docs/02-architecture/component-architecture.md
+docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
 ```
