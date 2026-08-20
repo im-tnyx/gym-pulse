@@ -24,10 +24,11 @@ docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
 docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
+docs/02-architecture/component-architecture.md
 docs/adr/README.md
 ```
 
-`container-architecture.md` is the current C4 Level 2 view. It defines the Member Client, Owner/Staff Application, Trusted Application/API, Background Execution, Canonical Persistence, conditional Protected Object Storage, external provider boundaries, API deployment alternatives, transaction/idempotency boundaries, authorization enforcement points, failure behavior, observability, and testing seams without selecting unresolved technologies.
+`component-architecture.md` is the current C4 Level 3-style view for the Trusted Application/API and Background Execution responsibilities. It defines dependency direction, entry adapters, authentication/principal resolution, tenant/resource scope, capability authorization, validation, command/query handlers, Phase 1 domain ownership, cross-domain write restrictions, Unit of Work, repositories, request idempotency vs business-effect dedupe, provider ports/adapters, notification policy, audit/events, business time, background handlers, observability, failure propagation, and testing seams.
 
 ## Important Confirmed Boundaries
 
@@ -38,32 +39,30 @@ docs/adr/README.md
 - Tenant isolation and server-side authorization are mandatory.
 - Capability-based permissions are the product authorization model.
 - Authentication proves identity/session state; GymPulse still owns business authorization.
-- Member/Staff clients are untrusted for canonical business truth.
-- Trusted Application/API owns interactive authorization, application orchestration, domain execution, transaction ownership, canonical mutation, and safe provider interaction.
-- Background execution reuses the same domain/application rules and must remain scoped, retry-safe, and observable.
+- Clients are untrusted for canonical business truth.
+- Authentication verification, principal resolution, tenant/resource resolution, capability authorization, contract validation, and domain rules are separate component responsibilities.
+- Application command handlers own cross-domain orchestration and correctness-sensitive transaction boundaries.
+- Domain modules own their canonical state; arbitrary cross-domain direct writes are not allowed by the component model.
+- Background execution reuses the same application/domain rules and must remain scoped, retry-safe, and observable.
+- Request idempotency and business-effect/domain uniqueness are separate protections.
+- Payment provider adapters verify/normalize evidence but cannot directly grant entitlement.
+- Notification policy/intent is separate from messaging-provider delivery.
 - Payment initiation/client success is not canonical payment success.
 - Critical effects must be idempotent and concurrency-safe.
 - Sensitive operational/financial changes must remain auditable.
 - Gym-local timezone controls business-day/week rules; canonical event timestamps use UTC.
-- Canonical state is server-side; dashboards/read models and telemetry are derived/non-authoritative.
+- Canonical state is server-side; read models and telemetry are non-authoritative for writes.
 - External provider state must be verified/translated before mutating canonical state.
 - Canonical persistence is the protected system-of-record boundary; exact database engine remains unresolved/proposed.
 - Future workout, advanced nutrition, health, coaching, multi-branch product workflows, and AI scope must not leak into Phase 1.
 
 ## Current C4 Model
 
-### C4 Level 1 external relationships
+### C4 Level 1
 
-```text
-Authentication / Identity Provider
-Payment Provider
-Messaging / Delivery Provider
-Protected Object Storage (conditional)
-Operational Telemetry / Analytics
-Pilot Import Source
-```
+GymPulse system boundary with Member, Owner, Manager, Front Desk and external Authentication, Payment, Messaging, Storage, Telemetry, and Pilot Import relationships.
 
-### C4 Level 2 GymPulse container responsibilities
+### C4 Level 2
 
 ```text
 Member Client Application
@@ -74,7 +73,32 @@ Canonical Persistence
 Protected Object Storage (conditional)
 ```
 
-No provider product or runtime technology is selected by the C4 documents.
+### C4 Level 3-style internal components
+
+```text
+Transport / Callback Entry
+Request / System Execution Context
+Authentication Verification Adapter
+GymPulse Principal Resolver
+Tenant / Resource Context Resolver
+Capability Authorizer
+Contract Validator
+Application Command Handlers
+Application Query Handlers
+Phase 1 Domain Modules
+Transaction / Unit of Work
+Idempotency / Deduplication
+Repository / Data Access Ports
+Operational Read Components
+Payment / Messaging / Storage Ports and Adapters
+Audit Recorder
+Domain/Application Events + Durable Continuation Port
+Business Clock / Gym-Time Service
+Scheduler / Job Entry / Retry Coordinator / Background Handlers
+Observability Hooks
+```
+
+No provider product, framework, database engine, job technology, cache/broker, or deployment topology is selected by the C4 documents.
 
 ## API Deployment Boundary
 
@@ -87,7 +111,7 @@ A. Owner/Staff web server runtime co-hosts trusted application/API responsibilit
 B. Owner/Staff web UI and trusted API are independently deployed
 ```
 
-The final mapping must preserve domain separation, server-only secrets, authorization, testable contracts, background execution independence, and future extractability.
+The same component ownership, domain rules, server-only secrets, authorization, contracts, and background-execution boundaries must survive either mapping.
 
 ## Important Open P0/P1 Decisions
 
@@ -137,11 +161,11 @@ Important contradiction remains:
 
 ## Last Completed Task
 
-`0004-container-architecture.md`
+`0005-component-architecture.md`
 
 Created:
 
-`docs/02-architecture/container-architecture.md`
+`docs/02-architecture/component-architecture.md`
 
 ## Current Task
 
@@ -149,73 +173,55 @@ None in progress.
 
 ## Next Task
 
-Task `0005-component-architecture`.
+Task `0006-data-flow`.
 
 Create only:
 
-`docs/02-architecture/component-architecture.md`
+`docs/02-architecture/data-flow.md`
 
-The document should provide a C4 Level 3-style decomposition of the Trusted Application/API and Background Execution responsibilities into implementation-oriented source-code/application components.
+The document should trace the major Phase 1 end-to-end flows across actors, client/container/component boundaries, canonical persistence, external providers, transaction boundaries, idempotency/deduplication, retries/reconciliation, audit, observability, gym-local time, and durable asynchronous continuation.
 
-Required areas include:
+Minimum flows to cover:
 
 ```text
-transport/application-entry adapters
-authentication/principal resolver
-tenant/resource-context resolver
-capability authorization
-request validation/contracts
-application use cases
-Phase 1 domain modules
-transaction/unit-of-work boundary
-repositories/data-access ports
-payment adapter and webhook normalization
-notification policy/intent and provider adapter
-audit/event components
-idempotency/deduplication
-background scheduler/handlers
-operational read/query components
-observability hooks and test seams
+authentication + tenant/resource authorization
+QR check-in
+assisted attendance
+no-show scan
+follow-up + member return resolution
+renewal-stage reminder
+renewal order + checkout initialization
+verified payment webhook + exactly-once entitlement effect
+notification dispatch + delivery callback
+pilot member import
+owner dashboard/read-model query
+data-quality scan/resolution
 ```
 
-The component architecture must:
+The data-flow document must remain technology/provider neutral and must keep `D-ARCH-006`, `D-ARCH-007`, `D-SEC-008`, and `D-DATA-007` explicit.
 
-- preserve `D-ARCH-005` as Proposed rather than assume microservices,
-- preserve `D-ARCH-006` deployment neutrality,
-- show explicit dependency direction,
-- identify domain ownership and cross-domain write restrictions,
-- define transaction ownership,
-- distinguish sync vs async component interaction,
-- show idempotency and authorization enforcement points,
-- keep provider adapters at integration boundaries,
-- define failure propagation and test seams,
-- keep `D-DATA-007` visible until state ownership is resolved.
-
-Do not proceed automatically to data-flow or technology-stack documentation in the same bounded task.
+Do not proceed automatically to technology-stack evaluation in the same bounded task.
 
 ## Files To Read Next
 
 ```text
 docs/README.md
-docs/00-overview/project-overview.md
-docs/00-overview/scope.md
 docs/00-overview/assumptions.md
+docs/01-product/user-journeys.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
 docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
+docs/02-architecture/component-architecture.md
 docs/adr/README.md
 
 legacy migration inputs only as needed:
-docs/05-system-architecture.md
-docs/06-database-schema.md
 docs/07-api-contracts.md
 docs/08-automations.md
 docs/09-payments-billing.md
 docs/10-notifications-whatsapp.md
 docs/12-security-audit.md
 docs/13-testing-qa.md
-docs/15-engineering-workflow.md
 ```
