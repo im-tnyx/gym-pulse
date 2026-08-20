@@ -241,11 +241,12 @@ Complete at Draft v1.x foundation level:
 
 ### `02-architecture/`
 
-Completed Draft architecture foundation documents:
+Completed Draft architecture documents:
 
 ```text
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
+docs/02-architecture/system-context.md
 ```
 
 ADR governance exists at:
@@ -254,15 +255,17 @@ ADR governance exists at:
 docs/adr/README.md
 ```
 
-The architecture overview defines technology-neutral logical boundaries, trust boundaries, domain ownership, synchronous/asynchronous interaction patterns, consistency expectations, failure isolation, and deployment neutrality without accepting Open/Proposed technology choices.
+`architecture-overview.md` defines technology-neutral logical boundaries, trust boundaries, domain ownership, synchronous/asynchronous interaction patterns, consistency expectations, failure isolation, and deployment neutrality.
+
+`system-context.md` is the current C4 Level 1 system view. It defines GymPulse as a black-box Phase 1 system, active human actors, external provider/supporting systems, trust relationships, authoritative-state boundaries, high-level information flows, tenant/time context, and failure/degradation expectations without selecting providers or runtime technologies.
 
 The next bounded architecture document is:
 
 ```text
-docs/02-architecture/system-context.md
+docs/02-architecture/container-architecture.md
 ```
 
-Do not create container/component/data-flow/technology-stack documents automatically before the C4 System Context is reviewed for consistency.
+Do not create component/data-flow/technology-stack documents automatically before the C4 Container Architecture is reviewed for consistency.
 
 ## Legacy Migration State
 
