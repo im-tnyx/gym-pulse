@@ -248,6 +248,7 @@ docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
 docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
+docs/02-architecture/component-architecture.md
 ```
 
 ADR governance exists at:
@@ -262,13 +263,15 @@ docs/adr/README.md
 
 `container-architecture.md` is the C4 Level 2 view. It defines Member Client, Owner/Staff Application, Trusted Application/API, Background Execution, Canonical Persistence, conditional Protected Object Storage, external-provider boundaries, deployment alternatives, transaction/idempotency boundaries, authorization enforcement points, observability, failure behavior, and testing seams while keeping `D-ARCH-006` and other runtime/provider decisions explicit.
 
+`component-architecture.md` is the C4 Level 3-style view for Trusted Application/API and Background Execution responsibilities. It defines entry adapters, authentication/principal resolution, tenant/resource scope, capability authorization, validation, command/query handlers, Phase 1 domain ownership, cross-domain write restrictions, Unit of Work, repositories, idempotency, provider ports/adapters, notification policy, audit/events, business-time support, background handlers, observability, failure propagation, and test seams without selecting unresolved technologies.
+
 The next bounded architecture document is:
 
 ```text
-docs/02-architecture/component-architecture.md
+docs/02-architecture/data-flow.md
 ```
 
-Do not create data-flow or technology-stack documents automatically before Component Architecture is reviewed for consistency.
+Do not create technology-stack documentation automatically before the architecture data-flow document is reviewed for consistency.
 
 ## Legacy Migration State
 
