@@ -6,7 +6,7 @@
 
 ## Current Documentation Phase
 
-`Phase 4 - System Architecture`
+`Phase 4 - System Architecture / Architecture Governance`
 
 ## Canonical Documentation Completed
 
@@ -26,10 +26,11 @@ docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
 docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
+docs/02-architecture/technology-stack.md
 docs/adr/README.md
 ```
 
-`data-flow.md` is the current end-to-end architecture view. It traces the critical Phase 1 flows across human actors, client/container/component boundaries, canonical persistence, external providers, transaction boundaries, idempotency/deduplication, retries/reconciliation, audit, observability, gym-local time, and durable async continuation.
+`technology-stack.md` is the current technology-evaluation view. It evaluates implementation candidates against the established C4/component/data-flow architecture without accepting any Open/Proposed/Assumed choice.
 
 ## Important Confirmed Boundaries
 
@@ -41,31 +42,22 @@ docs/adr/README.md
 - Capability-based permissions are the product authorization model.
 - Authentication proves identity/session state; GymPulse still owns business authorization.
 - Clients are untrusted for canonical business truth.
-- Authentication verification, principal resolution, tenant/resource resolution, capability authorization, contract validation, and domain rules are separate component responsibilities.
 - Application command handlers own cross-domain orchestration and correctness-sensitive transaction boundaries.
-- Domain modules own their canonical state; arbitrary cross-domain direct writes are not allowed.
-- Background execution reuses application/domain rules and must remain scoped, retry-safe, and observable.
+- Domain modules own canonical state; arbitrary cross-domain direct writes are not allowed.
+- Background execution reuses application/domain rules and remains scoped, retry-safe, and observable.
 - Request idempotency, job dedupe, provider-event dedupe, and business-effect uniqueness are separate protections.
 - Payment provider adapters verify/normalize evidence but cannot directly grant entitlement.
 - Notification policy/intent is separate from messaging-provider delivery.
 - Payment checkout/client success is not canonical payment success.
 - Verified payment effect applies membership/add-on value exactly once through the owning domain.
-- Sensitive operational/financial changes must remain auditable.
 - Gym-local timezone controls business-day/week rules; canonical event timestamps use UTC.
-- Canonical state is server-side; read models and telemetry are non-authoritative for writes.
-- External provider state must be verified/translated before mutating canonical state.
-- External calls do not participate in local atomic transactions; retries/reconciliation handle cross-system uncertainty.
-- Read models and data-quality components may inspect several domains but do not become alternate write owners.
-- Canonical persistence is the protected system-of-record boundary; exact database engine remains unresolved/proposed.
-- Future workout, advanced nutrition, health, coaching, multi-branch product workflows, and AI scope must not leak into Phase 1.
+- External calls do not participate in local atomic transactions; retries/reconciliation handle uncertainty.
+- Read models, telemetry, analytics, and data-quality views are non-authoritative for cross-domain writes.
+- Future workout, advanced nutrition, health, coaching, multi-branch product workflows, and AI remain outside Phase 1.
 
 ## Current Architecture Model
 
-### C4 Level 1
-
-GymPulse system boundary with Member, Owner, Manager, Front Desk and external Authentication, Payment, Messaging, Storage, Telemetry, and Pilot Import relationships.
-
-### C4 Level 2
+### C4 Level 2 responsibilities
 
 ```text
 Member Client Application
@@ -76,68 +68,109 @@ Canonical Persistence
 Protected Object Storage (conditional)
 ```
 
-### C4 Level 3-style internal components
+### C4 Level 3-style internal responsibilities
 
 ```text
 Transport / Callback Entry
-Request / System Execution Context
-Authentication Verification Adapter
-GymPulse Principal Resolver
-Tenant / Resource Context Resolver
-Capability Authorizer
-Contract Validator
-Application Command Handlers
-Application Query Handlers
+Authentication Verification
+Principal Resolution
+Tenant / Resource Resolution
+Capability Authorization
+Contract Validation
+Application Commands / Queries
 Phase 1 Domain Modules
 Transaction / Unit of Work
 Idempotency / Deduplication
-Repository / Data Access Ports
-Operational Read Components
-Payment / Messaging / Storage Ports and Adapters
-Audit Recorder
-Domain/Application Events + Durable Continuation Port
-Business Clock / Gym-Time Service
-Scheduler / Job Entry / Retry Coordinator / Background Handlers
-Observability Hooks
+Repositories / Data Access Ports
+Provider Ports / Adapters
+Audit
+Domain/Application Events + Durable Continuation
+Business Clock / Gym-Time
+Scheduler / Jobs
+Observability
 ```
 
-### End-to-end data flows
+## Technology Evaluation Summary
+
+Current recommendations only, not accepted decisions:
 
 ```text
-Authentication + tenant/resource authorization
-QR check-in
-Assisted attendance
-No-show scan
-Follow-up + member return resolution
-Renewal-stage reminder
-Renewal order + checkout initialization
-Verified payment webhook + exactly-once entitlement effect
-Notification dispatch + delivery callback
-Pilot member import
-Owner dashboard / read-model query
-Data-quality scan + resolution
+Primary language/runtime    TypeScript + supported Node.js LTS (Decision Register Gap)
+Repository                 Monorepo with explicit boundaries; Turborepo candidate
+Package manager            pnpm candidate
+Owner/Staff web            Next.js + TypeScript candidate
+Member Phase 1             Responsive web/PWA first if target-device QR/auth tests pass
+Member native evolution    Expo / React Native when native requirements justify it
+API contract               JSON HTTP + typed/runtime-validated contracts
+API deployment             Co-hosted vs separate remains OPEN
+Canonical database         PostgreSQL recommendation
+Data access                SQL-aware typed layer; Drizzle/Kysely lead candidates, Prisma alternative
+Managed backend            Supabase strong candidate by separable responsibility, not one indivisible bundle
+Authentication             Managed auth preferred; provider/session/member method OPEN
+Authorization              GymPulse-owned principal + scope + capability
+RLS                        PostgreSQL RLS defense in depth where applicable; never authz replacement
+Jobs                       Prefer Postgres-backed durable jobs/outbox for Phase 1 if PostgreSQL accepted
+Redis                      Do not add without demonstrated requirement
+Payments                   Razorpay/Cashfree sandbox shortlist; provider OPEN
+Messaging                  WhatsApp-capable provider/BSP shortlist after channels/policy confirmed
+Object storage             Conditional; do not provision before artifact need exists
+Observability              Structured correlation + managed errors; OTel-compatible server instrumentation
+Product analytics          Defer provider; non-canonical/privacy-minimized only
+Testing                    TS unit/application + real PostgreSQL integration + Playwright web E2E candidate
+Hosting                    Decide after API/jobs/managed backend/jurisdiction constraints
+CI/CD                      GitHub-native candidate; production release/secrets decision gap remains
 ```
 
-No provider product, framework, database engine, job technology, cache/broker, or deployment topology is selected by the architecture documents.
+## Technology Decision Register Gaps
+
+`technology-stack.md` identified material choices that currently lack canonical decision IDs:
+
+```text
+Primary implementation language/runtime       P0 suggested Architecture family
+Data-access/query/migration strategy           P1 suggested Architecture/Data family
+Core testing toolchain                         P1 engineering/architecture governance
+CI/CD + production release/secrets tooling     P1 engineering/architecture/security governance
+```
+
+No IDs were invented and `docs/00-overview/assumptions.md` was not modified by Task 0007.
+
+## D-DATA-007 Gate
+
+`D-DATA-007` remains unresolved.
+
+Do not finalize schema/state machines that duplicate `Paused/Expired/Cancelled` semantics across Member and Membership. The ambiguity affects:
+
+```text
+schema constraints
+queries
+authorization distinctions
+attendance eligibility
+retention/no-show eligibility
+renewal
+imports
+reporting
+```
+
+Technology selection does not resolve it.
 
 ## API Deployment Boundary
 
 `D-ARCH-006` remains `OPEN`.
 
-Both high-level mappings remain valid candidates:
+Both mappings remain candidates:
 
 ```text
-A. Owner/Staff web server runtime co-hosts trusted application/API responsibilities
-B. Owner/Staff web UI and trusted API are independently deployed
+A. Owner/Staff web server runtime co-hosts trusted Application/API responsibilities
+B. Owner/Staff UI and trusted Application/API are independently deployed
 ```
 
-The same component ownership, security, domain rules, contracts, transaction/idempotency semantics, and background-execution behavior must survive either mapping.
+The same security/domain/transaction/idempotency/component boundaries must survive either mapping.
 
 ## Important Open P0/P1 Decisions
 
 Read `docs/00-overview/assumptions.md` for canonical status.
 
-High-impact examples:
+High-impact current examples:
 
 ```text
 D-ARCH-001  repository/monorepo strategy            P0 PROPOSED
@@ -147,25 +180,26 @@ D-ARCH-004  authentication/session                  P0 OPEN
 D-ARCH-005  modular-monolith architecture style     P1 PROPOSED
 D-ARCH-006  API deployment boundary                 P1 OPEN
 D-ARCH-007  background jobs                         P1 OPEN
-D-ARCH-008  Redis/cache/broker requirement          P2 OPEN
 D-ARCH-009  hosting                                 P1 OPEN
 D-ARCH-010  object storage                          P1 OPEN
 D-ARCH-011  package manager                         P1 ASSUMED
 D-ARCH-012  Owner/Staff web framework               P0 PROPOSED
 D-ARCH-013  member client/framework strategy        P1 PROPOSED
-D-ARCH-014  managed backend platform                P0 OPEN
+D-ARCH-014  managed backend responsibilities        P0 OPEN
 D-ARCH-015  authorization implementation boundary   P0 PROPOSED
 D-SEC-001   launch jurisdiction/privacy obligations P0 OPEN
 D-SEC-002   member authentication                   P0 OPEN
+D-SEC-004   session lifecycle                       P1 OPEN
 D-SEC-008   RLS/data-layer tenant isolation         conditional P0 OPEN
 D-PROVIDER-001 payment provider                     P1 OPEN
 D-PROVIDER-002 messaging provider                   P1 OPEN
-D-PROVIDER-005 product analytics provider           P2 OPEN
 D-PROVIDER-006 observability provider               P1 OPEN
 D-DATA-007  Member vs Membership state ownership    P1 PROPOSED
 ```
 
-## Active ADRs
+`D-ARCH-008` Redis/cache/broker remains P2 OPEN and is not recommended as a baseline dependency.
+
+## ADR Readiness
 
 No decision ADR has been created or accepted.
 
@@ -173,21 +207,43 @@ ADR governance exists at:
 
 `docs/adr/README.md`
 
+After Decision Register Gap normalization, the recommended smallest first ADR batch is:
+
+```text
+D-ARCH-005  Phase 1 architecture style
+D-ARCH-001  repository/workspace strategy
+D-ARCH-002  canonical database engine
+```
+
+Provider ADRs should wait for pilot methods/channels and provider-specific evidence.
+
 ## Legacy Migration State
 
 Legacy architecture/database/API/automation/payment/notification/security/testing/engineering/open-decision files remain migration inputs. None are deleted or Deprecated.
 
 Important contradiction remains:
 
-`docs/05-system-architecture.md` uses older `Accepted recommendations` wording for technologies that remain Proposed/Open in the canonical decision register.
+`docs/05-system-architecture.md` uses older `Accepted recommendations` wording for technologies that remain Proposed/Open in the canonical decision register. Canonical structured docs and decision statuses win.
 
 ## Last Completed Task
 
-`0006-data-flow.md`
+`0007-technology-stack.md`
 
 Created:
 
-`docs/02-architecture/data-flow.md`
+```text
+docs/02-architecture/technology-stack.md
+.ai/task/0007-technology-stack.md
+```
+
+Updated:
+
+```text
+docs/README.md
+.ai/current-state.md
+```
+
+No product requirements, canonical decision statuses, ADRs, application code, migrations, provider accounts, deployment configuration, or infrastructure were changed.
 
 ## Current Task
 
@@ -195,79 +251,39 @@ None in progress.
 
 ## Next Task
 
-Task `0007-technology-stack`.
+Task `0008-technology-decision-register-normalization`.
 
-Create only:
-
-`docs/02-architecture/technology-stack.md`
-
-The document should evaluate candidate technologies against the established requirements and architecture rather than merely listing tools.
-
-Required evaluation areas include:
+Canonical targets:
 
 ```text
-language/runtime
-repository/workspace strategy
-package manager
-Owner/Staff web framework
-Member delivery/framework strategy
-API contract architecture and deployment topology
-canonical database engine
-data-access/migration approach
-managed backend responsibilities
-authentication/session
-member authentication
-capability authorization implementation boundary
-data-layer tenant isolation/RLS
-background jobs/scheduler
-Redis/cache/broker need
-payment integration/provider boundary
-messaging/provider boundary
-protected object storage
-observability and product analytics
-testing stack
-hosting/deployment
-CI/CD and secrets posture
+docs/00-overview/assumptions.md
+docs/adr/README.md
 ```
 
-Each technology recommendation must state:
+Working-context target:
 
-- canonical decision ID,
-- current decision status,
-- requirement/architecture drivers,
-- recommended direction,
-- alternatives,
-- tradeoffs,
-- security/reliability/operations impact,
-- validation/spike needs,
-- ADR requirement.
+```text
+.ai/task/0008-technology-decision-register-normalization.md
+```
 
-Do not mark any Open/Proposed/Assumed technology decision Accepted/Decided in the technology-stack document.
+Goal:
+
+- add canonical decision entries for material technology gaps identified by Task 0007,
+- reconcile ADR ordering/dependencies after technology evaluation,
+- preserve Open/Proposed/Assumed status semantics,
+- prepare the first ADR batch,
+- accept no ADR and create no application scaffold.
+
+Do not proceed automatically into ADR drafting or implementation in the same bounded task.
 
 ## Files To Read Next
 
 ```text
+.ai/README.md
+.ai/current-state.md
+.ai/task/0007-technology-stack.md
 docs/README.md
 docs/00-overview/assumptions.md
-docs/01-product/functional-requirements.md
-docs/01-product/non-functional-requirements.md
-docs/02-architecture/architecture-principles.md
-docs/02-architecture/architecture-overview.md
-docs/02-architecture/system-context.md
-docs/02-architecture/container-architecture.md
-docs/02-architecture/component-architecture.md
-docs/02-architecture/data-flow.md
+docs/02-architecture/technology-stack.md
 docs/adr/README.md
-
-legacy migration inputs only as evidence/candidate history:
-docs/05-system-architecture.md
-docs/06-database-schema.md
-docs/07-api-contracts.md
-docs/08-automations.md
-docs/09-payments-billing.md
-docs/10-notifications-whatsapp.md
-docs/12-security-audit.md
-docs/13-testing-qa.md
-docs/15-engineering-workflow.md
-docs/16-open-decisions.md
 ```
