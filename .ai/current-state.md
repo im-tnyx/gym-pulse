@@ -6,7 +6,7 @@
 
 ## Current Documentation Phase
 
-`Architecture Foundation Gate`
+`Phase 4 - System Architecture`
 
 ## Canonical Documentation Completed
 
@@ -17,14 +17,15 @@ docs/01-product/    product definition complete at Draft v1.x
 
 ## Current Architecture Phase
 
-Foundation created:
+Completed Draft foundation:
 
 ```text
 docs/02-architecture/architecture-principles.md
+docs/02-architecture/architecture-overview.md
 docs/adr/README.md
 ```
 
-No later architecture document has been created on `main` in this gate.
+The architecture overview is technology-neutral and defines logical boundaries, trust boundaries, domain ownership, sync/async responsibilities, consistency, failure isolation, deployment neutrality, and architecture invariants.
 
 ## Important Confirmed Boundaries
 
@@ -32,11 +33,13 @@ No later architecture document has been created on `main` in this gate.
 - Core loop: attendance -> inactivity risk -> follow-up -> return/outcome -> renewal -> verified payment -> optional add-on -> measurable result.
 - Tenant isolation and server-side authorization are mandatory.
 - Capability-based permissions are the product authorization model.
-- Payment initiation is not payment success.
-- Critical effects must be idempotent.
+- Payment initiation/client success is not canonical payment success.
+- Critical effects must be idempotent and concurrency-safe.
 - Sensitive operational/financial changes must remain auditable.
 - Gym-local timezone controls business-day/week rules; canonical event timestamps use UTC.
-- Future workout, advanced nutrition, health, coaching, multi-branch SaaS, and AI scope must not leak into Phase 1.
+- Canonical state is server-side; dashboards/read models are derived.
+- External provider state must be verified/translated before mutating canonical state.
+- Future workout, advanced nutrition, health, coaching, multi-branch product workflows, and AI scope must not leak into Phase 1.
 
 ## Important Open P0/P1 Decisions
 
@@ -72,23 +75,35 @@ ADR governance exists at:
 
 ## Legacy Migration State
 
-Legacy architecture/database/API/automation/payment/notification/security/testing/engineering/open-decision files remain migration inputs. None were deleted or marked Deprecated in this gate.
+Legacy architecture/database/API/automation/payment/notification/security/testing/engineering/open-decision files remain migration inputs. None are deleted or Deprecated.
 
-Important contradiction found:
+Important contradiction remains:
 
 `docs/05-system-architecture.md` uses older `Accepted recommendations` wording for technologies that remain Proposed/Open in the canonical decision register.
 
-## Current Task
+## Last Completed Task
 
-`0001-architecture-foundation.md` complete.
+`0002-architecture-overview.md`
 
-## Next Task
-
-Create only:
+Created:
 
 `docs/02-architecture/architecture-overview.md`
 
-Do not proceed automatically beyond that file.
+## Current Task
+
+None in progress.
+
+## Next Task
+
+Task `0003-system-context`.
+
+Create only:
+
+`docs/02-architecture/system-context.md`
+
+The document should provide C4 Level 1 context for GymPulse, human actors, external systems, major responsibilities, trust relationships, and high-level information flows. It must remain technology/provider neutral.
+
+Do not proceed automatically to container architecture in the same bounded task.
 
 ## Files To Read Next
 
@@ -97,16 +112,20 @@ docs/README.md
 docs/00-overview/project-overview.md
 docs/00-overview/scope.md
 docs/00-overview/assumptions.md
-docs/01-product/functional-requirements.md
-docs/01-product/non-functional-requirements.md
+docs/01-product/personas.md
 docs/01-product/user-roles.md
 docs/01-product/user-journeys.md
+docs/01-product/functional-requirements.md
+docs/01-product/non-functional-requirements.md
 docs/02-architecture/architecture-principles.md
+docs/02-architecture/architecture-overview.md
 docs/adr/README.md
 
-legacy migration inputs as needed:
+legacy migration inputs only as needed:
 docs/05-system-architecture.md
-docs/06-database-schema.md
+docs/07-api-contracts.md
 docs/08-automations.md
+docs/09-payments-billing.md
+docs/10-notifications-whatsapp.md
 docs/12-security-audit.md
 ```
