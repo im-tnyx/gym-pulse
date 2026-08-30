@@ -33,13 +33,58 @@ ADR-0002-primary-language-runtime.md
 Primary decision: D-ARCH-016
 Status: Proposed
 Accepted: No
+
+ADR-0003-monorepo-strategy.md
+Primary decision: D-ARCH-001
+Status: Proposed
+Accepted: No
 ```
 
-`ADR-0001` proposes a Phase 1 modular monolith with explicit domain/application/component boundaries and rejects premature service-per-domain decomposition or an unstructured monolith as current recommendations.
+No authorized approval evidence exists for these ADRs. Therefore:
 
-`ADR-0002` proposes strict TypeScript with a supported Node.js LTS line as the primary implementation language/server runtime. It compares JVM, Go, Python, and untyped JavaScript alternatives while preserving runtime validation, framework independence, deployment neutrality, and client-safe/server-only boundaries.
+```text
+D-ARCH-005 remains PROPOSED
+D-ARCH-016 remains PROPOSED
+D-ARCH-001 remains PROPOSED
+```
 
-No authorized approval evidence exists for either ADR, so `D-ARCH-005` and `D-ARCH-016` remain `PROPOSED`.
+## Repository / Workspace Position
+
+`ADR-0003` proposes one explicit GymPulse monorepo with deliberate application/package boundaries and independently buildable/deployable artifacts.
+
+Required invariants:
+
+```text
+Repository topology != Deployment topology
+Domain != Package
+Package != Application
+Application != Service
+Service != Repository
+Repository != Deployment
+```
+
+Default dependency direction:
+
+```text
+UI / Transport
+    -> Application
+    -> Domain
+
+Infrastructure adapters implement inward-facing ports.
+```
+
+Every package/export surface must be classifiable as:
+
+```text
+Client-safe
+Server-only
+Build/tooling-only
+Documentation-only
+```
+
+Client applications must never reach server-only database/migration/provider-secret/service-role/admin/configuration code through the repository dependency graph.
+
+The ADR does not require one package per logical domain and explicitly rejects generic catch-all `shared/common/utils` ownership.
 
 ## Important Architecture Boundaries
 
@@ -55,23 +100,15 @@ No authorized approval evidence exists for either ADR, so `D-ARCH-005` and `D-AR
 - External provider calls do not participate in local database transactions.
 - Gym-local timezone controls business calendar logic; event timestamps remain UTC.
 - Read models, telemetry, analytics, and data-quality views are non-authoritative for writes.
-- Static TypeScript types do not replace runtime validation, authorization, transactions, idempotency, or database constraints.
-- Client code must not import server-only database/provider/configuration modules.
-- `D-DATA-007` remains unresolved and still blocks final Member/Membership state-machine/schema semantics.
+- Static types do not replace runtime validation, authorization, transactions, idempotency, or database constraints.
+- `D-DATA-007` remains unresolved and blocks final Member/Membership state-machine/schema semantics.
 
 ## Technology Governance State
 
-```text
-D-ARCH-016  P0 PROPOSED  Primary implementation language/runtime / ADR-0002 drafted
-D-ARCH-017  P1 PROPOSED  Data-access/query/migration strategy
-D-ARCH-018  P1 PROPOSED  Core automated testing toolchain
-D-ARCH-019  P1 OPEN      CI/CD + production release tooling
-```
-
-Key unresolved P0/P1 decisions still include:
+Key unresolved decisions include:
 
 ```text
-D-ARCH-001  repository strategy                  P0 PROPOSED
+D-ARCH-001  repository strategy                  P0 PROPOSED / ADR-0003 drafted
 D-ARCH-002  database engine                      P0 PROPOSED
 D-ARCH-003  API contract architecture            P0 PROPOSED
 D-ARCH-004  authentication/session               P0 OPEN
@@ -79,6 +116,7 @@ D-ARCH-005  architecture style                   P1 PROPOSED / ADR-0001 drafted
 D-ARCH-006  API deployment topology              P1 OPEN
 D-ARCH-007  background jobs                      P1 OPEN
 D-ARCH-009  hosting                              P1 OPEN
+D-ARCH-011  package manager                      P1 ASSUMED
 D-ARCH-012  Owner/Staff web framework            P0 PROPOSED
 D-ARCH-013  member client strategy               P1 PROPOSED
 D-ARCH-014  managed backend responsibilities     P0 OPEN
@@ -86,7 +124,7 @@ D-ARCH-015  authorization implementation         P0 PROPOSED
 D-ARCH-016  primary language/runtime             P0 PROPOSED / ADR-0002 drafted
 D-ARCH-017  data access/migrations               P1 PROPOSED
 D-ARCH-018  testing toolchain                    P1 PROPOSED
-D-ARCH-019  CI/CD + release tooling              P1 OPEN
+D-ARCH-019  CI/CD + release/secrets tooling      P1 OPEN
 D-SEC-001   jurisdiction/privacy                 P0 OPEN
 D-SEC-002   member authentication                P0 OPEN
 D-SEC-004   session lifecycle                    P1 OPEN
@@ -97,26 +135,50 @@ D-PROVIDER-006 observability provider            P1 OPEN
 D-DATA-007  Member vs Membership state ownership P1 PROPOSED
 ```
 
-`D-ARCH-008` Redis/cache/broker remains P2 OPEN and is not a Phase 1 baseline recommendation.
+`D-ARCH-008` Redis/cache/broker remains P2 OPEN and is not a baseline dependency.
 
-## Last Completed Task
+## Task 0011 Implementation Status
 
-`0010-draft-primary-language-runtime-adr`
+Task `0011-draft-repository-workspace-adr` completed documentation/governance work only.
 
 Created:
 
 ```text
-docs/adr/ADR-0002-primary-language-runtime.md
-.ai/task/0010-draft-primary-language-runtime-adr.md
+docs/adr/ADR-0003-monorepo-strategy.md
+.ai/task/0011-draft-repository-workspace-adr.md
 ```
 
-ADR governance/index updated:
+Updated:
 
 ```text
 docs/adr/README.md
+docs/README.md
+.ai/current-state.md
 ```
 
-No product requirement, canonical decision status, framework/provider selection, repository scaffold, schema/migration, API route, deployment configuration, or infrastructure was changed.
+Explicitly not created/selected:
+
+```text
+No apps/ scaffold
+No packages/ scaffold
+No package.json/workspace manifest
+No package manager accepted
+No Turborepo/Nx/task orchestrator accepted
+No deployment topology selected
+No database selected
+No ORM/query builder selected
+No CI provider selected
+No application code
+No migrations
+No API routes
+No deployment configuration
+```
+
+## Last Completed Task
+
+`0011-draft-repository-workspace-adr`
+
+`ADR-0003` remains `Proposed`; `D-ARCH-001` remains `PROPOSED`.
 
 ## Current Task
 
@@ -124,18 +186,20 @@ None in progress.
 
 ## Next Task
 
-Task `0011-draft-repository-workspace-adr`.
+The current ADR dependency queue places the canonical database engine after the three drafted foundation decisions.
 
-Create only:
+Task `0012-draft-canonical-database-engine-adr`.
+
+Create only when that task is explicitly started:
 
 ```text
-docs/adr/ADR-0003-monorepo-strategy.md
+docs/adr/ADR-0004-database-engine.md
 ```
 
 Primary canonical decision:
 
 ```text
-D-ARCH-001
+D-ARCH-002
 ```
 
 Initial ADR status:
@@ -144,30 +208,36 @@ Initial ADR status:
 Proposed
 ```
 
-Required comparison:
+The database ADR must compare the current PostgreSQL recommendation with credible alternatives against GymPulse transaction, relational-integrity, idempotency, tenant-scoping, migration, backup/restore, testing, and operations requirements.
+
+It must keep these decisions separate:
 
 ```text
-A. Explicit monorepo with apps/packages boundaries
-B. Multiple repositories per deployable/application
-C. Single repository without deliberate reusable package boundaries
+D-ARCH-014 managed backend/provider responsibilities
+D-SEC-008  RLS/data-layer isolation policy
+D-ARCH-017 data-access/query/migration tooling
+D-ARCH-009 hosting/deployment platform
 ```
 
-The ADR must keep source organization separate from runtime deployment topology. It must preserve client-safe vs server-only dependency boundaries and must not accept the package manager, workspace orchestrator, web framework, API deployment topology, database, or hosting decisions.
-
-Do not draft the database ADR in the same bounded task.
+Do not draft data-access tooling or implementation scaffolding in the same bounded task.
 
 ## Files To Read Next
 
 ```text
+.ai/README.md
 .ai/current-state.md
-.ai/task/0010-draft-primary-language-runtime-adr.md
+.ai/task/0011-draft-repository-workspace-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
+docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
 docs/02-architecture/architecture-principles.md
+docs/02-architecture/architecture-overview.md
 docs/02-architecture/component-architecture.md
+docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
 docs/adr/ADR-0001-modular-monolith.md
 docs/adr/ADR-0002-primary-language-runtime.md
+docs/adr/ADR-0003-monorepo-strategy.md
 ```
