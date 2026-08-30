@@ -231,49 +231,42 @@ Current decision ADRs:
 ```text
 docs/adr/ADR-0001-modular-monolith.md          Proposed   D-ARCH-005
 docs/adr/ADR-0002-primary-language-runtime.md  Proposed   D-ARCH-016
+docs/adr/ADR-0003-monorepo-strategy.md          Proposed   D-ARCH-001
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
 
 `ADR-0002` proposes strict TypeScript with a supported Node.js LTS runtime, while keeping framework, repository, database, hosting, job-runner, test-tool, and provider choices separate. It requires runtime validation and explicit client-safe/server-only source boundaries. It remains unaccepted.
 
+`ADR-0003` proposes an explicit monorepo with deliberate application/package boundaries, independent build/deployment artifacts, and structural client-safe/server-only enforcement. It keeps package manager, workspace orchestrator, API deployment topology, database, data-access tooling, CI/CD, framework, and hosting decisions separate. It remains unaccepted.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first two foundation ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first three foundation ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
 The exact next bounded governance task is:
 
 ```text
-Task 0011: Draft Repository / Workspace ADR
+Task 0012: Draft Canonical Database Engine ADR
 ```
 
-Create only:
+Create only a `Proposed` ADR for:
 
 ```text
-docs/adr/ADR-0003-monorepo-strategy.md
+D-ARCH-002
 ```
 
-Primary decision:
+Likely target when the task begins:
 
 ```text
-D-ARCH-001
+docs/adr/ADR-0004-database-engine.md
 ```
 
-The ADR must compare:
-
-```text
-A. Explicit monorepo with apps/packages boundaries
-B. Multiple repositories per deployable/application
-C. Single repository without deliberate reusable package boundaries
-```
-
-Repository organization must remain separate from runtime deployment topology under `D-ARCH-006`. Do not accept the package manager, workspace orchestrator, framework, database, hosting, or other unresolved choices through the repository ADR.
-
-Do not draft the database ADR in the same bounded task.
+The database ADR must keep managed provider/backend selection, RLS policy, data-access tooling, hosting, and deployment topology separate. Do not draft `D-ARCH-017` in the same bounded task.
 
 ## Legacy Migration State
 
