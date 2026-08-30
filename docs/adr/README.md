@@ -91,7 +91,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001-modular-monolith.md` and `ADR-0002-primary-language-runtime.md` now exist. Later filenames above remain examples until those ADRs are actually drafted.
+`ADR-0001-modular-monolith.md`, `ADR-0002-primary-language-runtime.md`, and `ADR-0003-monorepo-strategy.md` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -256,18 +256,19 @@ Their registration means future ADRs can reference canonical IDs. It does not me
 |---|---|---|---|
 | `ADR-0001-modular-monolith.md` | `D-ARCH-005` | Proposed | Proposes a Phase 1 modular monolith with explicit domain/application/component boundaries; compares Phase 1 microservices and an unstructured single application. No acceptance evidence exists yet. |
 | `ADR-0002-primary-language-runtime.md` | `D-ARCH-016` | Proposed | Proposes strict TypeScript with a supported Node.js LTS runtime; compares JVM, Go, Python, and untyped JavaScript alternatives while preserving framework/deployment/provider independence. No acceptance evidence exists yet. |
+| `ADR-0003-monorepo-strategy.md` | `D-ARCH-001` | Proposed | Proposes an explicit monorepo with deliberate application/package boundaries, independent build/deployment artifacts, and client-safe/server-only enforcement; compares multi-repository and unstructured single-repository alternatives. No acceptance evidence exists yet. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning after the technology evaluation. Presence in this backlog does not mean acceptance. The first two items have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning after the technology evaluation. Presence in this backlog does not mean acceptance. The first three items have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
 | 1 | Phase 1 architecture style: modular monolith before microservices | `D-ARCH-005` | PROPOSED / ADR-0001 drafted | Establishes decomposition and state-ownership boundaries before implementation structure. |
 | 2 | Primary implementation language/runtime | `D-ARCH-016` | PROPOSED / ADR-0002 drafted | Cross-cuts web, API, jobs, provider adapters, testing, and deployment; should be explicit before scaffold commitments. |
-| 3 | Repository/monorepo strategy | `D-ARCH-001` | PROPOSED | Determines shared source/package boundaries and how independently deployable applications evolve together. |
+| 3 | Repository/monorepo strategy | `D-ARCH-001` | PROPOSED / ADR-0003 drafted | Determines shared source/package boundaries and how independently deployable applications evolve together. |
 | 4 | Canonical database engine | `D-ARCH-002` | PROPOSED | Transactions, constraints, idempotency, reconciliation, reporting, and tenant isolation depend on persistence capabilities. |
 | 5 | Data-access/query/migration strategy | `D-ARCH-017` | PROPOSED | Depends on the database choice and affects transactions, migrations, constraints, raw SQL, and RLS integration. |
 | 6 | Managed backend/platform responsibilities | `D-ARCH-014` | OPEN | May own database hosting, auth, storage, queues/cron, or data-layer controls and therefore affects later choices. |
@@ -301,9 +302,9 @@ No ADR is accepted by this README.
 The foundation group is:
 
 ```text
-D-ARCH-005  Phase 1 architecture style           ADR-0001 drafted, Proposed
+D-ARCH-005  Phase 1 architecture style              ADR-0001 drafted, Proposed
 D-ARCH-016  Primary implementation language/runtime ADR-0002 drafted, Proposed
-D-ARCH-001  Repository/workspace strategy
+D-ARCH-001  Repository/workspace strategy           ADR-0003 drafted, Proposed
 D-ARCH-002  Canonical database engine
 ```
 
@@ -342,26 +343,26 @@ Payment and messaging provider ADRs should follow confirmed pilot methods/channe
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, and technology decision-gap normalization are complete at Draft level. `ADR-0001` and `ADR-0002` now exist as `Proposed` decision records.
+The C4 architecture, data-flow architecture, technology evaluation, and technology decision-gap normalization are complete at Draft level. `ADR-0001`, `ADR-0002`, and `ADR-0003` now exist as `Proposed` decision records.
 
-The repository is **not** thereby implementation-ready. `D-ARCH-005` and `D-ARCH-016` remain `PROPOSED` because no authorized approval evidence exists, and other P0/P1 decisions remain unresolved.
+The repository is **not** thereby implementation-ready. `D-ARCH-005`, `D-ARCH-016`, and `D-ARCH-001` remain `PROPOSED` because no authorized approval evidence exists, and other P0/P1 decisions remain unresolved.
 
 The exact next bounded governance task is:
 
 ```text
 Draft one Proposed ADR only:
-D-ARCH-001 - Repository/workspace strategy
+D-ARCH-002 - Canonical database engine
 ```
 
 Suggested target when the task begins:
 
 ```text
-docs/adr/ADR-0003-monorepo-strategy.md
+docs/adr/ADR-0004-database-engine.md
 ```
 
-The ADR must compare an explicit monorepo with app/package boundaries, multiple repositories per deployable/application, and a single repository without deliberate reusable package boundaries. Runtime deployment topology must remain a separate concern under `D-ARCH-006`.
+The ADR should compare PostgreSQL with credible relational and document/NoSQL-first alternatives against GymPulse transaction, integrity, idempotency, tenant-isolation, migration, backup/restore, test, and operations requirements. Managed provider/backend selection, RLS policy, and data-access tooling remain separate decisions.
 
-Do not draft the database ADR in the same bounded task.
+Do not draft `D-ARCH-017` data-access tooling in the same bounded task.
 
 ## 16. Related Documents
 
@@ -377,6 +378,7 @@ Do not draft the database ADR in the same bounded task.
 - `../02-architecture/technology-stack.md`
 - `ADR-0001-modular-monolith.md`
 - `ADR-0002-primary-language-runtime.md`
+- `ADR-0003-monorepo-strategy.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../15-engineering-workflow.md`
 - legacy migration source: `../16-open-decisions.md`
