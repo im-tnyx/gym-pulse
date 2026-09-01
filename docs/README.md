@@ -232,6 +232,7 @@ Current decision ADRs:
 docs/adr/ADR-0001-modular-monolith.md          Proposed   D-ARCH-005
 docs/adr/ADR-0002-primary-language-runtime.md  Proposed   D-ARCH-016
 docs/adr/ADR-0003-monorepo-strategy.md          Proposed   D-ARCH-001
+docs/adr/ADR-0004-database-engine.md            Proposed   D-ARCH-002
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -240,33 +241,39 @@ docs/adr/ADR-0003-monorepo-strategy.md          Proposed   D-ARCH-001
 
 `ADR-0003` proposes an explicit monorepo with deliberate application/package boundaries, independent build/deployment artifacts, and structural client-safe/server-only enforcement. It keeps package manager, workspace orchestrator, API deployment topology, database, data-access tooling, CI/CD, framework, and hosting decisions separate. It remains unaccepted.
 
+`ADR-0004` proposes PostgreSQL as the canonical transactional database engine after comparing MySQL/MariaDB, document/NoSQL-first, and distributed SQL alternatives against GymPulse correctness, tenancy, querying, backup/restore, and operational requirements. It explicitly does not approve a final schema, managed provider, RLS policy, ORM/query builder, hosting platform, job runner, database role model, exact indexes, or exact PostgreSQL version. It remains unaccepted.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first three foundation ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first four foundation ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
-The exact next bounded governance task is:
+`D-DATA-007` also remains unresolved. Database-engine evaluation can proceed independently, but final Member/Membership schema and state-machine design cannot be treated as settled until that decision is resolved.
+
+The exact next bounded governance task from the current ADR dependency queue is:
 
 ```text
-Task 0012: Draft Canonical Database Engine ADR
+Task 0013: Draft Data Access / Query / Migration Strategy ADR
 ```
 
-Create only a `Proposed` ADR for:
+Primary decision:
 
 ```text
-D-ARCH-002
+D-ARCH-017
 ```
 
 Likely target when the task begins:
 
 ```text
-docs/adr/ADR-0004-database-engine.md
+docs/adr/ADR-0005-data-access-migration-strategy.md
 ```
 
-The database ADR must keep managed provider/backend selection, RLS policy, data-access tooling, hosting, and deployment topology separate. Do not draft `D-ARCH-017` in the same bounded task.
+The task must treat PostgreSQL as a `Proposed` engine direction rather than an accepted fact, and must keep managed provider/backend selection, RLS policy, hosting, jobs, and schema/state-model approval separate.
+
+Do not create implementation/database scaffolding merely because ADR-0004 exists.
 
 ## Legacy Migration State
 
