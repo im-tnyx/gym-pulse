@@ -38,6 +38,11 @@ ADR-0003-monorepo-strategy.md
 Primary decision: D-ARCH-001
 Status: Proposed
 Accepted: No
+
+ADR-0004-database-engine.md
+Primary decision: D-ARCH-002
+Status: Proposed
+Accepted: No
 ```
 
 No authorized approval evidence exists for these ADRs. Therefore:
@@ -46,45 +51,45 @@ No authorized approval evidence exists for these ADRs. Therefore:
 D-ARCH-005 remains PROPOSED
 D-ARCH-016 remains PROPOSED
 D-ARCH-001 remains PROPOSED
+D-ARCH-002 remains PROPOSED
 ```
 
-## Repository / Workspace Position
+## Canonical Database Position
 
-`ADR-0003` proposes one explicit GymPulse monorepo with deliberate application/package boundaries and independently buildable/deployable artifacts.
-
-Required invariants:
+`ADR-0004` proposes PostgreSQL as the canonical transactional database engine for Phase 1 after evaluating:
 
 ```text
-Repository topology != Deployment topology
-Domain != Package
-Package != Application
-Application != Service
-Service != Repository
-Repository != Deployment
+A. PostgreSQL relational database
+B. MySQL / MariaDB relational family
+C. Document / NoSQL-first database
+D. Distributed SQL / NewSQL database
 ```
 
-Default dependency direction:
+The recommendation is based on GymPulse's relational domain shape, transaction/constraint requirements, attendance and payment idempotency, tenant-scoped operational queries, reconciliation/audit needs, backup/restore expectations, and Phase 1 operational simplicity.
+
+PostgreSQL is **not accepted** by this state file or by the ADR draft.
+
+Database-engine selection remains distinct from:
 
 ```text
-UI / Transport
-    -> Application
-    -> Domain
-
-Infrastructure adapters implement inward-facing ports.
+D-ARCH-014  managed backend/provider responsibilities
+D-ARCH-017  data-access/query/migration tooling
+D-SEC-008   RLS/data-layer tenant isolation
+D-ARCH-007  background jobs/scheduler
+D-ARCH-008  Redis/cache/broker
+D-ARCH-009  hosting/deployment platform
+D-ARCH-018  test tooling
 ```
 
-Every package/export surface must be classifiable as:
+No managed database provider, RLS policy, ORM/query builder, job technology, cache/broker, hosting provider, exact PostgreSQL version, final database role model, or exact index strategy has been selected.
 
-```text
-Client-safe
-Server-only
-Build/tooling-only
-Documentation-only
-```
+## D-DATA-007 State
 
-Client applications must never reach server-only database/migration/provider-secret/service-role/admin/configuration code through the repository dependency graph.
+`D-DATA-007` remains `P1 PROPOSED` and unresolved.
 
-The ADR does not require one package per logical domain and explicitly rejects generic catch-all `shared/common/utils` ownership.
+Database-engine selection can proceed independently, but final Member/Membership lifecycle schema, constraints, indexes, entitlement queries, and state-machine migrations must not be finalized until state ownership is resolved.
+
+No change was made to `FR-MEMBER-004` or `FR-MEMBERSHIP-002`.
 
 ## Important Architecture Boundaries
 
@@ -93,15 +98,14 @@ The ADR does not require one package per logical domain and explicitly rejects g
 - Authentication and GymPulse authorization are separate responsibilities.
 - Protected operations require principal + tenant/resource scope + named capability.
 - Application handlers own cross-domain orchestration; domain modules own canonical state transitions.
-- Arbitrary cross-domain direct writes are not an approved pattern.
+- Database constraints reinforce durable invariants but do not replace domain/application rules.
 - Background execution reuses the same application/domain rules as interactive flows.
 - Payment provider evidence must be verified before canonical payment mutation.
 - Membership/add-on payment effects are protected exactly once.
-- External provider calls do not participate in local database transactions.
+- External provider calls do not participate in long local database transactions.
 - Gym-local timezone controls business calendar logic; event timestamps remain UTC.
 - Read models, telemetry, analytics, and data-quality views are non-authoritative for writes.
 - Static types do not replace runtime validation, authorization, transactions, idempotency, or database constraints.
-- `D-DATA-007` remains unresolved and blocks final Member/Membership state-machine/schema semantics.
 
 ## Technology Governance State
 
@@ -109,7 +113,7 @@ Key unresolved decisions include:
 
 ```text
 D-ARCH-001  repository strategy                  P0 PROPOSED / ADR-0003 drafted
-D-ARCH-002  database engine                      P0 PROPOSED
+D-ARCH-002  database engine                      P0 PROPOSED / ADR-0004 drafted
 D-ARCH-003  API contract architecture            P0 PROPOSED
 D-ARCH-004  authentication/session               P0 OPEN
 D-ARCH-005  architecture style                   P1 PROPOSED / ADR-0001 drafted
@@ -137,15 +141,15 @@ D-DATA-007  Member vs Membership state ownership P1 PROPOSED
 
 `D-ARCH-008` Redis/cache/broker remains P2 OPEN and is not a baseline dependency.
 
-## Task 0011 Implementation Status
+## Task 0012 Implementation Status
 
-Task `0011-draft-repository-workspace-adr` completed documentation/governance work only.
+Task `0012-draft-canonical-database-engine-adr` completed documentation/governance work only.
 
 Created:
 
 ```text
-docs/adr/ADR-0003-monorepo-strategy.md
-.ai/task/0011-draft-repository-workspace-adr.md
+docs/adr/ADR-0004-database-engine.md
+.ai/task/0012-draft-canonical-database-engine-adr.md
 ```
 
 Updated:
@@ -159,26 +163,31 @@ docs/README.md
 Explicitly not created/selected:
 
 ```text
-No apps/ scaffold
-No packages/ scaffold
-No package.json/workspace manifest
-No package manager accepted
-No Turborepo/Nx/task orchestrator accepted
-No deployment topology selected
-No database selected
-No ORM/query builder selected
-No CI provider selected
-No application code
+No final schema
+No database/ directory
 No migrations
-No API routes
+No schema.sql / schema.prisma / ORM models
+No database client
+No Docker database configuration
+No Supabase/managed-backend project
+No RLS policies
+No seed scripts
+No application/API/worker code
+No managed PostgreSQL provider
+No ORM/query builder
+No background-job technology
+No Redis/cache/broker
+No hosting provider
+No CI workflow
 No deployment configuration
+No database infrastructure
 ```
 
 ## Last Completed Task
 
-`0011-draft-repository-workspace-adr`
+`0012-draft-canonical-database-engine-adr`
 
-`ADR-0003` remains `Proposed`; `D-ARCH-001` remains `PROPOSED`.
+`ADR-0004` remains `Proposed`; `D-ARCH-002` remains `PROPOSED`.
 
 ## Current Task
 
@@ -186,20 +195,20 @@ None in progress.
 
 ## Next Task
 
-The current ADR dependency queue places the canonical database engine after the three drafted foundation decisions.
+The post-Task-0012 re-check of `docs/adr/README.md` and `docs/00-overview/assumptions.md` confirms the next bounded item in the current dependency queue is:
 
-Task `0012-draft-canonical-database-engine-adr`.
+Task `0013-draft-data-access-migration-strategy-adr`.
 
-Create only when that task is explicitly started:
+Create only when explicitly started:
 
 ```text
-docs/adr/ADR-0004-database-engine.md
+docs/adr/ADR-0005-data-access-migration-strategy.md
 ```
 
 Primary canonical decision:
 
 ```text
-D-ARCH-002
+D-ARCH-017
 ```
 
 Initial ADR status:
@@ -208,25 +217,23 @@ Initial ADR status:
 Proposed
 ```
 
-The database ADR must compare the current PostgreSQL recommendation with credible alternatives against GymPulse transaction, relational-integrity, idempotency, tenant-scoping, migration, backup/restore, testing, and operations requirements.
+The task should compare credible data-access/query/migration strategies against the **Proposed** PostgreSQL direction while preserving:
 
-It must keep these decisions separate:
+- explicit transaction ownership,
+- database constraints as correctness backstops,
+- raw-SQL escape capability,
+- committed/auditable migrations,
+- production-like database integration tests,
+- compatibility with a future `D-SEC-008` RLS decision.
 
-```text
-D-ARCH-014 managed backend/provider responsibilities
-D-SEC-008  RLS/data-layer isolation policy
-D-ARCH-017 data-access/query/migration tooling
-D-ARCH-009 hosting/deployment platform
-```
-
-Do not draft data-access tooling or implementation scaffolding in the same bounded task.
+It must not accept PostgreSQL, select a managed provider, finalize the canonical schema, resolve `D-DATA-007`, or create application/database scaffolding.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0011-draft-repository-workspace-adr.md
+.ai/task/0012-draft-canonical-database-engine-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
@@ -240,4 +247,5 @@ docs/adr/README.md
 docs/adr/ADR-0001-modular-monolith.md
 docs/adr/ADR-0002-primary-language-runtime.md
 docs/adr/ADR-0003-monorepo-strategy.md
+docs/adr/ADR-0004-database-engine.md
 ```
