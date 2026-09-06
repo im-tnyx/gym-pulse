@@ -229,10 +229,11 @@ docs/adr/README.md
 Current decision ADRs:
 
 ```text
-docs/adr/ADR-0001-modular-monolith.md          Proposed   D-ARCH-005
-docs/adr/ADR-0002-primary-language-runtime.md  Proposed   D-ARCH-016
-docs/adr/ADR-0003-monorepo-strategy.md          Proposed   D-ARCH-001
-docs/adr/ADR-0004-database-engine.md            Proposed   D-ARCH-002
+docs/adr/ADR-0001-modular-monolith.md              Proposed   D-ARCH-005
+docs/adr/ADR-0002-primary-language-runtime.md      Proposed   D-ARCH-016
+docs/adr/ADR-0003-monorepo-strategy.md             Proposed   D-ARCH-001
+docs/adr/ADR-0004-database-engine.md               Proposed   D-ARCH-002
+docs/adr/ADR-0005-data-access-migration-strategy.md Proposed   D-ARCH-017
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -243,37 +244,39 @@ docs/adr/ADR-0004-database-engine.md            Proposed   D-ARCH-002
 
 `ADR-0004` proposes PostgreSQL as the canonical transactional database engine after comparing MySQL/MariaDB, document/NoSQL-first, and distributed SQL alternatives against GymPulse correctness, tenancy, querying, backup/restore, and operational requirements. It explicitly does not approve a final schema, managed provider, RLS policy, ORM/query builder, hosting platform, job runner, database role model, exact indexes, or exact PostgreSQL version. It remains unaccepted.
 
+`ADR-0005` proposes a Drizzle-oriented SQL-transparent TypeScript persistence strategy with application-owned transaction boundaries, generated/reviewed committed SQL migrations, raw/custom SQL escape capability, purpose-specific read models, and future RLS compatibility. It is conditional on compatible final runtime/database decisions and does not approve Drizzle, PostgreSQL, RLS, a managed provider, or a final schema. It remains unaccepted.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first four foundation ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first five ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
-`D-DATA-007` also remains unresolved. Database-engine evaluation can proceed independently, but final Member/Membership schema and state-machine design cannot be treated as settled until that decision is resolved.
+`D-DATA-007` remains unresolved. The data-access/migration strategy can be evaluated independently, but final Member/Membership schema, lifecycle constraints, entitlement queries, and state-machine migrations cannot be treated as settled until that decision is resolved.
 
 The exact next bounded governance task from the current ADR dependency queue is:
 
 ```text
-Task 0013: Draft Data Access / Query / Migration Strategy ADR
+Task 0014: Draft Managed Backend / Platform Responsibilities ADR
 ```
 
 Primary decision:
 
 ```text
-D-ARCH-017
+D-ARCH-014
 ```
 
 Likely target when the task begins:
 
 ```text
-docs/adr/ADR-0005-data-access-migration-strategy.md
+docs/adr/ADR-0006-managed-backend-responsibilities.md
 ```
 
-The task must treat PostgreSQL as a `Proposed` engine direction rather than an accepted fact, and must keep managed provider/backend selection, RLS policy, hosting, jobs, and schema/state-model approval separate.
+The task must evaluate managed platform responsibilities by capability and must not bundle database-engine acceptance, authentication/session, RLS/data-layer authorization, storage, jobs/queues/cron, hosting, or application architecture implicitly into one provider decision.
 
-Do not create implementation/database scaffolding merely because ADR-0004 exists.
+Do not provision a managed backend or create implementation scaffolding merely because the ADR is drafted.
 
 ## Legacy Migration State
 
