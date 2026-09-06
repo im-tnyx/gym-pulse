@@ -24,92 +24,84 @@ docs/adr/README.md
 ## Current ADR State
 
 ```text
-ADR-0001-modular-monolith.md
-Primary decision: D-ARCH-005
-Status: Proposed
-Accepted: No
-
-ADR-0002-primary-language-runtime.md
-Primary decision: D-ARCH-016
-Status: Proposed
-Accepted: No
-
-ADR-0003-monorepo-strategy.md
-Primary decision: D-ARCH-001
-Status: Proposed
-Accepted: No
-
-ADR-0004-database-engine.md
-Primary decision: D-ARCH-002
-Status: Proposed
-Accepted: No
+ADR-0001  D-ARCH-005  Phase 1 architecture style              Proposed
+ADR-0002  D-ARCH-016  Primary language/runtime                Proposed
+ADR-0003  D-ARCH-001  Repository/workspace strategy           Proposed
+ADR-0004  D-ARCH-002  Canonical database engine               Proposed
+ADR-0005  D-ARCH-017  Data access/query/transaction/migrations Proposed
 ```
 
-No authorized approval evidence exists for these ADRs. Therefore:
+No authorized approval evidence exists for these ADRs. None is `Accepted`.
+
+Therefore:
 
 ```text
 D-ARCH-005 remains PROPOSED
 D-ARCH-016 remains PROPOSED
 D-ARCH-001 remains PROPOSED
 D-ARCH-002 remains PROPOSED
+D-ARCH-017 remains PROPOSED
 ```
 
-## Canonical Database Position
+## Current Persistence Position
 
-`ADR-0004` proposes PostgreSQL as the canonical transactional database engine for Phase 1 after evaluating:
+`ADR-0004` proposes PostgreSQL as the canonical transactional database engine. PostgreSQL is not accepted.
+
+`ADR-0005` proposes, conditionally on compatible final runtime/database decisions, a Drizzle-oriented TypeScript persistence strategy with:
 
 ```text
-A. PostgreSQL relational database
-B. MySQL / MariaDB relational family
-C. Document / NoSQL-first database
-D. Distributed SQL / NewSQL database
+application-owned explicit transaction boundaries
+SQL-transparent typed query access
+server-only persistence adapters
+purpose-specific operational read/query services
+generated + reviewed committed SQL migrations
+custom/raw SQL as a first-class escape path
+one canonical migration history for the shared canonical database
+future RLS compatibility without RLS adoption
 ```
 
-The recommendation is based on GymPulse's relational domain shape, transaction/constraint requirements, attendance and payment idempotency, tenant-scoped operational queries, reconciliation/audit needs, backup/restore expectations, and Phase 1 operational simplicity.
+Drizzle is not installed or accepted. Kysely, Prisma, and SQL-first remain evaluated alternatives.
 
-PostgreSQL is **not accepted** by this state file or by the ADR draft.
-
-Database-engine selection remains distinct from:
+Migration governance in the proposal distinguishes:
 
 ```text
-D-ARCH-014  managed backend/provider responsibilities
-D-ARCH-017  data-access/query/migration tooling
-D-SEC-008   RLS/data-layer tenant isolation
-D-ARCH-007  background jobs/scheduler
-D-ARCH-008  Redis/cache/broker
-D-ARCH-009  hosting/deployment platform
-D-ARCH-018  test tooling
+typed desired persistence schema declaration
+  !=
+committed migration history
+  !=
+actual database state
 ```
 
-No managed database provider, RLS policy, ORM/query builder, job technology, cache/broker, hosting provider, exact PostgreSQL version, final database role model, or exact index strategy has been selected.
+The committed migration history is the proposed governed deployment/change record. Direct schema push is not the proposed staging/production mechanism.
 
 ## D-DATA-007 State
 
 `D-DATA-007` remains `P1 PROPOSED` and unresolved.
 
-Database-engine selection can proceed independently, but final Member/Membership lifecycle schema, constraints, indexes, entitlement queries, and state-machine migrations must not be finalized until state ownership is resolved.
+Persistence tooling can be evaluated, but final Member/Membership schema, lifecycle constraints, entitlement queries, indexes, and state-machine migrations must not be finalized until state ownership is resolved.
 
 No change was made to `FR-MEMBER-004` or `FR-MEMBERSHIP-002`.
 
 ## Important Architecture Boundaries
 
-- Phase 1 is gym operations/retention, not a generic fitness super-app.
 - Clients are untrusted for canonical business truth.
-- Authentication and GymPulse authorization are separate responsibilities.
-- Protected operations require principal + tenant/resource scope + named capability.
-- Application handlers own cross-domain orchestration; domain modules own canonical state transitions.
+- Protected operations require verified principal + tenant/resource scope + named capability.
+- Application handlers own cross-domain orchestration and correctness-sensitive local transaction boundaries.
+- Domain modules own business rules/state transitions; persistence types do not define domain semantics.
+- Multi-domain source/package boundaries must not fragment one database transaction when a use case requires atomicity.
 - Database constraints reinforce durable invariants but do not replace domain/application rules.
-- Background execution reuses the same application/domain rules as interactive flows.
-- Payment provider evidence must be verified before canonical payment mutation.
-- Membership/add-on payment effects are protected exactly once.
+- Request idempotency, provider-event dedupe, job dedupe, and business-effect uniqueness remain distinct concerns.
 - External provider calls do not participate in long local database transactions.
-- Gym-local timezone controls business calendar logic; event timestamps remain UTC.
-- Read models, telemetry, analytics, and data-quality views are non-authoritative for writes.
-- Static types do not replace runtime validation, authorization, transactions, idempotency, or database constraints.
+- Background execution reuses the same application/domain rules as interactive flows.
+- Tenant scope must remain explicit in persistence operations.
+- Operational read models may use purpose-specific joins/aggregates but are non-authoritative for writes.
+- Raw SQL is acceptable inside the server-only persistence boundary when parameterized/reviewed and must not bypass authorization/domain ownership.
+- Compile-time database/TypeScript types do not replace runtime validation at trust boundaries.
+- Gym-local timezone controls business calendar logic; canonical event timestamps remain UTC.
 
 ## Technology Governance State
 
-Key unresolved decisions include:
+Key unresolved decisions now include:
 
 ```text
 D-ARCH-001  repository strategy                  P0 PROPOSED / ADR-0003 drafted
@@ -126,7 +118,7 @@ D-ARCH-013  member client strategy               P1 PROPOSED
 D-ARCH-014  managed backend responsibilities     P0 OPEN
 D-ARCH-015  authorization implementation         P0 PROPOSED
 D-ARCH-016  primary language/runtime             P0 PROPOSED / ADR-0002 drafted
-D-ARCH-017  data access/migrations               P1 PROPOSED
+D-ARCH-017  data access/migrations               P1 PROPOSED / ADR-0005 drafted
 D-ARCH-018  testing toolchain                    P1 PROPOSED
 D-ARCH-019  CI/CD + release/secrets tooling      P1 OPEN
 D-SEC-001   jurisdiction/privacy                 P0 OPEN
@@ -141,15 +133,15 @@ D-DATA-007  Member vs Membership state ownership P1 PROPOSED
 
 `D-ARCH-008` Redis/cache/broker remains P2 OPEN and is not a baseline dependency.
 
-## Task 0012 Implementation Status
+## Task 0013 Implementation Status
 
-Task `0012-draft-canonical-database-engine-adr` completed documentation/governance work only.
+Task `0013-draft-data-access-migration-strategy-adr` completed documentation/governance work only.
 
 Created:
 
 ```text
-docs/adr/ADR-0004-database-engine.md
-.ai/task/0012-draft-canonical-database-engine-adr.md
+docs/adr/ADR-0005-data-access-migration-strategy.md
+.ai/task/0013-draft-data-access-migration-strategy-adr.md
 ```
 
 Updated:
@@ -163,29 +155,31 @@ docs/README.md
 Explicitly not created/selected:
 
 ```text
-No final schema
-No database/ directory
-No migrations
-No schema.sql / schema.prisma / ORM models
+No ORM/query dependency installed
+No Drizzle/Kysely/Prisma package installed
+No database driver installed
+No database/ or migrations/ scaffold
+No schema.sql / schema.prisma / Drizzle schema
+No migration files
+No final database schema
 No database client
-No Docker database configuration
-No Supabase/managed-backend project
-No RLS policies
 No seed scripts
+No Docker database setup
+No RLS policies or database role model
+No managed backend/provider
+No database infrastructure
 No application/API/worker code
-No managed PostgreSQL provider
-No ORM/query builder
 No background-job technology
-No Redis/cache/broker
 No hosting provider
 No CI workflow
 No deployment configuration
-No database infrastructure
 ```
 
 ## Last Completed Task
 
-`0012-draft-canonical-database-engine-adr`
+`0013-draft-data-access-migration-strategy-adr`
+
+`ADR-0005` remains `Proposed`; `D-ARCH-017` remains `PROPOSED`.
 
 `ADR-0004` remains `Proposed`; `D-ARCH-002` remains `PROPOSED`.
 
@@ -195,57 +189,49 @@ None in progress.
 
 ## Next Task
 
-The post-Task-0012 re-check of `docs/adr/README.md` and `docs/00-overview/assumptions.md` confirms the next bounded item in the current dependency queue is:
+Post-Task-0013 re-check of `docs/adr/README.md` and `docs/00-overview/assumptions.md` confirms the next bounded item in the current ADR dependency queue is:
 
-Task `0013-draft-data-access-migration-strategy-adr`.
+Task `0014-draft-managed-backend-responsibilities-adr`.
 
 Create only when explicitly started:
 
 ```text
-docs/adr/ADR-0005-data-access-migration-strategy.md
+docs/adr/ADR-0006-managed-backend-responsibilities.md
 ```
 
 Primary canonical decision:
 
 ```text
-D-ARCH-017
+D-ARCH-014
 ```
 
-Initial ADR status:
+Initial ADR status should be:
 
 ```text
 Proposed
 ```
 
-The task should compare credible data-access/query/migration strategies against the **Proposed** PostgreSQL direction while preserving:
+The task should evaluate managed-backend/platform responsibilities by capability rather than bundle adoption. It must keep database-engine acceptance, authentication/session, member authentication, protected storage, RLS/data-layer isolation, background jobs/queues/cron, API deployment, hosting, and application/domain architecture as separately governed decisions.
 
-- explicit transaction ownership,
-- database constraints as correctness backstops,
-- raw-SQL escape capability,
-- committed/auditable migrations,
-- production-like database integration tests,
-- compatibility with a future `D-SEC-008` RLS decision.
-
-It must not accept PostgreSQL, select a managed provider, finalize the canonical schema, resolve `D-DATA-007`, or create application/database scaffolding.
+Do not provision a managed backend or start implementation in Task 0014.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0012-draft-canonical-database-engine-adr.md
+.ai/task/0013-draft-data-access-migration-strategy-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
+docs/02-architecture/container-architecture.md
 docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
-docs/adr/ADR-0001-modular-monolith.md
-docs/adr/ADR-0002-primary-language-runtime.md
-docs/adr/ADR-0003-monorepo-strategy.md
 docs/adr/ADR-0004-database-engine.md
+docs/adr/ADR-0005-data-access-migration-strategy.md
 ```
