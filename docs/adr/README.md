@@ -81,6 +81,7 @@ ADR-0001-modular-monolith.md
 ADR-0002-primary-language-runtime.md
 ADR-0003-monorepo-strategy.md
 ADR-0004-database-engine.md
+ADR-0005-data-access-migration-strategy.md
 ```
 
 Rules:
@@ -92,7 +93,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001-modular-monolith.md`, `ADR-0002-primary-language-runtime.md`, `ADR-0003-monorepo-strategy.md`, and `ADR-0004-database-engine.md` now exist.
+`ADR-0001` through `ADR-0005` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -259,12 +260,13 @@ Their registration means future ADRs can reference canonical IDs. It does not me
 | `ADR-0002-primary-language-runtime.md` | `D-ARCH-016` | Proposed | Proposes strict TypeScript with a supported Node.js LTS runtime; compares JVM, Go, Python, and untyped JavaScript alternatives while preserving framework/deployment/provider independence. No acceptance evidence exists yet. |
 | `ADR-0003-monorepo-strategy.md` | `D-ARCH-001` | Proposed | Proposes an explicit monorepo with deliberate application/package boundaries, independent build/deployment artifacts, and client-safe/server-only enforcement; compares multi-repository and unstructured single-repository alternatives. No acceptance evidence exists yet. |
 | `ADR-0004-database-engine.md` | `D-ARCH-002` | Proposed | Proposes PostgreSQL as the canonical transactional database engine; compares MySQL/MariaDB, document/NoSQL-first, and distributed SQL alternatives while keeping schema, provider, RLS, ORM/query tooling, hosting, and jobs separate. No acceptance evidence exists yet. |
+| `ADR-0005-data-access-migration-strategy.md` | `D-ARCH-017` | Proposed | Proposes a Drizzle-oriented SQL-transparent TypeScript persistence strategy with application-owned transactions, generated/reviewed committed SQL migrations, custom/raw SQL escape paths, and future RLS compatibility. PostgreSQL and the tool remain unaccepted. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning after the technology evaluation. Presence in this backlog does not mean acceptance. The first four items have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning after the technology evaluation. Presence in this backlog does not mean acceptance. The first five items have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
@@ -272,7 +274,7 @@ The order reflects current GymPulse dependency reasoning after the technology ev
 | 2 | Primary implementation language/runtime | `D-ARCH-016` | PROPOSED / ADR-0002 drafted | Cross-cuts web, API, jobs, provider adapters, testing, and deployment; should be explicit before scaffold commitments. |
 | 3 | Repository/monorepo strategy | `D-ARCH-001` | PROPOSED / ADR-0003 drafted | Determines shared source/package boundaries and how independently deployable applications evolve together. |
 | 4 | Canonical database engine | `D-ARCH-002` | PROPOSED / ADR-0004 drafted | Transactions, constraints, idempotency, reconciliation, reporting, and tenant isolation depend on persistence capabilities. |
-| 5 | Data-access/query/migration strategy | `D-ARCH-017` | PROPOSED | Depends on the database choice and affects transactions, migrations, constraints, raw SQL, and RLS integration. |
+| 5 | Data-access/query/migration strategy | `D-ARCH-017` | PROPOSED / ADR-0005 drafted | Defines transaction/query/migration mechanics while keeping database/provider/RLS/schema decisions separate. |
 | 6 | Managed backend/platform responsibilities | `D-ARCH-014` | OPEN | May own database hosting, auth, storage, queues/cron, or data-layer controls and therefore affects later choices. |
 | 7 | Authentication/session architecture | `D-ARCH-004` | OPEN | Required before protected client/runtime/session implementation is final. |
 | 8 | Member authentication method | `D-SEC-002` | OPEN | Depends on authentication architecture and pilot UX/security/abuse requirements. |
@@ -293,7 +295,7 @@ The order reflects current GymPulse dependency reasoning after the technology ev
 | 23 | Messaging provider | `D-PROVIDER-002` | OPEN | Depends on approved launch channels, templates, consent/service policy, and operational support. |
 | 24 | Product analytics provider | `D-PROVIDER-005` | OPEN | Non-canonical analytics can remain provider-neutral until pilot instrumentation questions are concrete. |
 | 25 | Redis/cache requirement | `D-ARCH-008` | OPEN | Decide only after a measured cache/queue/coordination need exists. |
-| 26 | Member vs Membership state ownership | `D-DATA-007` | PROPOSED | Resolve before canonical domain/schema/state-machine finalization; it can proceed in parallel with early platform ADRs but blocks schema semantics. |
+| 26 | Member vs Membership state ownership | `D-DATA-007` | PROPOSED | Resolve before canonical domain/schema/state-machine finalization; it can proceed in parallel with platform ADRs but blocks schema semantics. |
 
 ## 14. ADR Batch Readiness
 
@@ -316,16 +318,16 @@ Draft and review them separately. Do not mark any as `Accepted` merely because t
 
 ### Second dependency batch
 
-After the foundation direction is reviewed:
-
 ```text
-D-ARCH-017  Data-access/query/migration strategy
-D-ARCH-014  Managed backend responsibilities
-D-ARCH-004  Authentication/session
-D-SEC-002   Member authentication
-D-ARCH-015  Authorization implementation
-D-SEC-008   RLS/data-layer tenant isolation
+D-ARCH-017  Data-access/query/migration strategy      ADR-0005 drafted, Proposed
+D-ARCH-014  Managed backend responsibilities          OPEN
+D-ARCH-004  Authentication/session                    OPEN
+D-SEC-002   Member authentication                     OPEN
+D-ARCH-015  Authorization implementation              PROPOSED
+D-SEC-008   RLS/data-layer tenant isolation           OPEN
 ```
+
+`ADR-0005` is conditional on compatible final runtime/database decisions and does not accept PostgreSQL, Drizzle, RLS, or a managed backend.
 
 ### Third runtime/operations batch
 
@@ -345,26 +347,26 @@ Payment and messaging provider ADRs should follow confirmed pilot methods/channe
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, and technology decision-gap normalization are complete at Draft level. `ADR-0001`, `ADR-0002`, `ADR-0003`, and `ADR-0004` now exist as `Proposed` decision records.
+The C4 architecture, data-flow architecture, technology evaluation, and technology decision-gap normalization are complete at Draft level. `ADR-0001` through `ADR-0005` now exist as `Proposed` decision records.
 
-The repository is **not** thereby implementation-ready. `D-ARCH-005`, `D-ARCH-016`, `D-ARCH-001`, and `D-ARCH-002` remain `PROPOSED` because no authorized approval evidence exists, and other P0/P1 decisions remain unresolved.
+The repository is **not** thereby implementation-ready. `D-ARCH-005`, `D-ARCH-016`, `D-ARCH-001`, `D-ARCH-002`, and `D-ARCH-017` remain `PROPOSED` because no authorized approval evidence exists, and other P0/P1 decisions remain unresolved.
 
 The actual next bounded governance task in the current dependency queue is:
 
 ```text
 Draft one Proposed ADR only:
-D-ARCH-017 - Data-access/query/migration strategy
+D-ARCH-014 - Managed backend / platform responsibilities
 ```
 
 Suggested target when the task begins:
 
 ```text
-docs/adr/ADR-0005-data-access-migration-strategy.md
+docs/adr/ADR-0006-managed-backend-responsibilities.md
 ```
 
-That ADR should evaluate data-access/query/migration approaches against the proposed PostgreSQL direction while preserving explicit transactions, constraints, raw-SQL escape capability, committed migrations, real-database testing, and future RLS compatibility. It must not select a managed PostgreSQL provider or accept PostgreSQL merely because ADR-0004 recommends it.
+That ADR should decide which, if any, managed-backend/platform responsibilities GymPulse should purchase as a bundle versus keep independent. It must keep database-engine acceptance, authentication/session, storage, RLS/data-layer authorization, jobs/queues/cron, API deployment, hosting, and provider-specific implementation boundaries explicit rather than treating one platform as the application architecture.
 
-Do not start implementation scaffolding in the ADR task.
+Do not provision a managed backend or begin implementation scaffolding in that ADR task.
 
 ## 16. Related Documents
 
@@ -382,6 +384,7 @@ Do not start implementation scaffolding in the ADR task.
 - `ADR-0002-primary-language-runtime.md`
 - `ADR-0003-monorepo-strategy.md`
 - `ADR-0004-database-engine.md`
+- `ADR-0005-data-access-migration-strategy.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../15-engineering-workflow.md`
 - legacy migration source: `../16-open-decisions.md`
