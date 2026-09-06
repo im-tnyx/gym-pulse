@@ -83,6 +83,7 @@ ADR-0003-monorepo-strategy.md
 ADR-0004-database-engine.md
 ADR-0005-data-access-migration-strategy.md
 ADR-0006-managed-backend-responsibilities.md
+ADR-0007-authentication-session-architecture.md
 ```
 
 Rules:
@@ -94,7 +95,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001` through `ADR-0006` now exist.
+`ADR-0001` through `ADR-0007` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -263,12 +264,13 @@ Their registration means future ADRs can reference canonical IDs. It does not me
 | `ADR-0004-database-engine.md` | `D-ARCH-002` | Proposed | Proposes PostgreSQL as the canonical transactional database engine; compares MySQL/MariaDB, document/NoSQL-first, and distributed SQL alternatives while keeping schema, provider, RLS, ORM/query tooling, hosting, and jobs separate. No acceptance evidence exists yet. |
 | `ADR-0005-data-access-migration-strategy.md` | `D-ARCH-017` | Proposed | Proposes a Drizzle-oriented SQL-transparent TypeScript persistence strategy with application-owned transactions, generated/reviewed committed SQL migrations, custom/raw SQL escape paths, and future RLS compatibility. PostgreSQL and the tool remain unaccepted. |
 | `ADR-0006-managed-backend-responsibilities.md` | `D-ARCH-014` | Proposed | Proposes selective managed infrastructure adoption by capability, with integrated platforms such as Supabase eligible candidates rather than application-architecture owners. Database, Auth, Storage, RLS, jobs, hosting, observability, and direct-client access remain separately governed; no provider is accepted. |
+| `ADR-0007-authentication-session-architecture.md` | `D-ARCH-004` | Proposed | Proposes a managed-authentication-provider category with provider-independent AuthIdentity mapping, GymPulse Principal resolution, current tenant/capability authorization, and a secure server-mediated staff-web session posture. No provider, member method, exact session policy, or MFA mandate is accepted; `D-ARCH-004` remains canonically `OPEN`. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning after the technology evaluation. Presence in this backlog does not mean acceptance. The first six ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning after the technology evaluation. Presence in this backlog does not mean acceptance. The first seven ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
@@ -278,7 +280,7 @@ The order reflects current GymPulse dependency reasoning after the technology ev
 | 4 | Canonical database engine | `D-ARCH-002` | PROPOSED / ADR-0004 drafted | Transactions, constraints, idempotency, reconciliation, reporting, and tenant isolation depend on persistence capabilities. |
 | 5 | Data-access/query/migration strategy | `D-ARCH-017` | PROPOSED / ADR-0005 drafted | Defines transaction/query/migration mechanics while keeping database/provider/RLS/schema decisions separate. |
 | 6 | Managed backend/platform responsibilities | `D-ARCH-014` | OPEN / ADR-0006 drafted | Defines which commodity responsibilities may be managed while keeping platform features subordinate to GymPulse application/domain/security ownership. |
-| 7 | Authentication/session architecture | `D-ARCH-004` | OPEN | Required before protected client/runtime/session implementation is final. |
+| 7 | Authentication/session architecture | `D-ARCH-004` | OPEN / ADR-0007 drafted | Defines provider-independent identity mapping, principal resolution, secure session transport, revocation/logout capability, and provider responsibility boundaries without changing canonical status. |
 | 8 | Member authentication method | `D-SEC-002` | OPEN | Depends on authentication architecture and pilot UX/security/abuse requirements. |
 | 9 | Authorization implementation boundary | `D-ARCH-015` | PROPOSED | Must preserve capability + tenant/resource scope independently of auth provider/framework. |
 | 10 | Data-layer tenant isolation / RLS | `D-SEC-008` | OPEN | Depends on database/managed-backend/service-role topology; defense in depth only. |
@@ -323,7 +325,7 @@ Draft and review them separately. Do not mark any as `Accepted` merely because t
 ```text
 D-ARCH-017  Data-access/query/migration strategy      PROPOSED / ADR-0005 drafted
 D-ARCH-014  Managed backend responsibilities          OPEN / ADR-0006 drafted
-D-ARCH-004  Authentication/session                    OPEN
+D-ARCH-004  Authentication/session                    OPEN / ADR-0007 drafted
 D-SEC-002   Member authentication                     OPEN
 D-ARCH-015  Authorization implementation              PROPOSED
 D-SEC-008   RLS/data-layer tenant isolation           OPEN
@@ -332,6 +334,8 @@ D-SEC-008   RLS/data-layer tenant isolation           OPEN
 `ADR-0005` is conditional on compatible final runtime/database decisions and does not accept PostgreSQL, Drizzle, RLS, or a managed backend.
 
 `ADR-0006` proposes selective managed infrastructure responsibilities but does not accept Supabase or another provider, PostgreSQL, Auth, Storage, RLS, jobs, hosting, or direct-client database access. Its canonical decision `D-ARCH-014` remains `OPEN` pending review/approval evidence.
+
+`ADR-0007` proposes managed authentication as an architecture category with explicit GymPulse identity/principal mapping and secure server-mediated staff-web session transport. It does not accept Supabase Auth, Clerk, Auth0, Keycloak, member OTP/passwordless, exact session lifetime/device policy, MFA policy, or a GymPulse opaque session store. Its canonical decision `D-ARCH-004` remains `OPEN` pending review/approval evidence.
 
 ### Third runtime/operations batch
 
@@ -351,26 +355,26 @@ Payment and messaging provider ADRs should follow confirmed pilot methods/channe
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, and technology decision-gap normalization are complete at Draft level. `ADR-0001` through `ADR-0006` now exist as `Proposed` decision records.
+The C4 architecture, data-flow architecture, technology evaluation, and technology decision-gap normalization are complete at Draft level. `ADR-0001` through `ADR-0007` now exist as `Proposed` decision records.
 
-The repository is **not** thereby implementation-ready. `D-ARCH-005`, `D-ARCH-016`, `D-ARCH-001`, `D-ARCH-002`, and `D-ARCH-017` remain `PROPOSED`; `D-ARCH-014` remains `OPEN`; other P0/P1 decisions also remain unresolved because no authorized approval evidence exists.
+The repository is **not** thereby implementation-ready. `D-ARCH-005`, `D-ARCH-016`, `D-ARCH-001`, `D-ARCH-002`, and `D-ARCH-017` remain `PROPOSED`; `D-ARCH-014` and `D-ARCH-004` remain `OPEN`; other P0/P1 decisions also remain unresolved because no authorized approval evidence exists.
 
 The actual next bounded governance task in the current dependency queue is:
 
 ```text
 Draft one Proposed ADR only:
-D-ARCH-004 - Authentication / session architecture
+D-SEC-002 - Member Authentication / Verification Method
 ```
 
 Suggested target when the task begins:
 
 ```text
-docs/adr/ADR-0007-authentication-session-architecture.md
+docs/adr/ADR-0008-member-authentication-method.md
 ```
 
-That ADR should decide staff/member-compatible authentication and session architecture, revocation/expiry, principal mapping, credential/token handling, recovery boundaries, and provider responsibilities while preserving GymPulse-owned capability + tenant/resource authorization. It must keep member authentication method (`D-SEC-002`) and exact session policy (`D-SEC-004`) visible as separately governed security decisions where appropriate.
+That ADR should evaluate the member verification method inside the architecture proposed by `ADR-0007`, including phone OTP/passwordless and credible alternatives, while keeping exact session lifetime/device policy under `D-SEC-004`, GymPulse authorization under `D-ARCH-015`, provider selection separately evidenced, and Member/AuthIdentity separation intact.
 
-Do not provision an authentication provider or begin implementation scaffolding in that ADR task.
+Do not create ADR-0008, provision an authentication/messaging provider, or begin authentication implementation as part of Task 0015.
 
 ## 16. Related Documents
 
@@ -390,6 +394,7 @@ Do not provision an authentication provider or begin implementation scaffolding 
 - `ADR-0004-database-engine.md`
 - `ADR-0005-data-access-migration-strategy.md`
 - `ADR-0006-managed-backend-responsibilities.md`
+- `ADR-0007-authentication-session-architecture.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../15-engineering-workflow.md`
 - legacy migration source: `../16-open-decisions.md`
