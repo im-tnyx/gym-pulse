@@ -24,51 +24,60 @@ docs/adr/README.md
 ## Current ADR State
 
 ```text
-ADR-0001  D-ARCH-005  Phase 1 architecture style                Proposed
-ADR-0002  D-ARCH-016  Primary language/runtime                  Proposed
-ADR-0003  D-ARCH-001  Repository/workspace strategy             Proposed
-ADR-0004  D-ARCH-002  Canonical database engine                 Proposed
-ADR-0005  D-ARCH-017  Data access/query/transaction/migrations  Proposed
-ADR-0006  D-ARCH-014  Managed backend/platform responsibilities Proposed
-ADR-0007  D-ARCH-004  Authentication/session architecture       Proposed
+ADR-0001  D-ARCH-005  Phase 1 architecture style                 Proposed
+ADR-0002  D-ARCH-016  Primary language/runtime                   Proposed
+ADR-0003  D-ARCH-001  Repository/workspace strategy              Proposed
+ADR-0004  D-ARCH-002  Canonical database engine                  Proposed
+ADR-0005  D-ARCH-017  Data access/query/transaction/migrations   Proposed
+ADR-0006  D-ARCH-014  Managed backend/platform responsibilities  Proposed
+ADR-0007  D-ARCH-004  Authentication/session architecture        Proposed
+ADR-0008  D-SEC-002   Member authentication/verification method  Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
 
-Canonical decision status remains controlled by `docs/00-overview/assumptions.md`:
+Canonical decision status remains controlled by `docs/00-overview/assumptions.md` rather than ADR draft status.
+
+Relevant current canonical status:
 
 ```text
-D-ARCH-005 remains PROPOSED
-D-ARCH-016 remains PROPOSED
-D-ARCH-001 remains PROPOSED
-D-ARCH-002 remains PROPOSED
-D-ARCH-017 remains PROPOSED
-D-ARCH-014 remains OPEN
 D-ARCH-004 remains OPEN
+D-ARCH-014 remains OPEN
+D-ARCH-015 remains PROPOSED
+D-ARCH-013 remains PROPOSED
+D-SEC-001 remains OPEN
+D-SEC-002 remains OPEN
+D-SEC-004 remains OPEN
+D-SEC-008 remains OPEN when applicable
+D-DATA-004 remains PROPOSED
+D-DATA-007 remains PROPOSED
+D-PROVIDER-002 remains OPEN
+D-PROVIDER-003 remains OPEN
 ```
 
 A `Proposed` ADR does not itself promote its canonical decision to `PROPOSED` or `DECIDED`.
 
-## Current Authentication / Session Position
+## Current Authentication Architecture Position
 
-`ADR-0007` proposes a **managed authentication provider architecture category** while keeping provider identity/session infrastructure separate from GymPulse business identity and authorization.
+`ADR-0007` remains `Proposed`; canonical `D-ARCH-004` remains `P0 OPEN`.
 
-Proposed trust chain:
+Current proposed trust chain:
 
 ```text
 Authentication Evidence
   -> Authentication Verification
-  -> provider + immutable subject
+  -> provider + immutable subject/reference
   -> GymPulse AuthIdentity mapping
   -> stable GymPulse Principal
   -> current internal account eligibility
+  -> explicit staff assignments and/or Member-self link
   -> server-validated tenant/resource scope
-  -> current named capability
+  -> current named capability / self policy
   -> allow / deny
   -> application/domain operation
 ```
 
-Mandatory boundaries:
+Mandatory boundaries remain:
 
 ```text
 Authentication != Authorization
@@ -77,152 +86,251 @@ GymPulse Principal != Member
 Valid Authentication Session != Permanent Business Access
 ```
 
-Current proposal:
+No authentication provider is selected or provisioned.
 
-- a managed authentication provider may own credential/identity/session commodity infrastructure,
-- exact provider remains unselected,
-- `AuthIdentity` maps provider + immutable subject/reference to a stable internal Principal concept,
-- provider roles/groups/custom JWT claims/metadata do not become canonical GymPulse business authorization,
-- current GymPulse account/tenant/branch/capability state controls access even while provider session evidence remains cryptographically valid,
-- Member remains a separate gym business record linked explicitly to an internal Principal for self-service,
-- mutable phone/email is not the stable Member/Principal identifier,
-- staff and member relationships may coexist for one person without automatically merging authorization scopes,
-- identity linking/recovery is explicit and security-sensitive,
-- background jobs and provider callbacks retain separate non-human trust contexts.
+## Current Member Authentication Proposal
 
-## Staff Web Session Posture
+`ADR-0008` now exists as `Proposed` for `D-SEC-002`.
 
-Leading Phase 1 staff-web posture in `ADR-0007`:
+Canonical `D-SEC-002` remains `P0 OPEN`.
+
+The ADR proposes this Phase 1 direction for review:
 
 ```text
-managed provider identity/session evidence
-  + first-party trusted GymPulse server boundary
-  + HttpOnly cookie where compatible
-  + Secure production transport
-  + explicit SameSite posture
-  + narrow cookie scope
-  + explicit CSRF defense
-  + session fixation/rotation controls
-  + current-session invalidation on logout where supported
+managed phone OTP/passwordless
+for routine member verification
++
+provider-independent AuthIdentity -> Principal resolution
++
+explicit tenant-aware Principal -> Member-self linking
++
+risk-sensitive claim/recovery/re-link handling
+for ambiguous, reassigned, already-claimed, or high-risk states
 ```
 
-Long-lived reusable bearer/refresh credentials in browser `localStorage` are not the baseline design.
+This proposal is not acceptance of phone OTP/passwordless or any provider.
 
-`HttpOnly` does not solve CSRF. Final implementation must use deployment/framework-appropriate SameSite + Origin/Referer and/or CSRF-token/framework/fetch-metadata controls.
+### Verification vs linking
 
-No cookie name, domain, exact expiry, token TTL, inactivity window, remember-me duration, or device count is selected.
-
-## Future Native Compatibility
-
-`D-ARCH-013` remains `PROPOSED`; no native member client is selected.
-
-If native delivery is later approved, the same Principal/authorization architecture can support a native-specific session transport using short-lived access evidence, refresh/re-auth credentials in OS secure storage, provider-recommended PKCE where applicable, callback/deep-link validation, rotation, and revocation.
-
-No native credential TTL or implementation is selected.
-
-## Revocation / Logout Position
-
-Two layers remain distinct:
-
-1. provider/GymPulse session revocation where the selected session model supports it,
-2. current GymPulse business-access denial through internal account/tenant/resource/capability state.
-
-`FR-IDENTITY-002` requires current-session termination. Logout must not merely clear visible UI state while leaving reusable credentials active.
-
-Provider revocation semantics must be validated because already-issued stateless access evidence may remain cryptographically valid until expiry after some provider session/refresh revocations.
-
-Exact revocation propagation target and session policy remain governed by `D-SEC-004`.
-
-## Member Authentication Boundary
-
-`D-SEC-002` remains `P0 OPEN`.
-
-Phone OTP/passwordless remains a candidate only. Task 0015 did not select:
+The architecture explicitly separates:
 
 ```text
-phone OTP
-email magic link/code
-passwordless method
-OTP provider
-OTP expiry
-OTP retry/request limits
-member recovery method
+Verification
+  -> proves current control of the authentication channel
+
+Member claiming/linking
+  -> decides which specific GymPulse Member record the verified Principal may access
 ```
 
-Task 0016 should decide the member verification method inside the Principal/session architecture proposed by `ADR-0007`.
+Unsafe behavior remains prohibited:
+
+```text
+verified phone/email
+  -> global Member lookup
+  -> first match
+  -> grant access
+```
+
+Phone/email equality is not authorization and cannot silently transfer or create Member access.
+
+## Account Claim / Link Posture
+
+Required outcome categories:
+
+```text
+No eligible Member match
+  -> no silent Member creation; generic controlled enrollment/support path
+
+One safe unclaimed candidate
+  -> explicit one-time claim/link after verification + tenant/context + eligibility + concurrency protection
+
+Multiple candidates
+  -> no guessing or disclosure; controlled disambiguation/recovery
+
+Already-claimed candidate
+  -> no overwrite; recovery/security workflow
+
+Existing linked Principal
+  -> normal AuthIdentity -> Principal -> Member-self resolution
+
+Phone/email changed
+  -> current/recovery authority + verify new channel + intentional re-link while preserving stable identities
+
+Reassigned-number suspicion
+  -> higher-assurance recovery/re-link
+```
+
+Concurrent claim attempts must not allow two Principals to acquire the same Member-self relationship. Exact schema/constraint/transaction implementation is not defined yet.
+
+## Phone Reassignment / SIM-Swap Position
+
+Phone OTP is treated as evidence of current telecom-channel control, not immutable human identity.
+
+Architecture consequences:
+
+- an already-claimed Member is not transferred solely because a new person verifies the same phone string,
+- shared/duplicate phone data never auto-links multiple Members,
+- suspected reassignment enters controlled recovery/re-link,
+- channel changes are sensitive identity-binding operations,
+- provider/network risk signals may inform later policy where available,
+- additional assurance may be required for recovery/re-link/high-risk identity changes without imposing MFA on every normal member action.
+
+## Member Recovery Position
+
+Recovery may need to handle lost phone, changed phone, lost email if used, device loss, duplicate/ambiguous account state, already-claimed Member, suspected reassignment, and provider migration.
+
+Possible legitimate authorities, subject to later policy, include:
+
+```text
+existing authenticated session
+secondary previously verified channel
+provider-supported recovery/reverification
+authorized staff-assisted recovery with documented identity verification
+```
+
+Recovery must not be substantially weaker than ordinary authentication.
+
+If staff-assisted recovery exists, it requires:
+
+```text
+named capability
+correct tenant/gym scope
+explicit target Member/Principal
+reason/source
+approved verification procedure
+no cross-tenant lookup/disclosure
+no silent overwrite
+audit record
+```
+
+Task 0016 does not assign that capability to a role.
+
+## Abuse / Enumeration Position
+
+The member-auth architecture must support controls for:
+
+- OTP bombing,
+- SMS-cost amplification,
+- verification brute force,
+- destination spraying,
+- resend abuse,
+- automation/bots,
+- enumeration,
+- recovery abuse.
+
+Control dimensions may include provider controls, destination/challenge limits, IP/network signals, device/client signals where appropriate, progressive friction, CAPTCHA/challenge where justified, and monitoring/spend alerts.
+
+Task 0016 does not select numerical values for:
+
+```text
+OTP length
+OTP TTL
+maximum verification attempts
+resend delay
+request count
+IP threshold
+lockout duration
+spend threshold
+```
+
+Member-facing behavior must avoid unnecessary disclosure of whether an identifier exists, which tenant contains it, Member identity/state, or whether a Member is already claimed before sufficient verification/context.
+
+## Tenant / Authorization Boundary
+
+A verified member identity does not enable cross-gym discovery or arbitrary Member access.
+
+Normal self-service boundary remains:
+
+```text
+verified Principal
+  -> explicit Member-self link
+  -> current tenant/resource scope
+  -> current named capability / self policy
+  -> allow / deny
+```
+
+`D-ARCH-015` remains `P0 PROPOSED` and separately governed.
+
+Member authentication does not decide:
+
+- tenant/resource authorization,
+- QR/session-token validity,
+- branch eligibility,
+- membership entitlement,
+- payment success,
+- privileged staff actions.
 
 ## Session Lifecycle Boundary
 
 `D-SEC-004` remains `P1 OPEN`.
 
-Task 0015 defines required session capabilities but not exact policy values:
+Task 0016 does not define:
 
 ```text
-expiry
-refresh/renewal where applicable
-logout
-revocation
-rotation
-concurrent-session support
-future device/session visibility
-provider signing-key rotation
-fail-closed verification
+access-token TTL
+refresh-token TTL
+session lifetime
+inactivity timeout
+remember-me duration
+maximum devices
+device-management UX
+exact revocation SLA
 ```
 
-No access-token TTL, refresh-token TTL, inactivity timeout, remember-me duration, maximum active devices, or MFA mandate was selected.
+After successful member verification, access continues through the session architecture proposed by `ADR-0007`. OTP/code is not a reusable session credential and is not required for every protected request.
 
-## Current Managed Platform Position
+## Provider Position
 
-`ADR-0006` remains `Proposed`; canonical `D-ARCH-014` remains `OPEN`.
+Representative current research covered managed Auth capabilities from Supabase Auth, Clerk, and Auth0 plus NIST/OWASP security guidance.
 
-The managed-platform posture remains:
+Provider status remains:
 
 ```text
-Managed Infrastructure != Application Architecture
-Managed Backend != Domain Layer
-Provider Feature != Canonical Business Rule
+No Supabase Auth selection
+No Clerk selection
+No Auth0 selection
+No authentication provider selection
+No SMS/telecom provider selection
+No email provider selection
+No business messaging provider selection
 ```
 
-Supabase is an integrated-platform candidate only and is not accepted or provisioned. Task 0015 evaluated Supabase Auth as one representative integrated Auth candidate, Clerk/Auth0 as representative specialized managed identity candidates, and Keycloak as a representative self-hosted alternative. No provider was selected.
+Authentication OTP transport and business messaging remain separate provider/governance concerns. `D-PROVIDER-002` is not decided by Task 0016.
 
-Direct browser/mobile canonical database mutation remains unapproved.
-
-## Current Persistence Position
-
-`ADR-0004` proposes PostgreSQL; `D-ARCH-002` remains `PROPOSED`.
-
-`ADR-0005` proposes a Drizzle-oriented SQL-transparent TypeScript persistence strategy; `D-ARCH-017` remains `PROPOSED`.
-
-PostgreSQL and Drizzle remain unaccepted and uninstalled.
+`D-SEC-001` launch jurisdiction/privacy remains `OPEN`; Task 0016 did not invent jurisdiction-specific telecom or data-residency rules.
 
 ## D-DATA-004 / D-DATA-007 State
 
-`D-DATA-004` remains `P1 PROPOSED`: Member and authenticated User/AuthIdentity are separate concepts linked explicitly. `ADR-0007` preserves that boundary but does not finalize schema/cardinality.
+`D-DATA-004` remains `P1 PROPOSED`:
 
-`D-DATA-007` remains `P1 PROPOSED` and unresolved. Final Member/Membership lifecycle schema and entitlement state machines remain blocked on that decision.
+```text
+Member != AuthIdentity != Principal
+```
+
+Provider-specific subjects remain behind AuthIdentity mapping. Stable Principal and Member identities should survive provider changes where practical.
+
+`D-DATA-007` remains `P1 PROPOSED` and unresolved. Authentication/claim logic must not infer entitlement from overlapping Member/Membership lifecycle states.
 
 ## Important Architecture Boundaries
 
 - Clients are untrusted for canonical business truth.
 - Authentication evidence is verified before Principal resolution.
-- Authentication and GymPulse authorization remain separate responsibilities.
-- Protected operations require verified Principal + current tenant/resource scope + named capability.
-- Provider identity/roles/groups/custom claims/metadata do not become canonical GymPulse business authorization.
-- A valid authentication session does not preserve access after account, tenant assignment, branch scope, or capability revocation.
-- Member identity and authentication identity remain distinct concepts.
-- Mutable email/phone values do not become universal domain identifiers.
-- Identity linking/recovery must not auto-merge accounts solely from matching mutable contact fields.
-- Staff web should keep reusable authentication material out of ordinary browser JavaScript where possible.
-- Cookie-authenticated mutations require explicit CSRF defenses; `HttpOnly` alone is insufficient.
-- JWT claims are not trusted merely because they can be decoded; signature/issuer/audience/expiry/algorithm/key semantics must be verified when JWTs are used.
-- Provider signing-key rotation must be tolerated safely; unverifiable protected requests fail closed.
-- Authentication provider outage must not corrupt canonical business state.
-- Background jobs use bounded System Principal/trusted job context, not human sessions.
-- Provider callbacks use provider-specific authenticity verification, not human authentication.
-- Sensitive audit attribution uses stable GymPulse actor/principal identity rather than only mutable contact/display values.
-- Authentication logs must not contain passwords, OTPs, refresh tokens, session secrets, Authorization headers, complete auth cookies, recovery tokens, or private keys.
-- No Redis/cache dependency is introduced by authentication/principal verification.
-- `D-SEC-001` remains a prerequisite for final provider/region/privacy approval.
+- Authentication and GymPulse authorization remain separate.
+- Phone/email/provider identity is not authorization.
+- Channel verification and Member claiming are separate security operations.
+- Provider subject IDs are not universal domain IDs.
+- Existing Member records may exist without an authentication account.
+- Routine login to an established link should not repeat mutable phone-to-Member inference.
+- Multiple/ambiguous/shared identifiers do not auto-link.
+- Already-claimed Member links are not overwritten by new OTP verification.
+- Recovery/channel-change/re-link operations are security-sensitive and auditable.
+- Current GymPulse access state can deny business access while external authentication remains valid.
+- Member self-only authorization remains server-side.
+- QR token/session verification and member authentication are separate checks.
+- Payment success remains based on verified payment-provider evidence, not authentication success.
+- OTP/magic-link/session/recovery secrets must never be logged or stored in audit history.
+- Provider outage must fail protected member verification safely without mutating canonical business state.
+- No Redis/cache dependency is introduced by this task.
 
 ## Technology Governance State
 
@@ -248,11 +356,12 @@ D-ARCH-017  data access/migrations               P1 PROPOSED / ADR-0005 drafted
 D-ARCH-018  testing toolchain                    P1 PROPOSED
 D-ARCH-019  CI/CD + release/secrets tooling      P1 OPEN
 D-SEC-001   jurisdiction/privacy                 P0 OPEN
-D-SEC-002   member authentication                P0 OPEN
+D-SEC-002   member authentication                P0 OPEN / ADR-0008 drafted
 D-SEC-004   session lifecycle                    P1 OPEN
 D-SEC-008   RLS/data-layer isolation             conditional P0 OPEN
 D-PROVIDER-001 payment provider                  P1 OPEN
 D-PROVIDER-002 messaging provider                P1 OPEN
+D-PROVIDER-003 email provider                    P2 OPEN
 D-PROVIDER-006 observability provider            P1 OPEN
 D-DATA-004  Member vs AuthIdentity separation    P1 PROPOSED
 D-DATA-007  Member vs Membership state ownership P1 PROPOSED
@@ -260,15 +369,15 @@ D-DATA-007  Member vs Membership state ownership P1 PROPOSED
 
 `D-ARCH-008` Redis/cache/broker remains P2 OPEN and is not a baseline dependency.
 
-## Task 0015 Implementation Status
+## Task 0016 Implementation Status
 
-Task `0015-draft-authentication-session-architecture-adr` completed documentation/governance work only.
+Task `0016-draft-member-authentication-method-adr` completed documentation/governance work only.
 
 Created:
 
 ```text
-docs/adr/ADR-0007-authentication-session-architecture.md
-.ai/task/0015-draft-authentication-session-architecture-adr.md
+docs/adr/ADR-0008-member-authentication-method.md
+.ai/task/0016-draft-member-authentication-method-adr.md
 ```
 
 Updated:
@@ -284,45 +393,50 @@ Explicitly not created/selected:
 ```text
 No Supabase Auth project
 No Clerk/Auth0 tenant
-No Keycloak deployment
 No authentication provider account/tenant
+No SMS/OTP provider
+No email provider
+No business messaging provider
+No users/member login accounts
+No credentials
 No OAuth/OIDC application/client
-No users or credentials
-No OTP provider
-No callback URLs
-No authentication SDK/package
-No login UI
-No auth middleware
-No API routes
-No auth/session tables
+No AuthIdentity table
+No Principal table
+No member-link table
+No session table
+No OTP/challenge table
 No database schema or migration
 No RLS policy
-No cookie/application implementation
-No secrets or environment files
-No provider signing key
-No session TTL/access-token TTL/refresh-token TTL
-No inactivity/remember-me/device-count policy
+No API endpoint/route
+No login/OTP/recovery UI
+No middleware
+No provider callback
+No SDK dependency
+No secret/env file
+No SMS/email template
+No exact OTP length/TTL/attempt/request/resend/lockout policy
+No exact session/access/refresh/device policy
 No MFA mandate
-No member authentication method
-No phone OTP selection
-No application/API/worker implementation
+No native member application
 No CI workflow
 No deployment configuration
-No authentication provider accepted
+No authentication implementation
+No provider accepted
 ```
 
 ## Last Completed Task
 
-`0015-draft-authentication-session-architecture-adr`
+`0016-draft-member-authentication-method-adr`
 
 ```text
-ADR-0007 Status: Proposed
-D-ARCH-004 canonical status: OPEN
+ADR-0008 Status: Proposed
 D-SEC-002 canonical status: OPEN
+D-ARCH-004 canonical status: OPEN
 D-SEC-004 canonical status: OPEN
+D-ARCH-015 canonical status: PROPOSED
 ```
 
-No authentication provider or member method was provisioned or accepted.
+The proposed member verification direction is not accepted merely because ADR-0008 exists.
 
 ## Current Task
 
@@ -330,58 +444,56 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0015 synchronization/re-check identifies the next bounded item in the current ADR dependency queue as:
+Post-Task-0016 re-check of `docs/adr/README.md` and `docs/00-overview/assumptions.md` identifies the next bounded item as:
 
 ```text
-Task 0016: Draft Member Authentication / Verification Method ADR
+Task 0017: Draft Authorization Implementation Boundary ADR
 ```
 
 Primary canonical decision:
 
 ```text
-D-SEC-002
+D-ARCH-015
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0008-member-authentication-method.md
+docs/adr/ADR-0009-authorization-implementation.md
 ```
 
-Initial ADR status should be `Proposed` while canonical `D-SEC-002` remains governed by `docs/00-overview/assumptions.md` and stays `OPEN` unless explicit approval evidence exists.
+Initial ADR status should be `Proposed`. Canonical `D-ARCH-015` remains `PROPOSED` unless explicit review/approval changes it.
 
-The task should evaluate the actual Phase 1 member verification method within the architecture proposed by `ADR-0007`. It may compare phone OTP/passwordless, email-based verified methods, and other credible options, including abuse, recovery, phone-reassignment/SIM-swap risk, delivery reliability/cost, self-only member linkage, and provider portability.
+The task should define the provider-independent implementation boundary for:
 
-It must preserve:
+```text
+verified Principal
+  + current tenant/resource scope
+  + current named capability / Member-self relationship
+  -> allow / deny
+```
 
-- exact session lifetime/device/revocation policy under `D-SEC-004`,
-- GymPulse-owned Principal + tenant/resource/capability authorization under `D-ARCH-015`,
-- Member/AuthIdentity separation under `D-DATA-004`,
-- no provider acceptance/provisioning without explicit evidence.
+It should keep authentication/session providers, exact session policy, `D-SEC-008` RLS/data-layer isolation, database engine/tooling, framework, and deployment topology separately governed.
 
-Do not create ADR-0008 or execute Task 0016 until explicitly started.
+Do not create ADR-0009 or authorization implementation until Task 0017 is explicitly started.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0015-draft-authentication-session-architecture-adr.md
+.ai/task/0016-draft-member-authentication-method-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
 docs/01-product/user-roles.md
 docs/01-product/personas.md
-docs/01-product/user-journeys.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
-docs/02-architecture/system-context.md
-docs/02-architecture/container-architecture.md
 docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
-docs/02-architecture/technology-stack.md
 docs/adr/README.md
-docs/adr/ADR-0006-managed-backend-responsibilities.md
 docs/adr/ADR-0007-authentication-session-architecture.md
+docs/adr/ADR-0008-member-authentication-method.md
 ```
