@@ -154,7 +154,7 @@ Requirement
 
 ## ADR Policy
 
-Major architecture commitments require explicit governance and an ADR when material. Architecture style, primary runtime, repository strategy, database, persistence tooling, API architecture, authentication/authorization, jobs, hosting, providers, and release infrastructure must not become accepted merely because they appear in planning or implementation.
+Major architecture commitments require explicit governance and an ADR when material. Architecture style, primary runtime, repository strategy, database, persistence tooling, API architecture, authentication/authorization, jobs, hosting, providers, tenant-isolation strategy, and release infrastructure must not become accepted merely because they appear in planning or implementation.
 
 ADR governance lives in `adr/README.md`.
 
@@ -185,7 +185,7 @@ glossary.md
 assumptions.md
 ```
 
-`assumptions.md` owns canonical decision status, including `D-ARCH-016..019` and unresolved `D-DATA-007` Member-vs-Membership state ownership.
+`assumptions.md` owns canonical decision status, including `D-ARCH-016..019`, `D-SEC-008`, and unresolved `D-DATA-007` Member-vs-Membership state ownership.
 
 ### `01-product/`
 
@@ -238,6 +238,7 @@ docs/adr/ADR-0006-managed-backend-responsibilities.md    Proposed   D-ARCH-014
 docs/adr/ADR-0007-authentication-session-architecture.md Proposed   D-ARCH-004
 docs/adr/ADR-0008-member-authentication-method.md        Proposed   D-SEC-002
 docs/adr/ADR-0009-authorization-implementation.md        Proposed   D-ARCH-015
+docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md    Proposed   D-SEC-008
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -258,19 +259,21 @@ docs/adr/ADR-0009-authorization-implementation.md        Proposed   D-ARCH-015
 
 `ADR-0009` proposes a GymPulse-owned provider-independent application authorization module using stable named capabilities, roles as capability bundles, current scoped assignments, trusted resource ownership resolution, explicit Member-self relationships, deny-by-default behavior, and bounded non-human execution contexts. Provider roles/claims, framework middleware, RLS, and external policy engines are not the sole business authority. No authorization library/service, role/capability schema, RLS policy, Redis/cache, or full permission matrix is accepted. `D-ARCH-015` remains canonically `PROPOSED`.
 
+`ADR-0010` proposes the data-layer tenant-isolation posture beneath application authorization. It keeps application authorization mandatory and keeps explicit tenant-scoped persistence queries. If `D-ARCH-002` is later accepted with PostgreSQL, it proposes selective tenant-focused PostgreSQL RLS on materially tenant-owned canonical tables as defense in depth, policy-enforced least-privileged runtime/worker access, separate migration/admin privilege, and transaction-safe trusted tenant context when required. It explicitly does not approve PostgreSQL, Supabase or another provider, a specific RLS policy, database role, schema, migration, Data API, direct-client database access, or implementation. Canonical `D-SEC-008` remains `OPEN`.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first nine ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first ten ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
 Authentication and authorization remain separate. Provider identity/session evidence must resolve to a GymPulse Principal, then current tenant/resource scope and named capabilities or an explicit Member-self relationship are evaluated from GymPulse-controlled state. A valid authentication session does not preserve business access after an account, tenant assignment, branch scope, capability, or Member-self relationship is revoked.
 
-`D-ARCH-004` remains `P0 OPEN` even though `ADR-0007` is Proposed. `D-SEC-002` remains `P0 OPEN` even though `ADR-0008` proposes managed phone OTP/passwordless as the routine Member-verification direction. `D-SEC-004` exact session lifecycle/device policy remains `P1 OPEN`. `D-ARCH-015` remains `P0 PROPOSED` even though `ADR-0009` now proposes the authorization implementation boundary.
+`D-ARCH-004` remains `P0 OPEN` even though `ADR-0007` is Proposed. `D-SEC-002` remains `P0 OPEN` even though `ADR-0008` proposes managed phone OTP/passwordless as the routine Member-verification direction. `D-SEC-004` exact session lifecycle/device policy remains `P1 OPEN`. `D-ARCH-015` remains `P0 PROPOSED` even though `ADR-0009` proposes the authorization implementation boundary.
 
-The Task 0017 authorization proposal is:
+The current authorization proposal remains:
 
 ```text
 verified Principal
@@ -281,35 +284,72 @@ verified Principal
   -> allow / deny
 ```
 
-Roles remain capability bundles rather than runtime wildcard predicates. Client-supplied tenant/gym/branch/resource identifiers are routing input, not authority. List/search/queue/dashboard reads should be scoped before result materialization where possible. Exports require separate authorization. Background jobs use bounded System Principal/job context, and provider callbacks use separately verified bounded provider context rather than human capabilities.
-
-The baseline introduces no cross-request authorization cache or Redis dependency. Framework middleware may provide coarse early rejection but is not the sole authority. Application authorization remains mandatory if future RLS is adopted. `D-SEC-008` remains separately governed and `OPEN`; no RLS policy or direct-client canonical database topology is approved by Task 0017.
-
-Open product permission questions remain open, including exact Manager authority, attendance correction, offline-payment authority, refund approval, bulk export, support elevation/impersonation, and cross-branch portability.
-
-`D-DATA-004` remains `PROPOSED`; Member and authenticated User/AuthIdentity remain separate concepts without finalized schema/cardinality. `D-DATA-007` also remains unresolved and continues to block final Member/Membership lifecycle schema semantics.
-
-The exact next bounded governance task from the synchronized ADR dependency queue is:
+`ADR-0010` adds a proposed independent persistence backstop below that boundary:
 
 ```text
-Task 0018: Draft Data-Layer Tenant Isolation / RLS ADR
+Application Authorization = Mandatory
+Data-Layer Tenant Isolation = Defense in Depth
+RLS != Complete Authorization System
+```
+
+The current conditional data-layer direction is:
+
+```text
+mandatory application authorization
++
+explicit tenant-scoped persistence queries
++
+selective PostgreSQL RLS on materially tenant-owned canonical tables if PostgreSQL is later accepted
++
+least-privileged policy-enforced application/worker DB access
++
+separate migration/admin privilege
++
+transaction-safe trusted tenant context where required
+```
+
+`D-SEC-008` remains `OPEN`. `D-ARCH-002` remains `PROPOSED`; PostgreSQL remains unaccepted. `D-ARCH-017` remains `PROPOSED`; no query/migration tool is accepted. `D-ARCH-014` remains `OPEN`; no managed provider is accepted.
+
+Normal RLS, if later adopted, should remain tenant-focused rather than duplicating Member-self, capability, attendance, payment, renewal, or membership business policy. Explicit tenant predicates remain valuable even with RLS.
+
+The current Phase 1 trust path remains:
+
+```text
+Client
+  -> Trusted GymPulse Runtime
+  -> Application Authorization
+  -> tenant-aware persistence
+```
+
+Direct browser/mobile canonical database mutation remains unapproved. RLS adoption is not permission to bypass the trusted GymPulse runtime.
+
+Task 0018 also records that pooled database connections require explicit tenant-context safety. If PostgreSQL runtime context is later used, transaction-scoped context is the leading category because PostgreSQL current semantics clear transaction-local configuration at transaction end/rollback. The final driver/pooler/runtime mechanism remains a future implementation decision and must pass Tenant A -> Tenant B connection-reuse and rollback leakage tests.
+
+Normal runtime/worker database access should not use schema-owner, superuser, or RLS-bypass privilege if RLS is expected to provide an independent control. Migration/admin privilege remains a separate controlled operational path. Provider callbacks resolve a canonical internal resource/tenant before tenant-aware persistence; a verified provider event does not receive generic database bypass.
+
+`D-DATA-004` remains `PROPOSED`; Member and authenticated User/AuthIdentity remain separate concepts without finalized schema/cardinality. `D-DATA-007` remains unresolved and continues to block final Member/Membership lifecycle schema semantics. ADR-0010 does not encode those lifecycle/business rules in RLS.
+
+The exact next bounded governance task from the synchronized ADR dependency queue is now:
+
+```text
+Task 0019: Draft Primary API Contract Architecture ADR
 ```
 
 Primary decision:
 
 ```text
-D-SEC-008
+D-ARCH-003
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md
+docs/adr/ADR-0011-api-contract-architecture.md
 ```
 
-The next task should evaluate whether and how data-layer tenant isolation/RLS reinforces mandatory GymPulse application authorization across trusted application/service-role access, workers, provider callbacks, migration/admin paths, and any future direct-client proposal. It must keep application capability authorization mandatory and avoid treating RLS as a replacement for `D-ARCH-015`.
+That next task should define the client/server contract architecture while keeping deployment topology, framework, provider, authorization, persistence, and data-layer isolation decisions separately governed.
 
-Do not create ADR-0010, database roles, or RLS policies merely because ADR-0009 exists.
+Do not create ADR-0011 or API implementation merely because ADR-0010 exists.
 
 ## Legacy Migration State
 
@@ -330,7 +370,9 @@ High-value migration sources include:
 16-open-decisions.md
 ```
 
-Do not delete or deprecate them merely because structured architecture documents now exist.
+Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as already canonical does not override current structured governance. `docs/00-overview/assumptions.md` remains authoritative and keeps `D-ARCH-002` `PROPOSED`.
+
+Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
 ## Current Delivery Boundary
 
