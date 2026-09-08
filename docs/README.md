@@ -236,6 +236,7 @@ docs/adr/ADR-0004-database-engine.md                     Proposed   D-ARCH-002
 docs/adr/ADR-0005-data-access-migration-strategy.md      Proposed   D-ARCH-017
 docs/adr/ADR-0006-managed-backend-responsibilities.md    Proposed   D-ARCH-014
 docs/adr/ADR-0007-authentication-session-architecture.md Proposed   D-ARCH-004
+docs/adr/ADR-0008-member-authentication-method.md        Proposed   D-SEC-002
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -252,41 +253,55 @@ docs/adr/ADR-0007-authentication-session-architecture.md Proposed   D-ARCH-004
 
 `ADR-0007` proposes a managed-authentication-provider architecture category with provider-independent AuthIdentity mapping, stable GymPulse Principal resolution, current GymPulse tenant/resource/capability authorization, and a secure server-mediated staff-web session posture. It keeps Member identity separate from authentication identity, keeps future native compatibility without selecting native delivery, and does not select Supabase Auth, Clerk, Auth0, Keycloak, member OTP/passwordless, an MFA mandate, or exact session/device policy. `D-ARCH-004` remains canonically `OPEN`.
 
+`ADR-0008` proposes managed phone OTP/passwordless as the primary Phase 1 member-verification method, but separates verified channel control from tenant-aware Member claiming/linking. It requires stronger controlled handling for ambiguous/shared/reassigned/already-claimed records, recovery and authentication-channel changes. It does not select Supabase Auth, Clerk, Auth0, an SMS/email provider, exact OTP controls, exact session policy, an MFA mandate, or native delivery. `D-SEC-002` remains canonically `OPEN`.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first seven ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first eight ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
-Authentication and authorization remain separate. Provider identity/session evidence must resolve to a GymPulse Principal, then current tenant/resource scope and named capabilities are evaluated from GymPulse-controlled state. A valid authentication session does not preserve business access after an account, tenant assignment, branch scope, or capability is revoked.
+Authentication and authorization remain separate. Provider identity/session evidence must resolve to a GymPulse Principal, then current tenant/resource scope and named capabilities are evaluated from GymPulse-controlled state. A valid authentication session does not preserve business access after an account, tenant assignment, branch scope, capability, or approved member self-service relationship is revoked.
 
-`D-ARCH-004` remains `P0 OPEN` even though `ADR-0007` is a `Proposed` decision record. `D-SEC-002` member authentication remains `P0 OPEN`, and `D-SEC-004` exact session lifecycle/device policy remains `P1 OPEN`. No authentication provider, member OTP method, exact TTL, or MFA policy is accepted by Task 0015.
+`D-ARCH-004` remains `P0 OPEN` even though `ADR-0007` is Proposed. `D-SEC-002` remains `P0 OPEN` even though `ADR-0008` now proposes managed phone OTP/passwordless as the routine member-verification direction. `D-SEC-004` exact session lifecycle/device policy remains `P1 OPEN`, and `D-ARCH-015` authorization implementation remains separately governed as `P0 PROPOSED`.
 
-`D-DATA-004` remains `PROPOSED`; the architecture preserves Member and authenticated User/AuthIdentity as separate concepts without finalizing schema/cardinality. `D-DATA-007` also remains unresolved and continues to block final Member/Membership lifecycle schema semantics.
-
-The exact next bounded governance task from the current ADR dependency queue is:
+Task 0016 explicitly separates verification from Member claiming:
 
 ```text
-Task 0016: Draft Member Authentication / Verification Method ADR
+verified phone/email/provider identity
+  -> AuthIdentity
+  -> stable GymPulse Principal
+  -> explicit tenant-aware Member-self link
+  -> current GymPulse authorization
+```
+
+A phone/email match is not authorization. Zero-match, ambiguous/multiple-match, already-claimed, reassignment, recovery, and channel-change states require controlled handling rather than automatic Member linking. No authentication, SMS, email, or business-messaging provider is selected, and no exact OTP/session values are accepted.
+
+`D-DATA-004` remains `PROPOSED`; Member and authenticated User/AuthIdentity remain separate concepts without finalized schema/cardinality. `D-DATA-007` also remains unresolved and continues to block final Member/Membership lifecycle schema semantics.
+
+The exact next bounded governance task from the synchronized ADR dependency queue is:
+
+```text
+Task 0017: Draft Authorization Implementation Boundary ADR
 ```
 
 Primary decision:
 
 ```text
-D-SEC-002
+D-ARCH-015
 ```
 
-Likely target when the task begins:
+Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0008-member-authentication-method.md
+docs/adr/ADR-0009-authorization-implementation.md
 ```
 
-The next task should evaluate the member verification method inside the authentication/principal architecture proposed by `ADR-0007`. Phone OTP/passwordless may be evaluated as a candidate, but it must not be treated as accepted without explicit evidence. Exact session lifetime/device policy remains governed separately by `D-SEC-004`, and business authorization remains separately governed by `D-ARCH-015`.
+The next task should define the provider-independent server-side authorization implementation boundary around current Principal, tenant/resource scope, named capabilities, Member-self relationships, current assignment checks, auditability, caching/revocation semantics, and positive/negative policy tests. It must keep authentication/session providers, `D-SEC-008` RLS/data-layer isolation, database engine/tooling, web framework, and deployment topology separately governed.
 
-Do not provision an authentication/OTP provider or create login/session implementation merely because ADR-0007 exists.
+Do not create ADR-0009 or authorization implementation merely because ADR-0008 exists.
 
 ## Legacy Migration State
 
