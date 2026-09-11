@@ -88,6 +88,7 @@ ADR-0008-member-authentication-method.md
 ADR-0009-authorization-implementation.md
 ADR-0010-data-layer-tenant-isolation-rls.md
 ADR-0011-api-contract-architecture.md
+ADR-0012-owner-staff-web-framework.md
 ```
 
 Rules:
@@ -99,7 +100,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001` through `ADR-0011` now exist.
+`ADR-0001` through `ADR-0012` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -116,6 +117,7 @@ Typical examples:
 - authentication/session architecture,
 - authorization implementation model,
 - API contract/runtime boundary,
+- Owner/Staff or Member application framework when it materially constrains runtime/security/deployment,
 - background-job infrastructure,
 - tenant-isolation/RLS strategy,
 - hosting,
@@ -275,12 +277,13 @@ Their registration means ADRs can reference canonical IDs. It does not mean Type
 | `ADR-0009-authorization-implementation.md` | `D-ARCH-015` | Proposed | PROPOSED | Proposes GymPulse-owned application authorization using named capabilities, trusted scopes/resources, Member-self relationships, and deny-by-default behavior. |
 | `ADR-0010-data-layer-tenant-isolation-rls.md` | `D-SEC-008` | Proposed | OPEN | Proposes mandatory application authorization plus explicit tenant-scoped queries and, if PostgreSQL is later accepted, selective tenant-focused RLS as defense in depth. No RLS policy, role, migration, provider, or direct-client access is accepted. |
 | `ADR-0011-api-contract-architecture.md` | `D-ARCH-003` | Proposed | PROPOSED | Proposes a versioned JSON-over-HTTPS resource/action contract with runtime trust-boundary schemas, explicit DTO separation, RFC 9457-compatible machine errors, cursor-first pagination, critical-mutation idempotency, verified webhook boundaries, and optional derived OpenAPI. No framework/validator/generator/deployment topology is accepted. |
+| `ADR-0012-owner-staff-web-framework.md` | `D-ARCH-012` | Proposed | PROPOSED | Proposes Next.js App Router + React for the Owner/Staff web presentation while keeping application/domain/security logic framework-independent, preserving ADR-0011 as the independently consumable contract, and leaving API deployment/hosting/tooling separately governed. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first eleven ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first twelve ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
@@ -295,7 +298,7 @@ The order reflects current GymPulse dependency reasoning. Presence in this backl
 | 9 | Authorization implementation boundary | `D-ARCH-015` | PROPOSED / ADR-0009 drafted | Defines application-owned capability + trusted scope/resource authorization. |
 | 10 | Data-layer tenant isolation / RLS | `D-SEC-008` | OPEN / ADR-0010 drafted | Proposes independent tenant-row defense in depth beneath mandatory application authorization; PostgreSQL-specific RLS remains conditional. |
 | 11 | Primary API contract architecture | `D-ARCH-003` | PROPOSED / ADR-0011 drafted | Defines a runtime-validated JSON HTTP contract independently of framework/deployment while preserving stable errors, idempotency, pagination, and webhook trust boundaries. |
-| 12 | Owner/Staff web framework | `D-ARCH-012` | PROPOSED | Depends on language/runtime and the now-drafted API contract; must preserve thin framework boundaries. |
+| 12 | Owner/Staff web framework | `D-ARCH-012` | PROPOSED / ADR-0012 drafted | Proposes a staff operational web framework while preserving thin framework boundaries, API-contract independence, application authorization, and deployment optionality. |
 | 13 | Member client framework/delivery | `D-ARCH-013` | PROPOSED | Decide responsive web/PWA vs native from validated delivery needs and the stable contract boundary. |
 | 14 | API deployment boundary | `D-ARCH-006` | OPEN | Depends on API/web/runtime/auth/hosting constraints without changing ADR-0011 contract semantics. |
 | 15 | Background jobs/scheduler | `D-ARCH-007` | OPEN | Needed for retention, renewals, notifications, reconciliation, summaries, and data quality. |
@@ -351,7 +354,7 @@ Its leading direction is conditional on PostgreSQL later being accepted: retain 
 
 ```text
 D-ARCH-003     API contract architecture              PROPOSED / ADR-0011 drafted
-D-ARCH-012     Owner/Staff framework                  PROPOSED
+D-ARCH-012     Owner/Staff framework                  PROPOSED / ADR-0012 drafted
 D-ARCH-013     Member client strategy                 PROPOSED
 D-ARCH-006     API deployment topology                OPEN
 D-ARCH-007     Background jobs                        OPEN
@@ -363,32 +366,34 @@ D-PROVIDER-006 Observability provider                 OPEN
 
 `ADR-0011` proposes JSON over HTTPS with resource/action semantics, runtime-schema-first trust-boundary contracts, purpose-specific DTOs, RFC 9457-compatible stable machine errors, cursor-first bounded pagination, explicit idempotency for designated retry-sensitive mutations, provider-specific webhook verification, major contract versioning, and optional mechanically derived OpenAPI. It accepts no API framework, validation library, OpenAPI/client generator, web framework, native framework, or API deployment topology. Canonical `D-ARCH-003` remains `PROPOSED`.
 
+`ADR-0012` proposes Next.js App Router + React as the Owner/Staff presentation framework. It keeps Server Components and Client Components as presentation concerns, treats Server Functions/Actions and Route Handlers as thin adapters, preserves operation-level GymPulse authorization and ADR-0011 contracts, requires server-only/client-safe module boundaries and explicit tenant-sensitive cache safety, and leaves TypeScript/Node acceptance, API deployment, auth/session provider, hosting, testing, CI/CD, UI libraries, and observability provider separately governed. Canonical `D-ARCH-012` remains `PROPOSED`.
+
 Payment and messaging provider ADRs should follow confirmed pilot methods/channels and provider-specific evidence rather than being forced into the foundation batch.
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0011` are complete at Draft/Proposed level.
+The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0012` are complete at Draft/Proposed level.
 
-The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-ARCH-003`, `D-ARCH-002`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
+The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-ARCH-003`, `D-ARCH-012`, `D-ARCH-002`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
 
-`ADR-0011` does not create API implementation, endpoint inventory, OpenAPI files, generated clients, framework bindings, or deployment topology. Its architecture remains compatible with either co-hosted or independently deployed trusted API mapping under `D-ARCH-006`.
+`ADR-0012` does not create a Next.js/React application, install dependencies, select hosting, accept TypeScript/Node.js, or decide whether the trusted API is co-hosted with the web runtime or independently deployed. `D-ARCH-006` remains `OPEN`.
 
 The actual next bounded governance task in the current dependency queue is:
 
 ```text
 Draft one Proposed ADR only:
-D-ARCH-012 - Owner / Staff Web Application Framework
+D-ARCH-013 - Member Client Framework / Delivery Strategy
 ```
 
 Likely target when that task explicitly begins:
 
 ```text
-docs/adr/ADR-0012-owner-staff-web-framework.md
+docs/adr/ADR-0013-member-client-strategy.md
 ```
 
-That next ADR should evaluate the Owner/Staff web framework against the already-proposed language/runtime, API contract, authentication/session, authorization, deployment-neutral application boundaries, accessibility, testing, observability, and operational requirements without accepting API deployment topology or implementation scaffolding.
+That next ADR should compare responsive web/PWA and native/Expo/React Native delivery against the validated Member journeys, QR/camera requirements, authentication/session model, installation friction, notification/offline needs, accessibility, supported-client policy, and ADR-0011 contract boundary without accepting native delivery merely because Expo/React Native appears in legacy recommendations.
 
-Do not create ADR-0012 or application scaffold as part of Task 0019.
+Do not create ADR-0013 or Member application implementation as part of Task 0020.
 
 ## 16. Related Documents
 
@@ -396,6 +401,9 @@ Do not create ADR-0012 or application scaffold as part of Task 0019.
 - `../00-overview/assumptions.md`
 - `../01-product/functional-requirements.md`
 - `../01-product/non-functional-requirements.md`
+- `../01-product/user-roles.md`
+- `../01-product/personas.md`
+- `../01-product/user-journeys.md`
 - `../02-architecture/architecture-principles.md`
 - `../02-architecture/architecture-overview.md`
 - `../02-architecture/container-architecture.md`
@@ -413,6 +421,7 @@ Do not create ADR-0012 or application scaffold as part of Task 0019.
 - `ADR-0009-authorization-implementation.md`
 - `ADR-0010-data-layer-tenant-isolation-rls.md`
 - `ADR-0011-api-contract-architecture.md`
+- `ADR-0012-owner-staff-web-framework.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../07-api-contracts.md`
 - legacy migration source: `../12-security-audit.md`
