@@ -239,6 +239,7 @@ docs/adr/ADR-0007-authentication-session-architecture.md Proposed   D-ARCH-004
 docs/adr/ADR-0008-member-authentication-method.md        Proposed   D-SEC-002
 docs/adr/ADR-0009-authorization-implementation.md        Proposed   D-ARCH-015
 docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md    Proposed   D-SEC-008
+docs/adr/ADR-0011-api-contract-architecture.md           Proposed   D-ARCH-003
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -261,11 +262,13 @@ docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md    Proposed   D-SEC-008
 
 `ADR-0010` proposes the data-layer tenant-isolation posture beneath application authorization. It keeps application authorization mandatory and keeps explicit tenant-scoped persistence queries. If `D-ARCH-002` is later accepted with PostgreSQL, it proposes selective tenant-focused PostgreSQL RLS on materially tenant-owned canonical tables as defense in depth, policy-enforced least-privileged runtime/worker access, separate migration/admin privilege, and transaction-safe trusted tenant context when required. It explicitly does not approve PostgreSQL, Supabase or another provider, a specific RLS policy, database role, schema, migration, Data API, direct-client database access, or implementation. Canonical `D-SEC-008` remains `OPEN`.
 
+`ADR-0011` proposes a versioned JSON-over-HTTPS resource/action application contract with runtime trust-boundary schemas, explicit API DTO/application/domain/persistence separation, purpose-specific success representations, RFC 9457-compatible machine-readable errors, cursor-first bounded operational pagination, explicit idempotency semantics for designated retry-sensitive commands, a provider-specific raw-body verification boundary for webhooks, and optional mechanically derived OpenAPI. It does not select an API framework, runtime validator, OpenAPI/client generator, web/native framework, or API deployment topology. `D-ARCH-003` remains canonically `PROPOSED`.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first ten ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first eleven ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -292,25 +295,7 @@ Data-Layer Tenant Isolation = Defense in Depth
 RLS != Complete Authorization System
 ```
 
-The current conditional data-layer direction is:
-
-```text
-mandatory application authorization
-+
-explicit tenant-scoped persistence queries
-+
-selective PostgreSQL RLS on materially tenant-owned canonical tables if PostgreSQL is later accepted
-+
-least-privileged policy-enforced application/worker DB access
-+
-separate migration/admin privilege
-+
-transaction-safe trusted tenant context where required
-```
-
 `D-SEC-008` remains `OPEN`. `D-ARCH-002` remains `PROPOSED`; PostgreSQL remains unaccepted. `D-ARCH-017` remains `PROPOSED`; no query/migration tool is accepted. `D-ARCH-014` remains `OPEN`; no managed provider is accepted.
-
-Normal RLS, if later adopted, should remain tenant-focused rather than duplicating Member-self, capability, attendance, payment, renewal, or membership business policy. Explicit tenant predicates remain valuable even with RLS.
 
 The current Phase 1 trust path remains:
 
@@ -323,33 +308,85 @@ Client
 
 Direct browser/mobile canonical database mutation remains unapproved. RLS adoption is not permission to bypass the trusted GymPulse runtime.
 
-Task 0018 also records that pooled database connections require explicit tenant-context safety. If PostgreSQL runtime context is later used, transaction-scoped context is the leading category because PostgreSQL current semantics clear transaction-local configuration at transaction end/rollback. The final driver/pooler/runtime mechanism remains a future implementation decision and must pass Tenant A -> Tenant B connection-reuse and rollback leakage tests.
+### Primary API contract proposal
 
-Normal runtime/worker database access should not use schema-owner, superuser, or RLS-bypass privilege if RLS is expected to provide an independent control. Migration/admin privilege remains a separate controlled operational path. Provider callbacks resolve a canonical internal resource/tenant before tenant-aware persistence; a verified provider event does not receive generic database bypass.
+`ADR-0011` now defines the Proposed contract boundary under `D-ARCH-003` without accepting it.
 
-`D-DATA-004` remains `PROPOSED`; Member and authenticated User/AuthIdentity remain separate concepts without finalized schema/cardinality. `D-DATA-007` remains unresolved and continues to block final Member/Membership lifecycle schema semantics. ADR-0010 does not encode those lifecycle/business rules in RLS.
+Current proposed external application contract:
+
+```text
+JSON over HTTPS
++
+resource/query reads and explicit business-command actions
++
+runtime trust-boundary schemas
++
+purpose-specific API DTOs
++
+stable HTTP semantics + machine-readable problem codes
++
+cursor-first bounded operational pagination
++
+explicit idempotency for retry-sensitive critical mutations
++
+provider-specific webhook verification boundary
++
+major contract versioning
++
+optional mechanically derived OpenAPI
++
+framework/deployment independence
+```
+
+The API DTO is separate from application commands/queries, domain models, persistence models, and provider objects. Incoming requests use explicit allowlisted contracts; database/ORM objects are not public response contracts.
+
+Static TypeScript types are not runtime validation. `D-ARCH-016` remains `PROPOSED`. ADR-0011 proposes runtime-schema-first contract ownership and, if TypeScript is later accepted, derived/mechanically synchronized static types rather than manually duplicated type truth.
+
+ADR-0011 explicitly rejects a universal success `{data,meta}` wrapper as mandatory. Single-resource/command successes use purpose-specific JSON DTOs; collections have a structured `items` + pagination object; request correlation is carried through a server-generated request-ID response header and protected telemetry. Errors use a Proposed RFC 9457-compatible `application/problem+json` shape with stable GymPulse machine codes and safe human detail.
+
+Operational collections default to opaque cursor/keyset-style pagination. Offset pagination remains a documented exception for small/static lists where the UX benefit justifies its consistency/performance tradeoff. Filters/sorts are allowlisted and tenant/branch identifiers remain untrusted routing/filter input until server authorization verifies scope.
+
+Critical retryable commands use an explicit idempotency contract. The same trusted tenant/caller context + operation + key + compatible request maps to one canonical logical outcome; same key with a materially different request is a stable conflict. The IETF `Idempotency-Key` work is currently an expired Internet-Draft, so GymPulse owns the exact semantics rather than claiming a current RFC standard.
+
+Provider callbacks remain a separate contract class:
+
+```text
+raw callback
+  -> preserve signature-verification material
+  -> verify provider authenticity
+  -> normalize provider event
+  -> resolve canonical resource + tenant
+  -> bounded application use case
+  -> idempotent canonical effect
+```
+
+The proposed major contract namespace is `v1` from the first independently consumable contract, with compatible additive evolution inside the major version. Output enum additions remain compatibility-sensitive for independently deployed clients. OpenAPI is optional and should be mechanically derived/exported from runtime contracts where useful rather than maintained as an independent truth source.
+
+`D-ARCH-006` remains `OPEN`. ADR-0011 intentionally works whether the trusted API is later co-hosted with the web runtime or deployed independently. No Next.js route handler, Express/Fastify/Hono/NestJS server, server action, tRPC router, GraphQL schema, gRPC service, validator library, OpenAPI file, generated client, or endpoint implementation was created or selected.
+
+`D-DATA-004` remains `PROPOSED`; Member and authenticated User/AuthIdentity remain separate concepts without finalized schema/cardinality. `D-DATA-007` remains unresolved and continues to block final Member/Membership lifecycle schema semantics.
 
 The exact next bounded governance task from the synchronized ADR dependency queue is now:
 
 ```text
-Task 0019: Draft Primary API Contract Architecture ADR
+Task 0020: Draft Owner / Staff Web Application Framework ADR
 ```
 
 Primary decision:
 
 ```text
-D-ARCH-003
+D-ARCH-012
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0011-api-contract-architecture.md
+docs/adr/ADR-0012-owner-staff-web-framework.md
 ```
 
-That next task should define the client/server contract architecture while keeping deployment topology, framework, provider, authorization, persistence, and data-layer isolation decisions separately governed.
+That next task should evaluate the Owner/Staff web framework against the proposed runtime/language, API contract, authentication/session, authorization, accessibility, testing, observability, deployment-neutral application boundaries, and future operational needs. It must not silently accept API deployment topology or create an application scaffold.
 
-Do not create ADR-0011 or API implementation merely because ADR-0010 exists.
+Do not create ADR-0012 or implementation merely because ADR-0011 exists.
 
 ## Legacy Migration State
 
@@ -371,6 +408,8 @@ High-value migration sources include:
 ```
 
 Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as already canonical does not override current structured governance. `docs/00-overview/assumptions.md` remains authoritative and keeps `D-ARCH-002` `PROPOSED`.
+
+Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
