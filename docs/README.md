@@ -154,7 +154,7 @@ Requirement
 
 ## ADR Policy
 
-Major architecture commitments require explicit governance and an ADR when material. Architecture style, primary runtime, repository strategy, database, persistence tooling, API architecture, authentication/authorization, jobs, hosting, providers, tenant-isolation strategy, and release infrastructure must not become accepted merely because they appear in planning or implementation.
+Major architecture commitments require explicit governance and an ADR when material. Architecture style, primary runtime, repository strategy, database, persistence tooling, API architecture, application frameworks, authentication/authorization, jobs, hosting, providers, tenant-isolation strategy, and release infrastructure must not become accepted merely because they appear in planning or implementation.
 
 ADR governance lives in `adr/README.md`.
 
@@ -240,6 +240,7 @@ docs/adr/ADR-0008-member-authentication-method.md        Proposed   D-SEC-002
 docs/adr/ADR-0009-authorization-implementation.md        Proposed   D-ARCH-015
 docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md    Proposed   D-SEC-008
 docs/adr/ADR-0011-api-contract-architecture.md           Proposed   D-ARCH-003
+docs/adr/ADR-0012-owner-staff-web-framework.md           Proposed   D-ARCH-012
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -264,11 +265,13 @@ docs/adr/ADR-0011-api-contract-architecture.md           Proposed   D-ARCH-003
 
 `ADR-0011` proposes a versioned JSON-over-HTTPS resource/action application contract with runtime trust-boundary schemas, explicit API DTO/application/domain/persistence separation, purpose-specific success representations, RFC 9457-compatible machine-readable errors, cursor-first bounded operational pagination, explicit idempotency semantics for designated retry-sensitive commands, a provider-specific raw-body verification boundary for webhooks, and optional mechanically derived OpenAPI. It does not select an API framework, runtime validator, OpenAPI/client generator, web/native framework, or API deployment topology. `D-ARCH-003` remains canonically `PROPOSED`.
 
+`ADR-0012` proposes Next.js App Router + React as the Owner/Staff web presentation framework, with strict TypeScript conditional on later compatible acceptance of `D-ARCH-016`. It keeps application/domain/security logic framework-independent, treats Server Components/Client Components as presentation boundaries and Server Functions/Route Handlers as adapters, preserves ADR-0011 as the independently consumable contract, requires tenant-sensitive cache isolation and server-only/client-safe dependency boundaries, and leaves API deployment, auth/session provider, hosting, testing, UI libraries, CI/CD, and observability separately governed. `D-ARCH-012` remains canonically `PROPOSED`.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first eleven ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twelve ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -310,7 +313,7 @@ Direct browser/mobile canonical database mutation remains unapproved. RLS adopti
 
 ### Primary API contract proposal
 
-`ADR-0011` now defines the Proposed contract boundary under `D-ARCH-003` without accepting it.
+`ADR-0011` defines the Proposed contract boundary under `D-ARCH-003` without accepting it.
 
 Current proposed external application contract:
 
@@ -342,11 +345,11 @@ The API DTO is separate from application commands/queries, domain models, persis
 
 Static TypeScript types are not runtime validation. `D-ARCH-016` remains `PROPOSED`. ADR-0011 proposes runtime-schema-first contract ownership and, if TypeScript is later accepted, derived/mechanically synchronized static types rather than manually duplicated type truth.
 
-ADR-0011 explicitly rejects a universal success `{data,meta}` wrapper as mandatory. Single-resource/command successes use purpose-specific JSON DTOs; collections have a structured `items` + pagination object; request correlation is carried through a server-generated request-ID response header and protected telemetry. Errors use a Proposed RFC 9457-compatible `application/problem+json` shape with stable GymPulse machine codes and safe human detail.
+Single-resource/command successes use purpose-specific JSON DTOs; collections have a structured `items` + pagination object; request correlation is carried through a server-generated request-ID response header and protected telemetry. Errors use a Proposed RFC 9457-compatible `application/problem+json` shape with stable GymPulse machine codes and safe human detail.
 
-Operational collections default to opaque cursor/keyset-style pagination. Offset pagination remains a documented exception for small/static lists where the UX benefit justifies its consistency/performance tradeoff. Filters/sorts are allowlisted and tenant/branch identifiers remain untrusted routing/filter input until server authorization verifies scope.
+Operational collections default to opaque cursor/keyset-style pagination. Offset pagination remains a documented exception for small/static lists. Filters/sorts are allowlisted and tenant/branch identifiers remain untrusted routing/filter input until server authorization verifies scope.
 
-Critical retryable commands use an explicit idempotency contract. The same trusted tenant/caller context + operation + key + compatible request maps to one canonical logical outcome; same key with a materially different request is a stable conflict. The IETF `Idempotency-Key` work is currently an expired Internet-Draft, so GymPulse owns the exact semantics rather than claiming a current RFC standard.
+Critical retryable commands use an explicit idempotency contract. The same trusted tenant/caller context + operation + key + compatible request maps to one canonical logical outcome; same key with a materially different request is a stable conflict.
 
 Provider callbacks remain a separate contract class:
 
@@ -360,33 +363,71 @@ raw callback
   -> idempotent canonical effect
 ```
 
-The proposed major contract namespace is `v1` from the first independently consumable contract, with compatible additive evolution inside the major version. Output enum additions remain compatibility-sensitive for independently deployed clients. OpenAPI is optional and should be mechanically derived/exported from runtime contracts where useful rather than maintained as an independent truth source.
+The proposed major contract namespace is `v1` from the first independently consumable contract, with compatible additive evolution inside the major version. OpenAPI is optional and should be mechanically derived/exported from runtime contracts where useful rather than maintained as an independent truth source.
 
-`D-ARCH-006` remains `OPEN`. ADR-0011 intentionally works whether the trusted API is later co-hosted with the web runtime or deployed independently. No Next.js route handler, Express/Fastify/Hono/NestJS server, server action, tRPC router, GraphQL schema, gRPC service, validator library, OpenAPI file, generated client, or endpoint implementation was created or selected.
+`D-ARCH-006` remains `OPEN`. ADR-0011 intentionally works whether the trusted API is later co-hosted with the web runtime or deployed independently.
+
+### Owner / Staff web framework proposal
+
+`ADR-0012` now defines the Proposed web presentation direction under `D-ARCH-012` without accepting it.
+
+Current proposal:
+
+```text
+Next.js App Router + React
++
+strict TypeScript only if D-ARCH-016 is later accepted compatibly
++
+Server Components for non-interactive page/layout composition
++
+narrow Client Component boundaries for browser interaction
++
+Server Functions/Actions and Route Handlers as thin adapters
++
+ADR-0011 preserved as the independently consumable contract
++
+current Principal/resource/capability authorization on every protected operation
++
+private-by-default tenant-sensitive data and cache behavior
++
+server-only/client-safe dependency boundaries
++
+co-hosted/separate API deployment optionality preserved
+```
+
+The web framework is not the authorization boundary. Layouts, navigation guards, middleware/Proxy, hidden buttons, Server Components, and Server Actions may improve UX or adapt transport, but they do not replace current application authorization.
+
+The framework also does not become the domain architecture. Business rules, application commands/queries, idempotency, provider verification, transactions, audit semantics, and canonical state remain outside React/Next.js components and framework handlers.
+
+Tenant-sensitive framework caching is a security review surface. Authenticated data is private by default; shared caching requires authority-complete scoping, invalidation/revocation evidence, and Tenant A -> Tenant B negative tests. `D-ARCH-008` remains `OPEN`; ADR-0012 does not add Redis merely for framework caching.
+
+`ADR-0012` is compatible with the Proposed first-party secure-cookie staff session posture from ADR-0007, but `D-ARCH-004` and `D-SEC-004` remain unresolved. Exact cookie, CSRF, session, provider, CSP, security-header, hosting, UI-library, testing, and observability implementation remains separately governed.
+
+No Next.js/React scaffold, dependency, route, Server Action, Route Handler, authentication integration, CI workflow, hosting configuration, production secret, or provider binding was created by Task 0020.
 
 `D-DATA-004` remains `PROPOSED`; Member and authenticated User/AuthIdentity remain separate concepts without finalized schema/cardinality. `D-DATA-007` remains unresolved and continues to block final Member/Membership lifecycle schema semantics.
 
 The exact next bounded governance task from the synchronized ADR dependency queue is now:
 
 ```text
-Task 0020: Draft Owner / Staff Web Application Framework ADR
+Task 0021: Draft Member Client Framework / Delivery ADR
 ```
 
 Primary decision:
 
 ```text
-D-ARCH-012
+D-ARCH-013
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0012-owner-staff-web-framework.md
+docs/adr/ADR-0013-member-client-strategy.md
 ```
 
-That next task should evaluate the Owner/Staff web framework against the proposed runtime/language, API contract, authentication/session, authorization, accessibility, testing, observability, deployment-neutral application boundaries, and future operational needs. It must not silently accept API deployment topology or create an application scaffold.
+That next task should compare responsive web/PWA and native/Expo/React Native delivery against the validated Member journeys, QR/camera requirements, authentication/session model, installation friction, notification/offline needs, accessibility, supported-client policy, and ADR-0011 contract boundary. It must not silently accept native delivery or create a Member application scaffold.
 
-Do not create ADR-0012 or implementation merely because ADR-0011 exists.
+Do not create ADR-0013 or implementation merely because ADR-0012 exists.
 
 ## Legacy Migration State
 
@@ -410,6 +451,8 @@ High-value migration sources include:
 Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as already canonical does not override current structured governance. `docs/00-overview/assumptions.md` remains authoritative and keeps `D-ARCH-002` `PROPOSED`.
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
+
+Legacy Next.js/Expo/Turborepo recommendations remain evidence only. ADR-0012 is still `Proposed`, not Accepted.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
