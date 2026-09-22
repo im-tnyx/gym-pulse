@@ -241,6 +241,7 @@ docs/adr/ADR-0009-authorization-implementation.md        Proposed   D-ARCH-015
 docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md    Proposed   D-SEC-008
 docs/adr/ADR-0011-api-contract-architecture.md           Proposed   D-ARCH-003
 docs/adr/ADR-0012-owner-staff-web-framework.md           Proposed   D-ARCH-012
+docs/adr/ADR-0013-member-client-strategy.md               Proposed   D-ARCH-013
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -267,11 +268,13 @@ docs/adr/ADR-0012-owner-staff-web-framework.md           Proposed   D-ARCH-012
 
 `ADR-0012` proposes Next.js App Router + React as the Owner/Staff web presentation framework, with strict TypeScript conditional on later compatible acceptance of `D-ARCH-016`. It keeps application/domain/security logic framework-independent, treats Server Components/Client Components as presentation boundaries and Server Functions/Route Handlers as adapters, preserves ADR-0011 as the independently consumable contract, requires tenant-sensitive cache isolation and server-only/client-safe dependency boundaries, and leaves API deployment, auth/session provider, hosting, testing, UI libraries, CI/CD, and observability separately governed. `D-ARCH-012` remains canonically `PROPOSED`.
 
+`ADR-0013` proposes responsive browser-first Member delivery as the Phase 1 baseline, with normal HTTPS use requiring no installation, OS-camera HTTPS QR entry as the primary QR path, browser scanning only after target-device validation, PWA capabilities added progressively rather than as an offline-first bundle, and Expo/React Native retained only as an evidence-triggered future native path. It preserves ADR-0011 as the common API boundary, keeps Member-self authorization and attendance/payment/membership truth server-side, rejects offline canonical attendance/payment truth, and selects no Auth/payment/messaging/push/hosting provider. `D-ARCH-013` remains canonically `PROPOSED`.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twelve ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first thirteen ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -407,27 +410,61 @@ No Next.js/React scaffold, dependency, route, Server Action, Route Handler, auth
 
 `D-DATA-004` remains `PROPOSED`; Member and authenticated User/AuthIdentity remain separate concepts without finalized schema/cardinality. `D-DATA-007` remains unresolved and continues to block final Member/Membership lifecycle schema semantics.
 
+### Member client delivery proposal
+
+`ADR-0013` now defines the Proposed Member delivery direction under `D-ARCH-013` without accepting it.
+
+Current proposal:
+
+```text
+responsive HTTPS Member web as Phase 1 baseline
++
+normal browser use without installation
++
+OS Camera -> HTTPS GymPulse QR entry
++
+optional browser scanner only after real-device validation
++
+optional PWA installability as progressive enhancement
++
+service worker only for a concrete approved need
++
+no offline canonical attendance/payment/membership truth
++
+no mandatory push
++
+Expo / React Native retained as evidence-triggered future native path
++
+ADR-0011 shared by web and future native clients
+```
+
+The QR scan is only input acquisition. Member identity, QR/session validity, expiry, branch, membership eligibility, duplicate policy, and idempotency remain server-owned. Payment return/deep links are navigation only; canonical payment state still comes from verified provider evidence and the trusted runtime.
+
+Browser/PWA remains compatible with the current proposed first-party server-mediated secure-cookie session architecture. A future native client may use a different credential transport with OS-protected storage while sharing the same AuthIdentity -> Principal -> Member-self authorization model. `D-ARCH-004`, `D-SEC-002`, and `D-SEC-004` remain unresolved.
+
+No Member client, PWA, service worker, native app, Expo/React Native project, QR scanner, Auth/payment/push integration, deep-link configuration, direct database path, or production configuration was created by Task 0021.
+
 The exact next bounded governance task from the synchronized ADR dependency queue is now:
 
 ```text
-Task 0021: Draft Member Client Framework / Delivery ADR
+Task 0022: Draft API Deployment Boundary ADR
 ```
 
 Primary decision:
 
 ```text
-D-ARCH-013
+D-ARCH-006
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0013-member-client-strategy.md
+docs/adr/ADR-0014-api-deployment-boundary.md
 ```
 
-That next task should compare responsive web/PWA and native/Expo/React Native delivery against the validated Member journeys, QR/camera requirements, authentication/session model, installation friction, notification/offline needs, accessibility, supported-client policy, and ADR-0011 contract boundary. It must not silently accept native delivery or create a Member application scaffold.
+That next task should compare co-hosted web/server application entry versus independently deployed trusted API runtime against ADR-0011 contracts, ADR-0012 staff web, ADR-0013 Member delivery, authentication/session, provider callbacks, background jobs, observability, scaling, security boundaries, and hosting constraints. It must not create deployment infrastructure.
 
-Do not create ADR-0013 or implementation merely because ADR-0012 exists.
+Do not create ADR-0014 or implementation as part of Task 0021.
 
 ## Legacy Migration State
 
@@ -452,7 +489,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo recommendations remain evidence only. ADR-0012 is still `Proposed`, not Accepted.
+Legacy Next.js/Expo/Turborepo recommendations remain evidence only. ADR-0012 and ADR-0013 are still `Proposed`, not Accepted. Expo/React Native is not accepted merely because legacy architecture recommended it.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
