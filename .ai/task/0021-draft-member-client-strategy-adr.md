@@ -780,14 +780,22 @@ No D-ARCH-013 promotion to DECIDED
 
 ## Next Recommended Task
 
-After governance synchronization, fresh-read:
+Post-Task-0021 governance state was freshly re-read from:
 
 - `docs/adr/README.md`
 - `docs/00-overview/assumptions.md`
 - `.ai/current-state.md`
 
-and record the actual next bounded task from the repository.
+The synchronized repository confirms the actual next bounded task as:
 
-The pre-task queue suggested `D-ARCH-006` API Deployment Boundary, likely Task 0022 / `docs/adr/ADR-0014-api-deployment-boundary.md`, but Task 0021 must not assume that until post-update state is verified.
+```text
+Task 0022: Draft API Deployment Boundary ADR
+Primary decision: D-ARCH-006
+Likely target: docs/adr/ADR-0014-api-deployment-boundary.md
+Initial ADR status: Proposed
+Canonical D-ARCH-006 status: OPEN
+```
 
-Do not execute the next task as part of Task 0021.
+The next ADR should compare co-hosted web/server application entry versus an independently deployed trusted API runtime against ADR-0011 contracts, ADR-0012 Owner/Staff web, ADR-0013 Member delivery, authentication/session, provider callback/raw-body requirements, background-job boundaries, observability, scaling, security boundaries, and hosting constraints.
+
+Task 0022 was not executed as part of Task 0021.
