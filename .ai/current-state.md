@@ -36,6 +36,7 @@ ADR-0009  D-ARCH-015  Authorization implementation boundary      Proposed
 ADR-0010  D-SEC-008   Data-layer tenant isolation / RLS          Proposed
 ADR-0011  D-ARCH-003  Primary API contract architecture          Proposed
 ADR-0012  D-ARCH-012  Owner/Staff web application framework      Proposed
+ADR-0013  D-ARCH-013  Member client framework / delivery strategy Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -240,15 +241,121 @@ Task 0020 reviewed official current Next.js, React, React Router, and Vite mater
 
 Observed current Next.js `16.3.4` and React Router `8.2.0` are research evidence only. No exact version is pinned or accepted.
 
-## Task 0020 Implementation Status
+## Current Member Client Delivery Proposal
 
-Task `0020-draft-owner-staff-web-framework-adr` completed documentation/governance work only.
+`ADR-0013` now exists as `Proposed`; canonical `D-ARCH-013` remains `P1 PROPOSED`.
+
+Task 0021 compared:
+
+```text
+A. responsive browser-first web
+B. responsive web + progressive PWA capabilities
+C. Expo / React Native native client
+D. credible hybrid native wrapper
+```
+
+Current proposed direction:
+
+```text
+responsive HTTPS Member web as Phase 1 baseline
++
+normal use without installation
++
+OS Camera -> HTTPS GymPulse QR entry as baseline
++
+browser camera scanner only after real target-device validation
++
+PWA capabilities added progressively and individually
++
+service worker only for a concrete approved need
++
+no offline canonical attendance/payment/membership truth
++
+no mandatory push
++
+Expo / React Native retained as evidence-triggered future native path
++
+ADR-0011 shared by web and future native clients
+```
+
+### Member delivery security boundaries
+
+- Both web/PWA and future native clients remain untrusted.
+- `QR token != Member identity`.
+- `QR scan != Attendance truth`.
+- `Payment return/deep link != Payment proof`.
+- `Notification delivery != Canonical business state`.
+- Member IDs, phone numbers, provider subjects, route state, and cached client state do not establish Member-self authorization.
+- Browser reusable secrets are not stored in ordinary `localStorage`.
+- Future native reusable credentials require an OS-protected storage category; no package/token format is selected.
+- Service-worker/private-cache behavior, if ever enabled, requires Member A -> Member B same-device isolation and stale-revocation tests.
+- Direct browser/mobile canonical database access remains unapproved.
+
+### QR / camera posture
+
+Preferred order:
+
+```text
+1. OS Camera -> HTTPS GymPulse link
+2. browser/PWA in-app scanner after Android/iPhone/low-end validation
+3. native in-app scanner only after native escalation evidence
+```
+
+Browser camera access is technically viable over HTTPS with user permission, but browser-native barcode detection is not universally available enough to be the sole cross-browser production decoder. No QR package was selected or installed.
+
+### Authentication/session relationship
+
+```text
+D-ARCH-004 OPEN
+ADR-0007 Proposed
+D-SEC-002 OPEN
+ADR-0008 Proposed
+D-SEC-004 OPEN
+```
+
+The proposed browser-first client remains compatible with first-party server-mediated secure-cookie session transport with `HttpOnly` where compatible, `Secure`, deliberate `SameSite`, CSRF protection, logout/revocation, and fixation/rotation controls.
+
+Managed phone OTP/passwordless remains only Proposed under ADR-0008; Task 0021 does not accept it.
+
+A future native client may use a different secure credential transport while preserving:
+
+```text
+Authentication Evidence
+-> AuthIdentity
+-> GymPulse Principal
+-> explicit Member-self relationship
+-> authorization
+```
+
+### Offline / push / payment posture
+
+No offline-first canonical workflow is proposed. Offline/local client state cannot establish attendance, membership eligibility, renewal, payment, entitlement, or authorization.
+
+Push remains optional and separately governed. `D-PROVIDER-002` and `D-PROVIDER-004` remain OPEN.
+
+Payment checkout/return is navigation and presentation only. A return URL, Universal Link, App Link, or query string must refresh canonical Payment state; client-visible success cannot make a payment Paid.
+
+### Native escalation triggers
+
+Revisit native if evidence shows browser QR/camera fails acceptance, native push becomes business-critical, approved background/offline/device requirements emerge, app-store distribution becomes a business requirement, browser payment/auth UX is materially unacceptable, active workout/progress/health scope benefits materially from native APIs, or measured adoption/support/reliability favors native.
+
+These triggers reopen governance; they do not accept Expo/React Native automatically.
+
+### Target-device and accessibility evidence still required
+
+Validation remains required on current Android Chrome, representative low-end/older Android, current iPhone Safari, installed PWA mode if proposed, slow/unstable network, and camera permission granted/denied/unavailable.
+
+Critical Member flows require screen-reader semantics, text scaling/zoom, touch-target sizing, contrast, clear loading/error/retry behavior, camera fallback, and assisted check-in fallback where policy permits.
+
+## Task 0021 Implementation Status
+
+Task `0021-draft-member-client-strategy-adr` completed documentation/governance work only.
 
 Created:
 
 ```text
-docs/adr/ADR-0012-owner-staff-web-framework.md
-.ai/task/0020-draft-owner-staff-web-framework-adr.md
+docs/adr/ADR-0013-member-client-strategy.md
+.ai/task/0021-draft-member-client-strategy-adr.md
 ```
 
 Updated:
@@ -262,43 +369,52 @@ docs/README.md
 Explicitly not created/selected:
 
 ```text
-No Next.js/React application scaffold
-No package/dependency installation
-No Next.js/TypeScript config
-No page/layout/component
-No Server Function/Action
-No Route Handler
-No auth/session integration
-No CSRF implementation
-No API implementation
-No database access code
-No migration/RLS policy
-No worker/job implementation
-No hosting provider or Vercel project
-No CI workflow
-No observability provider
-No test framework installation
-No production secret/config
-No TypeScript/Node acceptance
+No Member client implementation
+No Member web application
+No PWA implementation
+No manifest
+No service worker
+No native app
+No Expo/React Native acceptance
+No hybrid wrapper implementation
+No camera/QR package
+No QR scanner implementation
+No authentication SDK integration
+No Auth provider
+No phone OTP acceptance
+No API client implementation
+No native secure-storage implementation
+No push provider/integration
+No messaging provider selection
+No payment provider/integration
+No deep-link/universal-link/app-link configuration
+No WebView
+No direct database access
+No native build/signing/store configuration
+No hosting/deployment configuration
+No tests
+No CI
+No production config
 No API deployment topology selection
-No D-ARCH-012 promotion to DECIDED
+No D-ARCH-013 promotion to DECIDED
 No previous ADR promotion to Accepted
 ```
 
 ## Last Completed Task
 
-`0020-draft-owner-staff-web-framework-adr`
+`0021-draft-member-client-strategy-adr`
 
 ```text
-ADR-0012 Status: Proposed
-D-ARCH-012 canonical status: PROPOSED
+ADR-0013 Status: Proposed
 D-ARCH-013 canonical status: PROPOSED
 D-ARCH-006 canonical status: OPEN
 D-ARCH-004 canonical status: OPEN
-D-ARCH-016 canonical status: PROPOSED
+D-SEC-002 canonical status: OPEN
+D-SEC-004 canonical status: OPEN
+D-PROVIDER-004 canonical status: OPEN
 ```
 
-The Owner/Staff web framework direction is not accepted or implemented merely because ADR-0012 exists.
+The Member delivery direction is not accepted or implemented merely because ADR-0013 exists.
 
 ## Current Task
 
@@ -306,38 +422,38 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0020 synchronization of the ADR dependency queue identifies the next bounded item as:
+Post-Task-0021 synchronization of the ADR dependency queue identifies the next bounded item as:
 
 ```text
-Task 0021: Draft Member Client Framework / Delivery ADR
+Task 0022: Draft API Deployment Boundary ADR
 ```
 
 Primary canonical decision:
 
 ```text
-D-ARCH-013
+D-ARCH-006
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0013-member-client-strategy.md
+docs/adr/ADR-0014-api-deployment-boundary.md
 ```
 
-Initial ADR status should be `Proposed`. Canonical `D-ARCH-013` remains `PROPOSED` unless explicit review/approval changes it.
+Initial ADR status should be `Proposed`. Canonical `D-ARCH-006` remains `OPEN` unless explicit review/approval changes it.
 
-The next task should compare responsive web/PWA and native/Expo/React Native delivery against the validated Member journeys, QR/camera requirements, authentication/session model, installation friction, notification/offline requirements, accessibility, supported-client policy, ADR-0011 API contract, and current security boundaries.
+The next task should compare co-hosted web/server application entry versus an independently deployed trusted API runtime against ADR-0011 contracts, ADR-0012 Owner/Staff web, ADR-0013 Member delivery, authentication/session, provider callback/raw-body requirements, background-job boundaries, observability, scaling, security, and hosting constraints.
 
-It must not assume native delivery merely because Expo/React Native appears in legacy recommendations and must not create a Member application scaffold or accept prior ADRs.
+It must not create deployment infrastructure, select hosting, or accept prior ADRs.
 
-Do not execute Task 0021 until explicitly requested.
+Do not execute Task 0022 until explicitly requested.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0020-draft-owner-staff-web-framework-adr.md
+.ai/task/0021-draft-member-client-strategy-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
@@ -347,17 +463,18 @@ docs/01-product/personas.md
 docs/01-product/user-journeys.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
+docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
 docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
 docs/adr/ADR-0007-authentication-session-architecture.md
-docs/adr/ADR-0008-member-authentication-method.md
+docs/adr/ADR-0009-authorization-implementation.md
 docs/adr/ADR-0011-api-contract-architecture.md
 docs/adr/ADR-0012-owner-staff-web-framework.md
+docs/adr/ADR-0013-member-client-strategy.md
 legacy migration source: docs/05-system-architecture.md
-legacy migration source: docs/07-api-contracts.md
 legacy migration source: docs/15-engineering-workflow.md
 legacy migration source: docs/16-open-decisions.md
 ```
