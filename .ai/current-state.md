@@ -38,6 +38,7 @@ ADR-0011  D-ARCH-003  Primary API contract architecture          Proposed
 ADR-0012  D-ARCH-012  Owner/Staff web application framework      Proposed
 ADR-0013  D-ARCH-013  Member client framework / delivery strategy Proposed
 ADR-0014  D-ARCH-006  API deployment boundary                    Proposed
+ADR-0015  D-ARCH-007  Background jobs / scheduler                Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -485,15 +486,146 @@ Revisit independent API deployment when web/API scaling diverges, shared release
 
 These are revisit triggers, not automatic extraction.
 
-## Task 0022 Implementation Status
+## Current Background Jobs / Scheduler Proposal
 
-Task `0022-draft-api-deployment-boundary-adr` completed documentation/governance work only.
+`ADR-0015` now exists as `Proposed`; canonical `D-ARCH-007` remains `P1 OPEN`.
+
+Task 0023 compared:
+
+```text
+A. PostgreSQL-backed job runner/scheduler (pg-boss-style)
+B. Postgres-native queue + Cron (PGMQ + pg_cron / Supabase Queues+Cron)
+C. managed durable task/workflow platform (Trigger.dev-style)
+D. Redis-backed queue/scheduler (BullMQ-style)
+E. custom database job table + generic Cron/poller
+```
+
+Current proposed direction:
+
+```text
+PostgreSQL-backed durable queue/scheduler
++
+separate Background Worker Runtime
++
+GymPulse Durable Continuation port
++
+same-transaction enqueue where possible
++
+transactional outbox/dispatcher only when crossing to an external queue/platform
++
+explicit retry / terminal failure / redrive behavior
++
+business-level idempotency always
++
+no Redis baseline
+```
+
+If PostgreSQL and a compatible Node runtime are later accepted, pg-boss is the leading current implementation candidate. No queue/library/provider is accepted by ADR-0015.
+
+### Background-execution invariants
+
+```text
+HTTP Request Runtime != Durable Background Execution
+Queue Delivery Guarantee != Business-Effect Exactly-Once
+Scheduler Timing != Business Eligibility
+Job Payload != Canonical Business State
+Job History != Canonical Audit / Business History
+```
+
+Workers use explicit System/Job Context, tenant/gym/branch scope, payload type/version validation, deterministic business keys, current-state reload, shared application/domain handlers, and safe provider adapters.
+
+### Transactional handoff
+
+Preferred same-database handoff when supported:
+
+```text
+BEGIN
+  canonical business write
+  required audit/idempotency
+  durable job enqueue
+COMMIT
+```
+
+If the queue/task system cannot participate in the canonical transaction:
+
+```text
+BEGIN
+  canonical business write
+  durable outbox/continuation record
+COMMIT
+
+dispatcher -> external task system
+```
+
+Direct post-commit fire-and-forget enqueue is not acceptable where losing the continuation would violate requirements.
+
+### Scheduling / timezone posture
+
+The scheduler wakes work; application/domain rules decide current eligibility.
+
+Gym-local schedules use configured gym timezone/business clock while canonical timestamps remain UTC.
+
+Implementation may use per-tenant schedules or a bounded due-tenant sweep. Exact frequencies and missed-run policies remain job-specific and unfinalized.
+
+### Retry / failure posture
+
+Retries are expected and bounded.
+
+Failures are classified as:
+
+- transient infrastructure/provider,
+- rate-limit,
+- permanent provider/domain rejection,
+- stale business condition,
+- invalid payload/version,
+- data-quality inconsistency,
+- security/tenant mismatch,
+- ambiguous provider outcome requiring reconciliation.
+
+Terminal failures remain operator-visible and support safe redrive without bypassing business idempotency.
+
+### Provider boundaries
+
+Notification jobs reload current business/preference state before send/suppress decisions.
+
+Payment reconciliation reuses verified provider evidence and existing payment-effect uniqueness; job completion never becomes payment proof.
+
+External provider calls remain outside long correctness-critical DB transactions where practical.
+
+### Security / tenant scope
+
+Workers are trusted server runtimes but not unrestricted.
+
+They require:
+
+- least-privilege runtime credentials,
+- explicit tenant/resource scope,
+- trusted System/Job Principal,
+- separate migration/admin credentials,
+- server-only provider secrets,
+- no direct client queue access.
+
+Job payloads/logs avoid secrets and unnecessary PII.
+
+### Scaling / revisit triggers
+
+Postgres-backed jobs share database resources with canonical OLTP.
+
+Monitor backlog, oldest job age, retries, terminal failures, job duration, queue-table growth, DB CPU/I/O/locks, and interactive latency.
+
+Revisit external broker/managed durable execution if measured queue load harms OLTP, long-running workflow orchestration becomes core, provider concurrency becomes complex, multi-region execution is required, worker hosting constraints emerge, or ownership/release boundaries justify it.
+
+Redis remains unnecessary until measured/tool-driven evidence exists.
+
+## Task 0023 Implementation Status
+
+Task `0023-draft-background-jobs-scheduler-adr` completed documentation/governance work only.
 
 Created:
 
 ```text
-docs/adr/ADR-0014-api-deployment-boundary.md
-.ai/task/0022-draft-api-deployment-boundary-adr.md
+docs/adr/ADR-0015-background-jobs-scheduler.md
+.ai/task/0023-draft-background-jobs-scheduler-adr.md
 ```
 
 Updated:
@@ -507,54 +639,46 @@ docs/README.md
 Explicitly not created/selected:
 
 ```text
-No API implementation
-No standalone API service
-No Route Handler
-No Server Action
-No Express/Fastify/Hono/Nest server
-No Next.js deployment
-No hosting provider
-No Dockerfile/container
-No serverless function
-No edge function
-No API gateway
-No reverse proxy configuration
-No CORS configuration
-No cookie configuration
-No CSRF implementation
-No Auth integration/provider
-No database provider/connection implementation
-No worker
+No worker implementation
 No queue
-No cron
+No scheduler
+No Cron configuration
+No pg-boss installation/acceptance
+No Supabase Queues/Cron selection
+No Trigger.dev selection
+No BullMQ selection
+No Redis
+No outbox table
+No job table
 No migration
+No queue schema
+No worker deployment
+No hosting provider
+No database provider
 No CI/CD workflow
-No observability setup/provider
-No DNS/domain
-No production secret
-No load test
-No background-job technology selection
-No API deployment topology acceptance
-No D-ARCH-006 promotion to DECIDED
+No observability provider
+No production secrets
+No D-ARCH-007 promotion to DECIDED
 No previous ADR promotion to Accepted
 ```
 
 ## Last Completed Task
 
-`0022-draft-api-deployment-boundary-adr`
+`0023-draft-background-jobs-scheduler-adr`
 
 ```text
-ADR-0014 Status: Proposed
-D-ARCH-006 canonical status: OPEN
+ADR-0015 Status: Proposed
 D-ARCH-007 canonical status: OPEN
 D-ARCH-009 canonical status: OPEN
-D-ARCH-004 canonical status: OPEN
-D-ARCH-003 canonical status: PROPOSED
-D-ARCH-012 canonical status: PROPOSED
-D-ARCH-013 canonical status: PROPOSED
+D-ARCH-008 canonical status: OPEN
+D-ARCH-002 canonical status: PROPOSED
+D-ARCH-016 canonical status: PROPOSED
+D-ARCH-017 canonical status: PROPOSED
+D-ARCH-014 canonical status: OPEN
+D-ARCH-006 canonical status: OPEN
 ```
 
-The API deployment direction is not accepted or implemented merely because ADR-0014 exists.
+The background-job/scheduler direction is not accepted or implemented merely because ADR-0015 exists.
 
 ## Current Task
 
@@ -562,38 +686,38 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0022 synchronization of the ADR dependency queue identifies the next bounded item as:
+Post-Task-0023 synchronization of the ADR dependency queue identifies the next bounded item as:
 
 ```text
-Task 0023: Draft Background Jobs / Scheduler ADR
+Task 0024: Draft Hosting / Deployment Platform ADR
 ```
 
 Primary canonical decision:
 
 ```text
-D-ARCH-007
+D-ARCH-009
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0015-background-jobs-scheduler.md
+docs/adr/ADR-0016-hosting-deployment-platform.md
 ```
 
-Initial ADR status should be `Proposed`. Canonical `D-ARCH-007` remains `OPEN` unless explicit review/approval changes it.
+Initial ADR status should be `Proposed`. Canonical `D-ARCH-009` remains `OPEN` unless explicit review/approval changes it.
 
-The next task should evaluate durable scheduling/job execution against retries, deterministic dedupe, tenant scope, failure visibility, recovery/dead-letter behavior, API-to-worker continuation, provider calls, database transaction/outbox implications, operational simplicity, scaling, and hosting portability.
+The next task should evaluate hosting against ADR-0014 request-serving topology, ADR-0015 separate worker requirements, database/network connectivity, TLS/custom routing, secret management, health/readiness, horizontal scaling, provider webhook reachability, environment separation, rollback, logs/metrics integration, regional/privacy constraints, cost/operability, and Phase 1 simplicity.
 
-It must not implement a queue/worker/Cron system, select hosting, or accept prior ADRs.
+It must not provision infrastructure, select a hosting provider as accepted, or accept prior ADRs.
 
-Do not execute Task 0023 until explicitly requested.
+Do not execute Task 0024 until explicitly requested.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0022-draft-api-deployment-boundary-adr.md
+.ai/task/0023-draft-background-jobs-scheduler-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
@@ -608,15 +732,16 @@ docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
 docs/adr/ADR-0001-modular-monolith.md
+docs/adr/ADR-0002-primary-language-runtime.md
 docs/adr/ADR-0003-monorepo-strategy.md
+docs/adr/ADR-0004-database-engine.md
+docs/adr/ADR-0005-data-access-migration-strategy.md
 docs/adr/ADR-0006-managed-backend-responsibilities.md
 docs/adr/ADR-0007-authentication-session-architecture.md
-docs/adr/ADR-0009-authorization-implementation.md
 docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md
-docs/adr/ADR-0011-api-contract-architecture.md
-docs/adr/ADR-0012-owner-staff-web-framework.md
-docs/adr/ADR-0013-member-client-strategy.md
 docs/adr/ADR-0014-api-deployment-boundary.md
+docs/adr/ADR-0015-background-jobs-scheduler.md
+legacy migration source: docs/05-system-architecture.md
 legacy migration source: docs/08-automations.md
 legacy migration source: docs/12-security-audit.md
 legacy migration source: docs/15-engineering-workflow.md
