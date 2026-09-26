@@ -362,8 +362,8 @@ Its leading direction is conditional on PostgreSQL later being accepted: retain 
 D-ARCH-003     API contract architecture              PROPOSED / ADR-0011 drafted
 D-ARCH-012     Owner/Staff framework                  PROPOSED / ADR-0012 drafted
 D-ARCH-013     Member client strategy                 PROPOSED / ADR-0013 drafted
-D-ARCH-006     API deployment topology                OPEN
-D-ARCH-007     Background jobs                        OPEN
+D-ARCH-006     API deployment topology                OPEN / ADR-0014 drafted
+D-ARCH-007     Background jobs                        OPEN / ADR-0015 drafted
 D-ARCH-009     Hosting                                OPEN
 D-ARCH-019     CI/CD + release/secrets tooling        OPEN
 D-ARCH-018     Testing toolchain                      PROPOSED
