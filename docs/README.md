@@ -244,6 +244,7 @@ docs/adr/ADR-0012-owner-staff-web-framework.md           Proposed   D-ARCH-012
 docs/adr/ADR-0013-member-client-strategy.md               Proposed   D-ARCH-013
 docs/adr/ADR-0014-api-deployment-boundary.md              Proposed   D-ARCH-006
 docs/adr/ADR-0015-background-jobs-scheduler.md             Proposed   D-ARCH-007
+docs/adr/ADR-0016-hosting-deployment-platform.md            Proposed   D-ARCH-009
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -276,11 +277,13 @@ docs/adr/ADR-0015-background-jobs-scheduler.md             Proposed   D-ARCH-007
 
 `ADR-0015` proposes PostgreSQL-backed durable jobs/scheduling behind a GymPulse Durable Continuation port, executed by a separate Background Worker Runtime. If PostgreSQL and a compatible Node runtime are later accepted, pg-boss is the leading current implementation candidate because same-database enqueue can participate in the application transaction while retries, dead-letter handling, scheduling, and worker recovery remain explicit. External task systems require a transactional outbox/dispatcher handoff; queue delivery never replaces business idempotency. Redis/BullMQ and managed durable-task platforms remain alternatives rather than baseline dependencies. Canonical `D-ARCH-007` remains `OPEN`.
 
+`ADR-0016` proposes a conventional regional managed service/worker PaaS as the Phase 1 hosting category: a stateless public request service plus a separately deployable non-public-by-default Background Worker, both near canonical persistence and independently scalable. Render is the leading current provider candidate only if jurisdiction/privacy, region/locality, DB connectivity, runtime, worker, webhook, secret, migration, rollback, and load gates pass. Its current documented service-region set includes Singapore but not India, so `D-SEC-001` may materially change the provider direction. Google Cloud Run and Fly.io remain serious region-flexible alternatives; Vercel plus a separate worker remains a credible web-led split. No provider or production region is accepted. Canonical `D-ARCH-009` remains `OPEN`.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first fifteen ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first sixteen ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -513,27 +516,61 @@ The scheduler controls wake-up timing, not domain eligibility. Workers reload ca
 
 No worker, queue, scheduler, Cron config, pg-boss/Supabase/Trigger.dev/BullMQ integration, Redis instance, outbox/job table, migration, queue schema, hosting resource, CI/CD workflow, or production secret was created by Task 0023.
 
+### Hosting / deployment platform proposal
+
+`ADR-0016` now defines the Proposed hosting direction under `D-ARCH-009` without accepting a provider.
+
+Current proposal:
+
+```text
+one approved primary region
++
+managed stateless request-serving service
++
+separate managed Background Worker service
++
+independent scaling/failure lifecycle
++
+compute close to canonical persistence
++
+managed TLS / health / deployment lifecycle
++
+server-only environment-scoped secrets
++
+no Kubernetes baseline
++
+no Redis baseline
++
+no edge-first business-runtime requirement
+```
+
+Render is the leading current integrated service/worker PaaS candidate if `D-SEC-001`, region/locality, database connectivity, worker lifecycle, webhook, secret, migration, rollback, and load validation pass. Its current official service-region list does not include India. Cloud Run and Fly.io therefore remain important region-flexible alternatives; Vercel plus a separate worker remains a credible web-first split where its web ergonomics justify a second runtime provider.
+
+The request runtime remains stateless/disposable. The worker remains a separate non-public-by-default runtime. Production migrations are one controlled release action, not a startup race across replicas. Preview environments must not inherit production secrets. Provider-native logs do not replace GymPulse request/job/payment correlation.
+
+No cloud account/project/service, environment, DNS/TLS record, Dockerfile, deployment manifest, IaC, database, queue, Redis instance, migration, CI workflow, production secret, or monitoring integration was created by Task 0024.
+
 The exact next bounded governance task from the synchronized ADR dependency queue is now:
 
 ```text
-Task 0024: Draft Hosting / Deployment Platform ADR
+Task 0025: Draft CI/CD + Production Release / Secrets ADR
 ```
 
 Primary decision:
 
 ```text
-D-ARCH-009
+D-ARCH-019
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0016-hosting-deployment-platform.md
+docs/adr/ADR-0017-ci-cd-release-secrets.md
 ```
 
-That next task should evaluate hosting against ADR-0014 request-serving topology, ADR-0015 separate-worker requirements, database/network connectivity, TLS/custom routing, secrets, health/readiness, horizontal scaling, webhook reachability, environment separation, rollback, logs/metrics integration, regional/privacy constraints, and Phase 1 operational simplicity without provisioning infrastructure.
+That next task should define production build/test gates, controlled promotion, artifact/version provenance, environment and secret ownership, migration sequencing, release smoke tests, rollback/forward-fix, branch/review protections, and hosting integration without creating CI workflows or production secrets.
 
-Do not create ADR-0016 or hosting infrastructure as part of Task 0023.
+Do not create ADR-0017 or release infrastructure as part of Task 0024.
 
 ## Legacy Migration State
 
@@ -558,7 +595,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner recommendations remain evidence only. ADR-0012 through ADR-0015 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, nor pg-boss is accepted merely because current evaluation recommends them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting recommendations remain evidence only. ADR-0012 through ADR-0016 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, nor Cloud Run is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
