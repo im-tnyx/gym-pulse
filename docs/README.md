@@ -242,6 +242,7 @@ docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md    Proposed   D-SEC-008
 docs/adr/ADR-0011-api-contract-architecture.md           Proposed   D-ARCH-003
 docs/adr/ADR-0012-owner-staff-web-framework.md           Proposed   D-ARCH-012
 docs/adr/ADR-0013-member-client-strategy.md               Proposed   D-ARCH-013
+docs/adr/ADR-0014-api-deployment-boundary.md              Proposed   D-ARCH-006
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -270,11 +271,13 @@ docs/adr/ADR-0013-member-client-strategy.md               Proposed   D-ARCH-013
 
 `ADR-0013` proposes responsive browser-first Member delivery as the Phase 1 baseline, with normal HTTPS use requiring no installation, OS-camera HTTPS QR entry as the primary QR path, browser scanning only after target-device validation, PWA capabilities added progressively rather than as an offline-first bundle, and Expo/React Native retained only as an evidence-triggered future native path. It preserves ADR-0011 as the common API boundary, keeps Member-self authorization and attendance/payment/membership truth server-side, rejects offline canonical attendance/payment truth, and selects no Auth/payment/messaging/push/hosting provider. `D-ARCH-013` remains canonically `PROPOSED`.
 
+`ADR-0014` proposes a co-hosted-first Phase 1 API deployment boundary: the trusted `/v1` HTTP transport may execute with the Owner/Staff server runtime while Route Handlers/Server Functions remain thin adapters, application/domain/security modules remain framework-independent, Member/future-native clients retain ADR-0011, provider callbacks preserve their own verification boundary, background workers remain separate, and a deliberate extraction seam permits a future independent API deployment when operational evidence requires it. It selects no hosting provider, serverless/edge model, API gateway, Auth provider, database provider, or job technology. Canonical `D-ARCH-006` remains `OPEN`.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first thirteen ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first fourteen ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -444,27 +447,60 @@ Browser/PWA remains compatible with the current proposed first-party server-medi
 
 No Member client, PWA, service worker, native app, Expo/React Native project, QR scanner, Auth/payment/push integration, deep-link configuration, direct database path, or production configuration was created by Task 0021.
 
+### API deployment-boundary proposal
+
+`ADR-0014` now defines the Proposed deployment mapping under `D-ARCH-006` without accepting it.
+
+Current proposal:
+
+```text
+Phase 1:
+co-host trusted HTTP/API transport with Owner/Staff server runtime
++
+thin framework/transport adapters
++
+framework-independent application/domain/security modules
++
+ADR-0011 /v1 remains independently consumable
++
+Member web/future native use the same API
++
+provider callbacks keep dedicated verification adapters
++
+background execution remains a separate runtime responsibility
++
+no process-local canonical truth
++
+explicit future API-extraction seam
+```
+
+Owner/Staff server rendering may call shared application handlers directly in-process where appropriate, but direct calls and HTTP adapters must preserve the same Principal, tenant/resource authorization, use-case, domain, audit, idempotency, and transaction semantics. No second Server-Action business implementation is permitted.
+
+Public origin/DNS layout remains separate from physical deployment. Same-origin browser access may simplify Phase 1, but a future independent API may still be reverse-proxied under a common origin. Cross-origin credentialed access, if later used, requires explicit least-privilege CORS and separate CSRF controls.
+
+No API application, Route Handler, Server Action, standalone API service, serverless/edge function, API gateway, reverse proxy, hosting resource, CORS/cookie/CSRF config, worker/queue/Cron, DNS/domain, CI/CD workflow, or production secret was created by Task 0022.
+
 The exact next bounded governance task from the synchronized ADR dependency queue is now:
 
 ```text
-Task 0022: Draft API Deployment Boundary ADR
+Task 0023: Draft Background Jobs / Scheduler ADR
 ```
 
 Primary decision:
 
 ```text
-D-ARCH-006
+D-ARCH-007
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0014-api-deployment-boundary.md
+docs/adr/ADR-0015-background-jobs-scheduler.md
 ```
 
-That next task should compare co-hosted web/server application entry versus independently deployed trusted API runtime against ADR-0011 contracts, ADR-0012 staff web, ADR-0013 Member delivery, authentication/session, provider callbacks, background jobs, observability, scaling, security boundaries, and hosting constraints. It must not create deployment infrastructure.
+That next task should evaluate durable job/scheduler technology against retries, deterministic dedupe, tenant scope, visibility, recovery/dead-letter behavior, API-to-worker continuation, database/transaction interaction, provider calls, and Phase 1 operational simplicity without creating job infrastructure.
 
-Do not create ADR-0014 or implementation as part of Task 0021.
+Do not create ADR-0015 or implementation as part of Task 0022.
 
 ## Legacy Migration State
 
@@ -489,7 +525,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo recommendations remain evidence only. ADR-0012 and ADR-0013 are still `Proposed`, not Accepted. Expo/React Native is not accepted merely because legacy architecture recommended it.
+Legacy Next.js/Expo/Turborepo/API-deployment recommendations remain evidence only. ADR-0012, ADR-0013, and ADR-0014 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, nor a co-hosted API topology is accepted merely because legacy architecture recommended it.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
