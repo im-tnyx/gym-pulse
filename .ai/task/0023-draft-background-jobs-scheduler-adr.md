@@ -601,14 +601,22 @@ No D-ARCH-007 promotion to DECIDED
 
 ## Next Recommended Task
 
-After governance synchronization, fresh-read:
+Post-Task-0023 governance state was freshly re-read from:
 
 - `docs/adr/README.md`
 - `docs/00-overview/assumptions.md`
 - `.ai/current-state.md`
 
-and record the actual next bounded task.
+The synchronized repository confirms the actual next bounded task as:
 
-The pre-task queue suggests `D-ARCH-009` Hosting / Deployment Platform, likely Task 0024 / `docs/adr/ADR-0016-hosting-deployment-platform.md`, but do not assume that until post-update state is verified.
+```text
+Task 0024: Draft Hosting / Deployment Platform ADR
+Primary decision: D-ARCH-009
+Likely target: docs/adr/ADR-0016-hosting-deployment-platform.md
+Initial ADR status: Proposed
+Canonical D-ARCH-009 status: OPEN
+```
 
-Do not execute the next task as part of Task 0023.
+The next ADR should evaluate hosting against ADR-0014 request-serving topology, ADR-0015 separate-worker requirements, database/network connectivity, TLS/custom routing, secret management, health/readiness, horizontal scaling, provider webhook reachability, environment separation, rollback, logs/metrics integration, regional/privacy constraints, cost/operability, and Phase 1 simplicity.
+
+Task 0024 was not executed as part of Task 0023.
