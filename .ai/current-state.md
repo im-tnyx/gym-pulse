@@ -37,6 +37,7 @@ ADR-0010  D-SEC-008   Data-layer tenant isolation / RLS          Proposed
 ADR-0011  D-ARCH-003  Primary API contract architecture          Proposed
 ADR-0012  D-ARCH-012  Owner/Staff web application framework      Proposed
 ADR-0013  D-ARCH-013  Member client framework / delivery strategy Proposed
+ADR-0014  D-ARCH-006  API deployment boundary                    Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -347,15 +348,152 @@ Validation remains required on current Android Chrome, representative low-end/ol
 
 Critical Member flows require screen-reader semantics, text scaling/zoom, touch-target sizing, contrast, clear loading/error/retry behavior, camera fallback, and assisted check-in fallback where policy permits.
 
-## Task 0021 Implementation Status
+## Current API Deployment Boundary Proposal
 
-Task `0021-draft-member-client-strategy-adr` completed documentation/governance work only.
+`ADR-0014` now exists as `Proposed`; canonical `D-ARCH-006` remains `P1 OPEN`.
+
+Task 0022 compared:
+
+```text
+A. co-hosted web + trusted API runtime
+B. independent trusted API deployment
+C. co-hosted-first with explicit extraction seam
+D. client-specific BFF / split API topology
+E. function-per-route / provider-function-heavy API
+```
+
+Current proposed direction:
+
+```text
+Phase 1:
+co-host trusted /v1 HTTP/API transport with Owner/Staff server runtime
++
+thin transport/framework adapters
++
+framework-independent application/domain/security modules
++
+ADR-0011 remains independently consumable
++
+Member web/future native consume the same API
++
+provider callbacks preserve dedicated verification adapters
++
+background execution remains separate
++
+canonical/security-critical truth is never process-local
++
+future independent API extraction seam exists from day one
+```
+
+### Deployment boundary invariants
+
+```text
+API Contract != API Deployment
+Repository Topology != Deployment Topology
+Web Framework != Domain/Application Architecture
+Route Handler != Application Use Case
+Server Action != Business Rule
+HTTP Process != Canonical Business State
+Background Worker != HTTP Request Runtime
+Physical Deployment Topology != Public DNS / Origin Topology
+```
+
+### Owner/Staff web relationship
+
+If Next.js is later accepted, Route Handlers/Server Functions remain adapters only.
+
+Owner/Staff server-rendering code may call the same application handlers directly in-process when that avoids an unnecessary loopback HTTP call, but:
+
+```text
+Direct in-process call != different business semantics
+```
+
+Principal resolution, tenant/resource authorization, use-case rules, domain logic, audit, idempotency, and transactions remain shared.
+
+### Member / future-native relationship
+
+ADR-0011 remains the hard external boundary:
+
+```text
+Member Web / Future Native
+-> versioned JSON HTTPS
+-> Trusted GymPulse Runtime
+```
+
+No Next.js-specific transport is allowed to replace it.
+
+### Authentication / CORS / CSRF posture
+
+`D-ARCH-004` and `D-SEC-004` remain OPEN.
+
+Co-hosting may enable same-origin staff-web/API traffic, but same-origin is not a deployment requirement.
+
+If cross-origin credentialed browser traffic is later used:
+
+- allowed origins are explicit and environment-aware,
+- wildcard credentialed CORS is not allowed,
+- cookie/session configuration is deliberate,
+- CORS does not replace CSRF protection.
+
+No cookie, CORS, CSRF, or Auth implementation was created.
+
+### Webhook boundary
+
+Provider callbacks remain separate trust entries:
+
+```text
+raw/signature material
+-> provider verification
+-> normalized event
+-> internal resource/tenant resolution
+-> dedupe/idempotent correctness work
+-> durable continuation where needed
+-> acknowledgement
+```
+
+Webhook verification is not human-session authentication.
+
+### Background worker boundary
+
+`D-ARCH-007` remains OPEN.
+
+```text
+HTTP Request Runtime
+!=
+Durable Background Execution
+```
+
+No critical retryable workflow may depend only on process-memory timers or fire-and-forget promises.
+
+### Database / RLS / secret boundary
+
+`D-ARCH-002`, `D-ARCH-017`, and `D-SEC-008` remain separately governed.
+
+Topology must support pool/connection behavior, horizontal replicas, transaction-safe tenant context if RLS is later accepted, and separate migration/admin credentials.
+
+Normal request runtime is not schema owner.
+
+Browser bundles receive no DB credentials, provider secrets, webhook secrets, Auth server secrets, migration/admin credentials, or similar privileged values.
+
+### Failure / scaling / extraction findings
+
+Co-hosting initially shares web/API resource and failure domains. Independent API deployment improves some failure isolation but adds network, release, origin/session, observability, and operational surfaces.
+
+Current evidence favors co-hosted-first plus explicit extraction triggers.
+
+Revisit independent API deployment when web/API scaling diverges, shared releases create unacceptable availability risk, native/external traffic dominates, runtime/security constraints diverge, separate release cadence becomes valuable, hosting constraints make co-hosting inefficient, sustained resource contention is measured, or team ownership requires separation.
+
+These are revisit triggers, not automatic extraction.
+
+## Task 0022 Implementation Status
+
+Task `0022-draft-api-deployment-boundary-adr` completed documentation/governance work only.
 
 Created:
 
 ```text
-docs/adr/ADR-0013-member-client-strategy.md
-.ai/task/0021-draft-member-client-strategy-adr.md
+docs/adr/ADR-0014-api-deployment-boundary.md
+.ai/task/0022-draft-api-deployment-boundary-adr.md
 ```
 
 Updated:
@@ -369,52 +507,54 @@ docs/README.md
 Explicitly not created/selected:
 
 ```text
-No Member client implementation
-No Member web application
-No PWA implementation
-No manifest
-No service worker
-No native app
-No Expo/React Native acceptance
-No hybrid wrapper implementation
-No camera/QR package
-No QR scanner implementation
-No authentication SDK integration
-No Auth provider
-No phone OTP acceptance
-No API client implementation
-No native secure-storage implementation
-No push provider/integration
-No messaging provider selection
-No payment provider/integration
-No deep-link/universal-link/app-link configuration
-No WebView
-No direct database access
-No native build/signing/store configuration
-No hosting/deployment configuration
-No tests
-No CI
-No production config
-No API deployment topology selection
-No D-ARCH-013 promotion to DECIDED
+No API implementation
+No standalone API service
+No Route Handler
+No Server Action
+No Express/Fastify/Hono/Nest server
+No Next.js deployment
+No hosting provider
+No Dockerfile/container
+No serverless function
+No edge function
+No API gateway
+No reverse proxy configuration
+No CORS configuration
+No cookie configuration
+No CSRF implementation
+No Auth integration/provider
+No database provider/connection implementation
+No worker
+No queue
+No cron
+No migration
+No CI/CD workflow
+No observability setup/provider
+No DNS/domain
+No production secret
+No load test
+No background-job technology selection
+No API deployment topology acceptance
+No D-ARCH-006 promotion to DECIDED
 No previous ADR promotion to Accepted
 ```
 
 ## Last Completed Task
 
-`0021-draft-member-client-strategy-adr`
+`0022-draft-api-deployment-boundary-adr`
 
 ```text
-ADR-0013 Status: Proposed
-D-ARCH-013 canonical status: PROPOSED
+ADR-0014 Status: Proposed
 D-ARCH-006 canonical status: OPEN
+D-ARCH-007 canonical status: OPEN
+D-ARCH-009 canonical status: OPEN
 D-ARCH-004 canonical status: OPEN
-D-SEC-002 canonical status: OPEN
-D-SEC-004 canonical status: OPEN
-D-PROVIDER-004 canonical status: OPEN
+D-ARCH-003 canonical status: PROPOSED
+D-ARCH-012 canonical status: PROPOSED
+D-ARCH-013 canonical status: PROPOSED
 ```
 
-The Member delivery direction is not accepted or implemented merely because ADR-0013 exists.
+The API deployment direction is not accepted or implemented merely because ADR-0014 exists.
 
 ## Current Task
 
@@ -422,44 +562,42 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0021 synchronization of the ADR dependency queue identifies the next bounded item as:
+Post-Task-0022 synchronization of the ADR dependency queue identifies the next bounded item as:
 
 ```text
-Task 0022: Draft API Deployment Boundary ADR
+Task 0023: Draft Background Jobs / Scheduler ADR
 ```
 
 Primary canonical decision:
 
 ```text
-D-ARCH-006
+D-ARCH-007
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0014-api-deployment-boundary.md
+docs/adr/ADR-0015-background-jobs-scheduler.md
 ```
 
-Initial ADR status should be `Proposed`. Canonical `D-ARCH-006` remains `OPEN` unless explicit review/approval changes it.
+Initial ADR status should be `Proposed`. Canonical `D-ARCH-007` remains `OPEN` unless explicit review/approval changes it.
 
-The next task should compare co-hosted web/server application entry versus an independently deployed trusted API runtime against ADR-0011 contracts, ADR-0012 Owner/Staff web, ADR-0013 Member delivery, authentication/session, provider callback/raw-body requirements, background-job boundaries, observability, scaling, security, and hosting constraints.
+The next task should evaluate durable scheduling/job execution against retries, deterministic dedupe, tenant scope, failure visibility, recovery/dead-letter behavior, API-to-worker continuation, provider calls, database transaction/outbox implications, operational simplicity, scaling, and hosting portability.
 
-It must not create deployment infrastructure, select hosting, or accept prior ADRs.
+It must not implement a queue/worker/Cron system, select hosting, or accept prior ADRs.
 
-Do not execute Task 0022 until explicitly requested.
+Do not execute Task 0023 until explicitly requested.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0021-draft-member-client-strategy-adr.md
+.ai/task/0022-draft-api-deployment-boundary-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
-docs/01-product/user-roles.md
-docs/01-product/personas.md
 docs/01-product/user-journeys.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
@@ -469,12 +607,18 @@ docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
+docs/adr/ADR-0001-modular-monolith.md
+docs/adr/ADR-0003-monorepo-strategy.md
+docs/adr/ADR-0006-managed-backend-responsibilities.md
 docs/adr/ADR-0007-authentication-session-architecture.md
 docs/adr/ADR-0009-authorization-implementation.md
+docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md
 docs/adr/ADR-0011-api-contract-architecture.md
 docs/adr/ADR-0012-owner-staff-web-framework.md
 docs/adr/ADR-0013-member-client-strategy.md
-legacy migration source: docs/05-system-architecture.md
+docs/adr/ADR-0014-api-deployment-boundary.md
+legacy migration source: docs/08-automations.md
+legacy migration source: docs/12-security-audit.md
 legacy migration source: docs/15-engineering-workflow.md
 legacy migration source: docs/16-open-decisions.md
 ```
