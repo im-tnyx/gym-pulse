@@ -656,14 +656,22 @@ No D-ARCH-006 promotion to DECIDED
 
 ## Next Recommended Task
 
-After governance synchronization, fresh-read:
+Post-Task-0022 governance state was freshly re-read from:
 
 - `docs/adr/README.md`
 - `docs/00-overview/assumptions.md`
 - `.ai/current-state.md`
 
-and record the actual next bounded task.
+The synchronized repository confirms the actual next bounded task as:
 
-The pre-task queue suggests `D-ARCH-007` Durable Background Jobs / Scheduler, likely Task 0023 / `docs/adr/ADR-0015-background-jobs-scheduler.md`, but do not assume that until post-update state is verified.
+```text
+Task 0023: Draft Background Jobs / Scheduler ADR
+Primary decision: D-ARCH-007
+Likely target: docs/adr/ADR-0015-background-jobs-scheduler.md
+Initial ADR status: Proposed
+Canonical D-ARCH-007 status: OPEN
+```
 
-Do not execute the next task as part of Task 0022.
+The next ADR should evaluate durable scheduling/job execution against retries, deterministic dedupe, tenant scope, failure visibility, recovery/dead-letter behavior, API-to-worker continuation, provider calls, database transaction/outbox implications, operational simplicity, scaling, and hosting portability.
+
+Task 0023 was not executed as part of Task 0022.
