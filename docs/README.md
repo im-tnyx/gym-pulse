@@ -243,6 +243,7 @@ docs/adr/ADR-0011-api-contract-architecture.md           Proposed   D-ARCH-003
 docs/adr/ADR-0012-owner-staff-web-framework.md           Proposed   D-ARCH-012
 docs/adr/ADR-0013-member-client-strategy.md               Proposed   D-ARCH-013
 docs/adr/ADR-0014-api-deployment-boundary.md              Proposed   D-ARCH-006
+docs/adr/ADR-0015-background-jobs-scheduler.md             Proposed   D-ARCH-007
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -273,11 +274,13 @@ docs/adr/ADR-0014-api-deployment-boundary.md              Proposed   D-ARCH-006
 
 `ADR-0014` proposes a co-hosted-first Phase 1 API deployment boundary: the trusted `/v1` HTTP transport may execute with the Owner/Staff server runtime while Route Handlers/Server Functions remain thin adapters, application/domain/security modules remain framework-independent, Member/future-native clients retain ADR-0011, provider callbacks preserve their own verification boundary, background workers remain separate, and a deliberate extraction seam permits a future independent API deployment when operational evidence requires it. It selects no hosting provider, serverless/edge model, API gateway, Auth provider, database provider, or job technology. Canonical `D-ARCH-006` remains `OPEN`.
 
+`ADR-0015` proposes PostgreSQL-backed durable jobs/scheduling behind a GymPulse Durable Continuation port, executed by a separate Background Worker Runtime. If PostgreSQL and a compatible Node runtime are later accepted, pg-boss is the leading current implementation candidate because same-database enqueue can participate in the application transaction while retries, dead-letter handling, scheduling, and worker recovery remain explicit. External task systems require a transactional outbox/dispatcher handoff; queue delivery never replaces business idempotency. Redis/BullMQ and managed durable-task platforms remain alternatives rather than baseline dependencies. Canonical `D-ARCH-007` remains `OPEN`.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first fourteen ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first fifteen ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -480,27 +483,57 @@ Public origin/DNS layout remains separate from physical deployment. Same-origin 
 
 No API application, Route Handler, Server Action, standalone API service, serverless/edge function, API gateway, reverse proxy, hosting resource, CORS/cookie/CSRF config, worker/queue/Cron, DNS/domain, CI/CD workflow, or production secret was created by Task 0022.
 
+### Background jobs / scheduler proposal
+
+`ADR-0015` now defines the Proposed durable background-execution direction under `D-ARCH-007` without accepting it.
+
+Current proposal:
+
+```text
+PostgreSQL-backed durable queue/scheduler
++
+separate Background Worker Runtime
++
+Durable Continuation port
++
+same-transaction enqueue when the selected Postgres-backed runner permits it
++
+transactional outbox/dispatcher only when crossing to an external queue/platform
++
+explicit retry / terminal-failure / redrive semantics
++
+business-level idempotency remains mandatory
++
+no Redis baseline
+```
+
+If PostgreSQL and a compatible Node runtime are later accepted, pg-boss is the leading current implementation candidate. PGMQ + pg_cron/Supabase Queues+Cron remain strong Postgres-native alternatives; Trigger.dev-style managed durable tasks remain a credible external platform option; BullMQ remains credible only if Redis becomes justified.
+
+The scheduler controls wake-up timing, not domain eligibility. Workers reload canonical state, carry explicit tenant/gym scope and System/Job Context, and reuse shared application/domain rules. Queue delivery guarantees never replace request/job/provider/business-effect idempotency.
+
+No worker, queue, scheduler, Cron config, pg-boss/Supabase/Trigger.dev/BullMQ integration, Redis instance, outbox/job table, migration, queue schema, hosting resource, CI/CD workflow, or production secret was created by Task 0023.
+
 The exact next bounded governance task from the synchronized ADR dependency queue is now:
 
 ```text
-Task 0023: Draft Background Jobs / Scheduler ADR
+Task 0024: Draft Hosting / Deployment Platform ADR
 ```
 
 Primary decision:
 
 ```text
-D-ARCH-007
+D-ARCH-009
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0015-background-jobs-scheduler.md
+docs/adr/ADR-0016-hosting-deployment-platform.md
 ```
 
-That next task should evaluate durable job/scheduler technology against retries, deterministic dedupe, tenant scope, visibility, recovery/dead-letter behavior, API-to-worker continuation, database/transaction interaction, provider calls, and Phase 1 operational simplicity without creating job infrastructure.
+That next task should evaluate hosting against ADR-0014 request-serving topology, ADR-0015 separate-worker requirements, database/network connectivity, TLS/custom routing, secrets, health/readiness, horizontal scaling, webhook reachability, environment separation, rollback, logs/metrics integration, regional/privacy constraints, and Phase 1 operational simplicity without provisioning infrastructure.
 
-Do not create ADR-0015 or implementation as part of Task 0022.
+Do not create ADR-0016 or hosting infrastructure as part of Task 0023.
 
 ## Legacy Migration State
 
@@ -525,7 +558,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment recommendations remain evidence only. ADR-0012, ADR-0013, and ADR-0014 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, nor a co-hosted API topology is accepted merely because legacy architecture recommended it.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner recommendations remain evidence only. ADR-0012 through ADR-0015 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, nor pg-boss is accepted merely because current evaluation recommends them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
