@@ -91,6 +91,7 @@ ADR-0011-api-contract-architecture.md
 ADR-0012-owner-staff-web-framework.md
 ADR-0013-member-client-strategy.md
 ADR-0014-api-deployment-boundary.md
+ADR-0015-background-jobs-scheduler.md
 ```
 
 Rules:
@@ -102,7 +103,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001` through `ADR-0014` now exist.
+`ADR-0001` through `ADR-0015` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -282,12 +283,13 @@ Their registration means ADRs can reference canonical IDs. It does not mean Type
 | `ADR-0012-owner-staff-web-framework.md` | `D-ARCH-012` | Proposed | PROPOSED | Proposes Next.js App Router + React for the Owner/Staff web presentation while keeping application/domain/security logic framework-independent, preserving ADR-0011 as the independently consumable contract, and leaving API deployment/hosting/tooling separately governed. |
 | `ADR-0013-member-client-strategy.md` | `D-ARCH-013` | Proposed | PROPOSED | Proposes responsive browser-first Member delivery, OS-camera HTTPS QR entry, optional progressive PWA capabilities, and evidence-triggered future native evolution while preserving ADR-0011 and server-owned business truth. |
 | `ADR-0014-api-deployment-boundary.md` | `D-ARCH-006` | Proposed | OPEN | Proposes co-hosted-first trusted HTTP/API deployment with thin framework adapters, stable ADR-0011 contracts, separate durable background execution, and an explicit future API-extraction seam. |
+| `ADR-0015-background-jobs-scheduler.md` | `D-ARCH-007` | Proposed | OPEN | Proposes a PostgreSQL-backed durable queue/scheduler behind a Durable Continuation port, separate worker runtime, same-transaction enqueue when possible, business-level idempotency, and transactional outbox only when crossing to an external task system; pg-boss is a leading candidate if PostgreSQL/Node are later accepted. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first fourteen ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first fifteen ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
@@ -305,7 +307,7 @@ The order reflects current GymPulse dependency reasoning. Presence in this backl
 | 12 | Owner/Staff web framework | `D-ARCH-012` | PROPOSED / ADR-0012 drafted | Proposes a staff operational web framework while preserving thin framework boundaries, API-contract independence, application authorization, and deployment optionality. |
 | 13 | Member client framework/delivery | `D-ARCH-013` | PROPOSED / ADR-0013 drafted | Proposes browser-first delivery with progressive PWA/native escalation governed by target-device and product evidence. |
 | 14 | API deployment boundary | `D-ARCH-006` | OPEN / ADR-0014 drafted | Proposes co-hosted-first request serving with explicit extraction seam, stable ADR-0011 transport, and separate worker responsibility. |
-| 15 | Background jobs/scheduler | `D-ARCH-007` | OPEN | Needed for retention, renewals, notifications, reconciliation, summaries, and data quality. |
+| 15 | Background jobs/scheduler | `D-ARCH-007` | OPEN / ADR-0015 drafted | Proposes Postgres-backed durable jobs/scheduling with separate workers, transactional handoff, explicit retry/dead-letter behavior, and no Redis baseline. |
 | 16 | Hosting/deployment platform | `D-ARCH-009` | OPEN | Evaluate after API/jobs/database/managed-backend/jurisdiction decisions narrow. |
 | 17 | CI/CD + production release/secrets tooling | `D-ARCH-019` | OPEN | Production binding depends on runtime/hosting while security gates remain explicit. |
 | 18 | Core testing toolchain | `D-ARCH-018` | PROPOSED | Must fit approved runtime/database/web choices and preserve real-DB/negative security/contract testing. |
@@ -376,11 +378,13 @@ D-PROVIDER-006 Observability provider                 OPEN
 
 `ADR-0014` proposes a co-hosted-first Phase 1 request-serving topology: the trusted `/v1` HTTP/API transport may live with the Owner/Staff server runtime while framework adapters remain thin, ADR-0011 stays independently consumable by Member/future native clients, provider callbacks use dedicated verification adapters, durable background execution remains separate, and application/domain/security modules preserve an explicit extraction seam to a future independent API deployment. It selects no hosting provider, compute model, API gateway, Auth provider, database provider, or job technology. Canonical `D-ARCH-006` remains `OPEN`.
 
+`ADR-0015` proposes PostgreSQL-backed durable jobs/scheduling behind a GymPulse Durable Continuation port, executed by a separate Background Worker Runtime. If PostgreSQL and a compatible Node runtime are later accepted, pg-boss is the leading current implementation candidate; same-database enqueue should join the canonical transaction where possible, while external queue/platform handoff requires a transactional outbox/dispatcher. Queue delivery guarantees never replace application/business idempotency. Redis/BullMQ and managed durable platforms remain separately justified alternatives. Canonical `D-ARCH-007` remains `OPEN`.
+
 Payment and messaging provider ADRs should follow confirmed pilot methods/channels and provider-specific evidence rather than being forced into the foundation batch.
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0014` are complete at Draft/Proposed level.
+The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0015` are complete at Draft/Proposed level.
 
 The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-ARCH-003`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-002`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
 
@@ -390,22 +394,24 @@ The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-A
 
 `ADR-0014` does not create an API application, Route Handler, Server Action, standalone service, serverless/edge function, API gateway, reverse proxy, hosting project, CORS/cookie/CSRF configuration, worker, queue, migration, CI/CD workflow, DNS/domain, or production secret. `D-ARCH-006` remains `OPEN`; no topology is Accepted.
 
+`ADR-0015` does not create a worker, queue, scheduler, Cron configuration, job/outbox table, queue schema, migration, Redis instance, hosting resource, CI/CD workflow, or provider integration. pg-boss, Supabase Queues/Cron, Trigger.dev, BullMQ, PostgreSQL, Node.js, Redis, and hosting remain unaccepted.
+
 The actual next bounded governance task in the current dependency queue is:
 
 ```text
 Draft one Proposed ADR only:
-D-ARCH-007 - Durable Background Jobs / Scheduler
+D-ARCH-009 - Hosting / Deployment Platform
 ```
 
 Likely target when that task explicitly begins:
 
 ```text
-docs/adr/ADR-0015-background-jobs-scheduler.md
+docs/adr/ADR-0016-hosting-deployment-platform.md
 ```
 
-That next ADR should evaluate durable scheduling, retries, tenant scope, deduplication, visibility, recovery/dead-letter semantics, API-to-worker continuation, and Phase 1 operational simplicity without selecting a technology merely because a provider/platform offers one.
+That next ADR should evaluate hosting against ADR-0014 request-serving topology, ADR-0015 separate worker requirements, database/network connectivity, secrets, health/readiness, horizontal scaling, webhook reachability, environment separation, rollback, logs/metrics integration, regional/privacy constraints, and operational simplicity without provisioning infrastructure.
 
-Do not create ADR-0015 or job/queue implementation as part of Task 0022.
+Do not create ADR-0016 or hosting infrastructure as part of Task 0023.
 
 ## 16. Related Documents
 
@@ -436,6 +442,7 @@ Do not create ADR-0015 or job/queue implementation as part of Task 0022.
 - `ADR-0012-owner-staff-web-framework.md`
 - `ADR-0013-member-client-strategy.md`
 - `ADR-0014-api-deployment-boundary.md`
+- `ADR-0015-background-jobs-scheduler.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../07-api-contracts.md`
 - legacy migration source: `../12-security-audit.md`
