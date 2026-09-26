@@ -628,14 +628,22 @@ No previous ADR promotion to Accepted
 
 ## Next Recommended Task
 
-After governance synchronization, fresh-read:
+Post-Task-0024 governance state was freshly re-read from:
 
 - `docs/adr/README.md`
 - `docs/00-overview/assumptions.md`
 - `.ai/current-state.md`
 
-and record the actual next bounded task.
+The synchronized repository confirms the actual next bounded task as:
 
-The pre-task queue suggests `D-ARCH-019` CI/CD + Production Release / Secrets Tooling, likely Task 0025 / `docs/adr/ADR-0017-ci-cd-release-secrets.md`.
+```text
+Task 0025: Draft CI/CD + Production Release / Secrets ADR
+Primary decision: D-ARCH-019
+Likely target: docs/adr/ADR-0017-ci-cd-release-secrets.md
+Initial ADR status: Proposed
+Canonical D-ARCH-019 status: OPEN
+```
 
-Do not execute that next task as part of Task 0024.
+The next ADR should define production build/test gates, controlled promotion, artifact/version provenance, environment and secret ownership, migration sequencing, release smoke tests, rollback/forward-fix, branch/review protections, and selected-host integration without creating CI/CD workflows or production secrets.
+
+Task 0025 was not executed as part of Task 0024.
