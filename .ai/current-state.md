@@ -39,6 +39,7 @@ ADR-0012  D-ARCH-012  Owner/Staff web application framework      Proposed
 ADR-0013  D-ARCH-013  Member client framework / delivery strategy Proposed
 ADR-0014  D-ARCH-006  API deployment boundary                    Proposed
 ADR-0015  D-ARCH-007  Background jobs / scheduler                Proposed
+ADR-0016  D-ARCH-009  Hosting / deployment platform               Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -617,15 +618,171 @@ Revisit external broker/managed durable execution if measured queue load harms O
 
 Redis remains unnecessary until measured/tool-driven evidence exists.
 
-## Task 0023 Implementation Status
 
-Task `0023-draft-background-jobs-scheduler-adr` completed documentation/governance work only.
+## Current Hosting / Deployment Platform Proposal
+
+`ADR-0016` now exists as `Proposed`; canonical `D-ARCH-009` remains `P1 OPEN`.
+
+Task 0024 compared:
+
+```text
+A. Integrated Service / Worker PaaS — Render representative
+B. Web-optimized platform + separate worker — Vercel representative
+C. Portable container PaaS — Fly.io representative
+D. Major-cloud managed compute — Google Cloud Run representative
+E. Self-managed VM / Kubernetes baseline
+```
+
+Current proposed direction:
+
+```text
+one approved primary region
++
+managed stateless request-serving service
++
+separate non-public-by-default Background Worker service
++
+independent web/worker scaling and failure lifecycle
++
+compute close to canonical persistence
++
+managed TLS / health / deployment lifecycle
++
+server-only environment-scoped secrets
++
+no Kubernetes baseline
++
+no Redis baseline
++
+no edge-first transactional runtime requirement
+```
+
+Render is the leading current integrated service/worker PaaS candidate only if jurisdiction/privacy, region/locality, DB connectivity, worker lifecycle, webhook, secret, migration, rollback, and load validation pass.
+
+Current official Render region documentation includes Oregon, Ohio, Virginia, Frankfurt, and Singapore; no India region is currently documented. Because `D-SEC-001` remains `P0 OPEN`, this is a material unresolved provider gate.
+
+Google Cloud Run and Fly.io remain serious region-flexible alternatives with current Mumbai-region evidence. Vercel plus a separate worker platform remains a credible web-led split if its framework/deployment benefits justify an additional provider/control plane.
+
+### Hosting boundary invariants
+
+```text
+Hosting Provider != Application Architecture
+Hosting Provider != Managed Backend Responsibilities
+Hosting Provider != Database Provider
+Hosting Provider != Authentication Provider
+Hosting Provider != Job Semantics
+Hosting Provider != Observability Architecture
+
+web/API process != worker process
+Physical Deployment != Public DNS / Origin
+Provider Region Availability != Legal / Privacy Acceptance
+Process Memory / Local Disk != Canonical Business Truth
+```
+
+### Request runtime mapping
+
+The request service may co-host Owner/Staff web + trusted HTTP/API as proposed by ADR-0014 while keeping framework/application/domain/security boundaries reusable.
+
+It remains stateless/disposable and must not own canonical session revocation, payment, attendance dedupe, idempotency, job, authorization, or tenant state in process memory or host-local disk.
+
+### Worker runtime mapping
+
+The Background Worker remains a separate deployment unit:
+
+- no public ingress by default,
+- secure DB/provider egress,
+- durable job claims,
+- graceful shutdown,
+- crash/redeploy recovery,
+- multiple-worker safety,
+- tenant/job correlation,
+- independent scaling.
+
+Scale-to-zero is not assumed compatible with a continuously polling worker.
+
+### Network and database posture
+
+Public ingress is limited to web/API/webhooks/appropriate health paths.
+
+Prefer private/internal connectivity where compatible, but private networking never replaces TLS, authentication, least privilege, application authorization, or RLS.
+
+Request runtime, worker, and canonical DB should be regionally close. Database pooling must account for web + worker replicas and preserve transaction-local tenant context if RLS is later accepted.
+
+### Region / residency posture
+
+`D-SEC-001` remains `OPEN`.
+
+No production provider or region can be accepted until launch jurisdiction/privacy requirements are resolved.
+
+Current Phase 1 baseline is one approved primary region, stateless replaceable compute, recoverable managed persistence, and tested backup/restore before any multi-region active-active architecture.
+
+### Environment / secrets posture
+
+Conceptual environments remain:
+
+```text
+local/development
+test
+staging/pre-production where adopted
+production
+```
+
+Production secrets must not be automatically inherited by preview environments.
+
+Browser-visible/build-public configuration is not a secret.
+
+Final production release/secrets tooling remains separately governed by `D-ARCH-019`.
+
+### Deployment / rollback posture
+
+Preferred release model:
+
+```text
+reproducible version
+-> validation
+-> controlled deploy
+-> health/readiness
+-> cutover
+-> smoke verification
+-> rollback or forward-fix
+```
+
+Production migration runs once through a controlled release mechanism. Every replica racing migrations on startup is rejected.
+
+Provider rollback does not make destructive schema migration reversible.
+
+### Scaling posture
+
+Web/API and worker scale independently.
+
+Request scale signals include HTTP concurrency/latency/resource pressure.
+
+Worker scale signals include queue depth, oldest job age, execution duration, provider limits, and resource pressure.
+
+No Kubernetes or Redis baseline is introduced for hypothetical scale.
+
+### Observability posture
+
+Hosting-native logs/metrics are supplemental.
+
+GymPulse still owns:
+
+- request/job correlation,
+- privacy-safe tenant context,
+- payment/webhook diagnostics,
+- queue/backlog health,
+- reconciliation state,
+- business-health signals.
+
+## Task 0024 Implementation Status
+
+Task `0024-draft-hosting-deployment-platform-adr` completed documentation/governance work only.
 
 Created:
 
 ```text
-docs/adr/ADR-0015-background-jobs-scheduler.md
-.ai/task/0023-draft-background-jobs-scheduler-adr.md
+docs/adr/ADR-0016-hosting-deployment-platform.md
+.ai/task/0024-draft-hosting-deployment-platform-adr.md
 ```
 
 Updated:
@@ -639,46 +796,51 @@ docs/README.md
 Explicitly not created/selected:
 
 ```text
-No worker implementation
-No queue
-No scheduler
-No Cron configuration
-No pg-boss installation/acceptance
-No Supabase Queues/Cron selection
-No Trigger.dev selection
-No BullMQ selection
+No cloud project/account
+No Render service/project
+No Vercel project
+No Fly.io app
+No Google Cloud resource
+No AWS/Azure resource
+No Kubernetes cluster
+No Dockerfile
+No Terraform/Pulumi/CloudFormation
+No deployment manifest
+No production/staging environment
+No DNS/TLS configuration
+No database
 No Redis
-No outbox table
-No job table
-No migration
-No queue schema
+No queue
 No worker deployment
-No hosting provider
-No database provider
+No migration
 No CI/CD workflow
-No observability provider
-No production secrets
-No D-ARCH-007 promotion to DECIDED
+No production secret
+No monitoring integration
+No hosting provider accepted
+No production region accepted
+No PostgreSQL/Node/Next.js/pg-boss/Supabase accepted
+No D-ARCH-009 promotion to DECIDED
 No previous ADR promotion to Accepted
 ```
 
 ## Last Completed Task
 
-`0023-draft-background-jobs-scheduler-adr`
+`0024-draft-hosting-deployment-platform-adr`
 
 ```text
-ADR-0015 Status: Proposed
-D-ARCH-007 canonical status: OPEN
+ADR-0016 Status: Proposed
 D-ARCH-009 canonical status: OPEN
-D-ARCH-008 canonical status: OPEN
-D-ARCH-002 canonical status: PROPOSED
-D-ARCH-016 canonical status: PROPOSED
-D-ARCH-017 canonical status: PROPOSED
-D-ARCH-014 canonical status: OPEN
+D-SEC-001 canonical status: OPEN
 D-ARCH-006 canonical status: OPEN
+D-ARCH-007 canonical status: OPEN
+D-ARCH-014 canonical status: OPEN
+D-ARCH-019 canonical status: OPEN
+D-ARCH-002 canonical status: PROPOSED
+D-ARCH-012 canonical status: PROPOSED
+D-ARCH-016 canonical status: PROPOSED
 ```
 
-The background-job/scheduler direction is not accepted or implemented merely because ADR-0015 exists.
+The hosting/provider direction is not accepted or implemented merely because ADR-0016 exists.
 
 ## Current Task
 
@@ -686,63 +848,58 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0023 synchronization of the ADR dependency queue identifies the next bounded item as:
+Post-Task-0024 synchronization of the ADR dependency queue identifies the next bounded item as:
 
 ```text
-Task 0024: Draft Hosting / Deployment Platform ADR
+Task 0025: Draft CI/CD + Production Release / Secrets ADR
 ```
 
 Primary canonical decision:
 
 ```text
-D-ARCH-009
+D-ARCH-019
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0016-hosting-deployment-platform.md
+docs/adr/ADR-0017-ci-cd-release-secrets.md
 ```
 
-Initial ADR status should be `Proposed`. Canonical `D-ARCH-009` remains `OPEN` unless explicit review/approval changes it.
+Initial ADR status should be `Proposed`. Canonical `D-ARCH-019` remains `OPEN` unless explicit review/approval changes it.
 
-The next task should evaluate hosting against ADR-0014 request-serving topology, ADR-0015 separate worker requirements, database/network connectivity, TLS/custom routing, secret management, health/readiness, horizontal scaling, provider webhook reachability, environment separation, rollback, logs/metrics integration, regional/privacy constraints, cost/operability, and Phase 1 simplicity.
+The next task should define production build/test gates, controlled promotion, artifact/version provenance, environment/secrets ownership, migration sequencing, release smoke tests, rollback/forward-fix, branch/review protections, and selected-host integration while preserving provider portability.
 
-It must not provision infrastructure, select a hosting provider as accepted, or accept prior ADRs.
+It must not create CI/CD workflows, production secrets, deployment environments, or accept prior ADRs.
 
-Do not execute Task 0024 until explicitly requested.
+Do not execute Task 0025 until explicitly requested.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0023-draft-background-jobs-scheduler-adr.md
+.ai/task/0024-draft-hosting-deployment-platform-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
-docs/01-product/user-journeys.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
-docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
 docs/02-architecture/component-architecture.md
-docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
-docs/adr/ADR-0001-modular-monolith.md
 docs/adr/ADR-0002-primary-language-runtime.md
 docs/adr/ADR-0003-monorepo-strategy.md
 docs/adr/ADR-0004-database-engine.md
 docs/adr/ADR-0005-data-access-migration-strategy.md
 docs/adr/ADR-0006-managed-backend-responsibilities.md
-docs/adr/ADR-0007-authentication-session-architecture.md
 docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md
+docs/adr/ADR-0012-owner-staff-web-framework.md
 docs/adr/ADR-0014-api-deployment-boundary.md
 docs/adr/ADR-0015-background-jobs-scheduler.md
-legacy migration source: docs/05-system-architecture.md
-legacy migration source: docs/08-automations.md
+docs/adr/ADR-0016-hosting-deployment-platform.md
 legacy migration source: docs/12-security-audit.md
 legacy migration source: docs/15-engineering-workflow.md
 legacy migration source: docs/16-open-decisions.md
