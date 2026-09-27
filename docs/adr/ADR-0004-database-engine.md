@@ -869,18 +869,25 @@ Primary references:
 - <https://www.cockroachlabs.com/docs/stable/constraints>
 - <https://www.cockroachlabs.com/docs/stable/backup>
 
-### 16.3 Missing acceptance evidence
+### 16.3 Acceptance-readiness evidence update — 2026-09-27
+
+The shared validation harness at `../../validation/foundation/` proves several architecture/runtime prerequisites around retry-safe adapters and durable-state independence, but it **does not provide PostgreSQL evidence**.
+
+The execution environment used for the current harness had no PostgreSQL client/server tools and no Docker/Podman runtime. Therefore all PostgreSQL-specific scenarios remain explicitly `NOT RUN`.
 
 This ADR remains `Proposed` because:
 
-- no authorized decision owner is identified,
-- no explicit approval record exists,
-- no real-database concurrency/idempotency spike has been run,
-- no backup/restore rehearsal exists,
-- no production hosting/regional constraints are approved,
-- no representative connection-pooling/runtime validation exists,
-- `D-DATA-007` still blocks final Member/Membership schema semantics,
+- no authorized decision owner is identified;
+- no explicit approval record exists;
+- no real-PostgreSQL concurrency/idempotency spike has been run;
+- transaction rollback, tenant-scoped SQL, representative relational query, and database error-translation evidence remain missing;
+- no PostgreSQL backup/restore rehearsal exists;
+- no representative PostgreSQL connection/pooling/restart validation exists;
+- no production hosting/regional constraints are approved;
+- `D-DATA-007` still blocks final Member/Membership schema semantics, while this ADR explicitly keeps the engine decision independently reviewable;
 - no final schema/migration/data-access design exists.
+
+The file-backed durability proof in the validation harness must not be cited as PostgreSQL acceptance evidence.
 
 ## 17. Related Documents
 
