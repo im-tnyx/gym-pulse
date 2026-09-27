@@ -251,6 +251,7 @@ docs/adr/ADR-0019-package-manager.md                           Proposed   D-ARCH
 docs/adr/ADR-0020-observability-provider.md                      Proposed   D-PROVIDER-006
 docs/adr/ADR-0021-object-storage.md                                Proposed   D-ARCH-010
 docs/adr/ADR-0022-payment-provider.md                              Proposed   D-PROVIDER-001
+docs/adr/ADR-0023-messaging-provider.md                            Proposed   D-PROVIDER-002
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -297,11 +298,13 @@ docs/adr/ADR-0022-payment-provider.md                              Proposed   D-
 
 `ADR-0022` keeps Razorpay and Cashfree as the bounded Phase 1 payment-provider sandbox shortlist while canonical `D-PROVIDER-001` remains `P1 OPEN`. The payment architecture is provider-neutral: server-owned amount/currency/purpose, provider-managed browser checkout, raw webhook verification, canonical GymPulse payment-state mapping, separate provider-event dedupe and business-effect uniqueness, reconciliation, refund/reversal history, settlement evidence, and provider exit. Merchant account / settlement ownership is an explicitly identified decision-register gap; GymPulse is not assumed to be merchant of record. No provider account, credential, SDK, route, payment, refund, migration, or production integration is created.
 
+`ADR-0023` defers production messaging-provider selection while canonical `D-PROVIDER-002` remains `P1 OPEN`. WhatsApp is a serious external channel candidate but is not canonically mandatory; Direct Meta, Twilio, and Gupshup remain comparison candidates only. The provider-neutral direction keeps `NotificationIntent`, service/marketing policy, preferences, business template keys, tenant sender/template configuration, stale-state suppression, business-stage dedupe, callback normalization, and provider-observed delivery truth GymPulse-owned. Launch channels, sender/WABA/phone ownership, and externally enabled service intents remain explicit decision-register gaps. No messaging account, WABA, sender, template, credential, SDK, route, job, message, or marketing campaign is created.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-two ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-three ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -793,7 +796,71 @@ A material decision-register gap was found: **merchant account / settlement owne
 
 No payment provider account, merchant ID, API/webhook secret, SDK, checkout/payment/webhook/refund route, reconciliation worker, payment migration/schema, sandbox/real transaction, refund, settlement configuration, provider-dashboard user, CI/environment secret, IaC, or deployment was created by Task 0030.
 
-Post-Task-0030 synchronization confirms the next bounded governance task as **Task 0031: Draft Messaging Provider ADR**, primary decision `D-PROVIDER-002`. Canonical `D-PROVIDER-002` remains `P1 OPEN`; the exact ADR filename/number must be confirmed from latest `main` before execution.
+### Messaging provider / notification delivery proposal
+
+`ADR-0023` now defines the Proposed messaging-delivery architecture under `D-PROVIDER-002` while intentionally deferring production provider selection.
+
+Current channel finding:
+
+```text
+WhatsApp
+-> leading external candidate, still unresolved
+
+SMS / email
+-> optional/fallback candidates only
+
+in-app state
+-> canonical product baseline, not an external-provider channel
+
+push
+-> future / not baseline
+```
+
+Current provider comparison if WhatsApp is approved:
+
+```text
+Direct Meta Cloud API
+Twilio WhatsApp
+Gupshup WhatsApp
+```
+
+Current provider-neutral posture:
+
+```text
+GymPulse-owned NotificationIntent + policy
++
+marketing/service separation
++
+business template key != provider template ID
++
+durable async dispatch
++
+current-state / preference / destination recheck
++
+business-stage dedupe
++
+tenant-safe sender/template configuration
++
+provider-specific callback verification
++
+provider-observed delivery truth only
++
+provider-exit planning
+```
+
+Material decision-register gaps remain:
+
+```text
+initial launch communication channels
+sender / WABA / phone-number ownership
+which supported service intents are externally enabled at pilot launch
+```
+
+`D-BIZ-014` communication-consent capture remains `P1 OPEN`; Task 0031 enables no marketing campaign. Authentication OTP messaging remains separately governed under ADR-0008. Email and push providers remain separately governed by `D-PROVIDER-003` and `D-PROVIDER-004`.
+
+No Meta Business/WABA/sender, Twilio/Gupshup account, credential, template, SDK, callback route, notification table/job, test/production message, campaign, provider-dashboard user, CI secret, IaC, or deployment was created by Task 0031.
+
+Post-Task-0031 synchronization confirms the next bounded governance task as **Task 0032: Draft Product Analytics Provider ADR**, primary decision `D-PROVIDER-005`. Canonical `D-PROVIDER-005` remains `P2 OPEN`; the exact ADR filename/number must be confirmed from latest `main` before execution.
 
 ## Legacy Migration State
 
@@ -818,7 +885,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0022 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage, Razorpay, Cashfree, PhonePe Payment Gateway, or PayU is accepted merely because current evaluation recommends or compares them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0023 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage, Razorpay, Cashfree, PhonePe Payment Gateway, PayU, Direct Meta WhatsApp Cloud API, Twilio WhatsApp, Gupshup, MSG91, Interakt, or AiSensy is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
