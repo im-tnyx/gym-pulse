@@ -3290,60 +3290,55 @@ The existing numbered ADR backlog remains complete through order 26.
 
 Do not invent Task 0035.
 
+Foundation Acceptance Evidence Planning is complete.
+
+Canonical plan:
+
+~~~text
+docs/adr/foundation-acceptance-evidence-plan.md
+~~~
+
+The plan defines one shared isolated validation program for ADR-0001 through ADR-0004, with temporary spike tooling explicitly non-canonical.
+
+Planned stages:
+
+~~~text
+0. evidence charter
+1. boundary / workspace proof
+2. protected application-use-case proof
+3. real PostgreSQL correctness slice
+4. raw webhook / retry boundary proof
+5. worker retry / restart proof
+6. backup / restore / connection proof
+7. evidence matrix
+8. later human decision-owner review
+~~~
+
+No ADR status changed.
+
+No decision owner was invented.
+
+No production infrastructure was created.
+
 The next bounded action is:
 
 ~~~text
-Foundation Acceptance Evidence Planning
+Execute Foundation Validation Harness
 ~~~
 
-Scope:
+Execution must remain isolated/non-production and produce reproducible evidence mapped back to ADR-0001..0004.
 
-~~~text
-ADR-0001 through ADR-0004 only
-~~~
-
-Goal:
-
-~~~text
-turn each missing acceptance-evidence item
-into a minimal isolated non-production validation plan
-+
-identify human decision-owner / approval step
-~~~
-
-The plan must:
-
-- reuse overlapping spikes instead of creating four separate prototypes;
-- avoid production infrastructure;
-- avoid accepting downstream frameworks/tools/providers;
-- keep exact Node/PostgreSQL/package-manager/framework/hosting versions separately governed;
-- distinguish evidence that can be gathered before approval from evidence that requires a later implementation scaffold;
-- define what artifact/output proves each ADR gate;
-- preserve canonical statuses until explicit authorized approval.
-
-Likely shared validation sequence:
-
-~~~text
-1. architecture/repository skeleton in an isolated validation area
-2. strict TypeScript + dependency-direction/client-server boundary proof
-3. one protected application use case shared by request + worker adapters
-4. one real PostgreSQL correctness slice
-5. raw webhook boundary + idempotent effect example
-6. isolated backup/restore and connection/restart exercise
-7. collect evidence matrix
-8. human decision-owner review / explicit approval
-~~~
-
-Do not treat this plan as ADR acceptance.
+A passing validation test is not ADR acceptance.
 
 ## Files To Read Next
 
 ~~~text
-docs/adr/README.md
+docs/adr/foundation-acceptance-evidence-plan.md
 docs/adr/ADR-0001-modular-monolith.md
 docs/adr/ADR-0002-primary-language-runtime.md
 docs/adr/ADR-0003-monorepo-strategy.md
 docs/adr/ADR-0004-database-engine.md
+docs/adr/README.md
 docs/00-overview/assumptions.md
 docs/02-architecture/technology-stack.md
 docs/README.md
