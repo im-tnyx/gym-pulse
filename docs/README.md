@@ -1034,7 +1034,11 @@ Reporting/read models should distinguish Member administrative state from Member
 
 No Member/Membership schema, migration, enum/type, ORM model, constraint, index, trigger, RLS policy, API/DTO/domain implementation, import mapper, test, UI, or production-data change was created by Task 0034.
 
-Post-Task-0034 synchronization completes the existing numbered ADR queue through order 26. No Task 0035 is invented; the next bounded governance action is selected only after fresh synchronized repository review.
+Post-Task-0034 synchronization completes the existing numbered ADR queue through order 26. No Task 0035 is invented.
+
+Fresh synchronized review identifies the next bounded governance action as **Architecture Decision Review / Acceptance Readiness**, beginning with the foundation ADR batch and then proceeding through dependency/security/runtime/provider batches according to existing readiness/evidence. This is a review/approval-preparation phase only: it does not automatically Accept any ADR, change canonical decision status, rewrite `FR-MEMBER-004`, or start schema/migration implementation.
+
+`ADR-0026` requires explicit review of Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived effects, import/reporting semantics, attendance/no-show/authorization interaction, and historical migration approach before `D-DATA-007` can become Decided.
 
 ## Legacy Migration State
 
