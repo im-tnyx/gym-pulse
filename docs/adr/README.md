@@ -382,6 +382,8 @@ The foundation batch is therefore suitable for **decision-owner review and valid
 
 Acceptance-readiness must not be confused with implementation completion. The required evidence can be produced through bounded non-production spikes that prove architecture/runtime/repository/database semantics without provisioning production infrastructure or silently accepting downstream tools/providers.
 
+The shared validation program is defined in `foundation-acceptance-evidence-plan.md`. It combines overlapping architecture/runtime/repository/database proofs, keeps temporary spike tooling non-canonical, preserves `D-DATA-007` as unresolved for final schema semantics, and requires a later human decision-owner approval step after technical evidence is gathered.
+
 
 ### Second dependency/security batch
 
@@ -502,7 +504,7 @@ Schema/migrations remain unfinalized
 
 No Task 0035 is invented here.
 
-Fresh post-Task-0034 governance review identifies the next bounded action as an **Architecture Decision Review / Acceptance Readiness batch**, not another ADR draft and not schema implementation.
+Fresh post-Task-0034 governance review moved into **Architecture Decision Review / Acceptance Readiness**. The first foundation batch review is complete and its shared evidence plan now exists; the next bounded action is execution of the isolated Foundation Validation Harness defined in `foundation-acceptance-evidence-plan.md`, without accepting any ADR.
 
 The review should start from the existing batch-readiness ordering, verify decision owners and unresolved evidence, and classify each Proposed/Open ADR as ready for explicit approval, blocked on product/security/business evidence, or remaining Proposed. The foundation batch (`ADR-0001` through `ADR-0004`) is the first review set because it defines the implementation envelope; later dependency/security/runtime/provider decisions remain subject to their own evidence gates.
 
@@ -512,6 +514,7 @@ No status changes, canonical requirement synchronization, or schema work are per
 
 ## 16. Related Documents
 
+- `foundation-acceptance-evidence-plan.md`
 - `../README.md`
 - `../00-overview/assumptions.md`
 - `../01-product/functional-requirements.md`
