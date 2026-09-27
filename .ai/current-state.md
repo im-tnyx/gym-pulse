@@ -3298,37 +3298,126 @@ Canonical plan:
 docs/adr/foundation-acceptance-evidence-plan.md
 ~~~
 
-The plan defines one shared isolated validation program for ADR-0001 through ADR-0004, with temporary spike tooling explicitly non-canonical.
-
-Planned stages:
+Validation harness:
 
 ~~~text
-0. evidence charter
-1. boundary / workspace proof
-2. protected application-use-case proof
-3. real PostgreSQL correctness slice
-4. raw webhook / retry boundary proof
-5. worker retry / restart proof
-6. backup / restore / connection proof
-7. evidence matrix
-8. later human decision-owner review
+validation/foundation/
+validation/foundation/EVIDENCE.md
 ~~~
 
-No ADR status changed.
+## Foundation Validation Result
 
-No decision owner was invented.
+First isolated validation pass executed successfully for non-PostgreSQL stages.
+
+Validation environment:
+
+~~~text
+Node.js v22.16.0
+TypeScript compiler 5.8.3
+PostgreSQL tools unavailable
+Docker / Podman unavailable
+sandbox DNS/network unavailable for apt package retrieval
+~~~
+
+Exact versions are evidence only.
+
+PASS evidence:
+
+~~~text
+strict client build
+strict request build
+strict worker build
+clean source boundary graph
+deliberate forbidden client -> server import detection
+deliberate dependency-cycle detection
+runtime input validation
+tenant negative authorization
+branch negative authorization
+capability negative authorization
+request replay dedupe
+worker replay dedupe
+separate-process replay using validation-only durable state
+gym-local timezone date boundary
+raw webhook exact-byte HMAC verification
+webhook tamper rejection
+provider-event replay dedupe
+~~~
+
+NOT RUN:
+
+~~~text
+real PostgreSQL concurrency/idempotency
+transaction rollback
+tenant-scoped SQL
+representative relational aggregate/history query
+database error translation
+backup + restore
+connection/pooling/restart behavior
+~~~
+
+Important:
+
+~~~text
+file-backed validation durability
+!=
+PostgreSQL evidence
+~~~
+
+Canonical ADR status remains:
+
+~~~text
+ADR-0001 Proposed
+ADR-0002 Proposed
+ADR-0003 Proposed
+ADR-0004 Proposed
+~~~
+
+Decision Owner remains Open for all four.
+
+No approval record exists.
 
 No production infrastructure was created.
 
-The next bounded action is:
+No package manager/framework/DB tooling/CI/hosting/provider was accepted.
+
+## Next Governance Action
+
+The next technical evidence action is:
 
 ~~~text
-Execute Foundation Validation Harness
+Real PostgreSQL Foundation Validation
 ~~~
 
-Execution must remain isolated/non-production and produce reproducible evidence mapped back to ADR-0001..0004.
+It requires an approved isolated environment with real PostgreSQL.
 
-A passing validation test is not ADR acceptance.
+Required evidence:
+
+~~~text
+concurrent attendance uniqueness
+provider-event dedupe under database uniqueness
+exactly-once business effect
+single-active no-show invariant
+transaction rollback
+tenant-scoped SQL isolation
+representative aggregate/history query
+database error translation
+backup + restore
+connection / restart recovery
+~~~
+
+Current sandbox cannot execute this because PostgreSQL/container tooling is absent and package installation cannot reach external repositories.
+
+Do not substitute SQLite, file storage, mocks, or documentation inference.
+
+Do not provision a potentially billable external CI/cloud environment without explicit authorization.
+
+After real PostgreSQL evidence is collected:
+
+~~~text
+prepare decision-owner review packet
+-> authorized owner chooses Accept / Reject / Remain Proposed
+-> only then synchronize canonical decisions
+~~~
 
 ## Files To Read Next
 
