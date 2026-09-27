@@ -1036,9 +1036,26 @@ No Member/Membership schema, migration, enum/type, ORM model, constraint, index,
 
 Post-Task-0034 synchronization completes the existing numbered ADR queue through order 26. No Task 0035 is invented.
 
-Fresh synchronized review identifies the next bounded governance action as **Architecture Decision Review / Acceptance Readiness**, beginning with the foundation ADR batch and then proceeding through dependency/security/runtime/provider batches according to existing readiness/evidence. This is a review/approval-preparation phase only: it does not automatically Accept any ADR, change canonical decision status, rewrite `FR-MEMBER-004`, or start schema/migration implementation.
+Fresh synchronized review identified **Architecture Decision Review / Acceptance Readiness** as the next governance phase. The first foundation batch review is now complete.
 
-`ADR-0026` requires explicit review of Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived effects, import/reporting semantics, attendance/no-show/authorization interaction, and historical migration approach before `D-DATA-007` can become Decided.
+Foundation result:
+
+```text
+ADR-0001 / D-ARCH-005  reviewable, not acceptance-ready
+ADR-0002 / D-ARCH-016  reviewable, not acceptance-ready
+ADR-0003 / D-ARCH-001  reviewable, not acceptance-ready
+ADR-0004 / D-ARCH-002  reviewable, not acceptance-ready
+```
+
+All four remain Proposed. Common hard blockers are an unidentified authorized decision owner and absent explicit approval evidence. Each also still lacks its own bounded non-production validation evidence: module-boundary enforcement for ADR-0001; strict-TypeScript/runtime/webhook/worker/import-isolation evidence for ADR-0002; workspace/dependency/build evidence for ADR-0003; and real-PostgreSQL concurrency, restore, pooling/restart, and regional/hosting evidence for ADR-0004.
+
+`D-DATA-007` still blocks final Member/Membership schema semantics, but `ADR-0004` explicitly states that this does not prevent reviewing the database-engine choice independently.
+
+No ADR was Accepted or Rejected, no canonical status changed, and no implementation/scaffold gate was opened by this review.
+
+The next bounded governance action is **Foundation Acceptance Evidence Planning**: convert the missing evidence for ADR-0001 through ADR-0004 into a minimal isolated validation plan and identify the human decision-owner/approval step. This planning phase must not create production infrastructure or silently accept downstream frameworks, package managers, database tooling, hosting, CI, or providers.
+
+`ADR-0026` still requires later explicit review of Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived effects, import/reporting semantics, attendance/no-show/authorization interaction, and historical migration approach before `D-DATA-007` can become Decided.
 
 ## Legacy Migration State
 
