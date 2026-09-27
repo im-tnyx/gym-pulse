@@ -635,19 +635,20 @@ No validation was implemented.
 
 ## Files Changed
 
-Created:
+Created during the Task 0025 lifecycle:
 
 ```text
 docs/adr/ADR-0017-ci-cd-release-secrets.md
 .ai/task/0025-draft-ci-cd-release-secrets-adr.md
 ```
 
-Governance continuity updates:
+Updated during governance synchronization:
 
 ```text
 docs/adr/README.md
 docs/README.md
 .ai/current-state.md
+.ai/task/0025-draft-ci-cd-release-secrets-adr.md
 ```
 
 ## Open Questions
@@ -731,16 +732,53 @@ No D-ARCH-019 promotion to DECIDED
 No previous ADR promotion to Accepted
 ```
 
-## Next Recommended Task
+## Governance Synchronization
 
-After governance synchronization, fresh-read:
+Task `0025-SYNC` completed the previously missing governance/index/current-state synchronization without changing ADR-0017's substantive proposal.
+
+Synchronized state:
+
+```text
+ADR-0017 Status: Proposed
+D-ARCH-019 Canonical Status: OPEN
+No CI vendor accepted
+No GitHub Actions workflow created
+No GitHub environment or secret created
+No OIDC trust configured
+No migration or deployment executed
+No prior ADR accepted
+```
+
+`docs/00-overview/assumptions.md` required no change because `D-ARCH-019 = P1 OPEN` remains canonically correct.
+
+## Post-Synchronization State
+
+`docs/adr/README.md` now registers ADR-0017 and records backlog order 17 as `OPEN / ADR-0017 drafted`.
+
+`docs/README.md` now records Task 0025 as completed documentation/governance work and no longer describes ADR-0017 as a future target.
+
+`.ai/current-state.md` now includes ADR-0017, summarizes the CI/CD/release/secrets proposal, records Task 0025 as the last completed task, and returns `Current Task` to `None in progress`.
+
+## Actual Next Recommended Task
+
+The synchronized queue was freshly re-read from:
 
 - `docs/adr/README.md`
 - `docs/00-overview/assumptions.md`
+- `docs/README.md`
 - `.ai/current-state.md`
 
-and record the actual next bounded task.
+The actual next undrafted bounded ADR item is confirmed as:
 
-The pre-task queue suggests `D-ARCH-018` Core Automated Testing Toolchain, likely Task 0026 / `docs/adr/ADR-0018-testing-toolchain.md`.
+```text
+Task 0026: Draft Core Automated Testing Toolchain ADR
+Primary decision: D-ARCH-018
+Likely target: docs/adr/ADR-0018-testing-toolchain.md
+Canonical D-ARCH-018 status: P1 PROPOSED
+```
 
-Do not execute the next task as part of Task 0025.
+The future testing ADR should evaluate deterministic domain/application tests, real-database integration, authorization and tenant-isolation negatives, API contract tests, provider-adapter tests, worker/job tests, browser E2E, test data/isolation, and CI test layering.
+
+Vitest, Playwright, Testcontainers, and other exact tools remain unaccepted.
+
+Task 0026 was not executed during Task 0025-SYNC.
