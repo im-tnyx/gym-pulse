@@ -41,6 +41,7 @@ ADR-0014  D-ARCH-006  API deployment boundary                    Proposed
 ADR-0015  D-ARCH-007  Background jobs / scheduler                Proposed
 ADR-0016  D-ARCH-009  Hosting / deployment platform               Proposed
 ADR-0017  D-ARCH-019  CI/CD / production release / secrets        Proposed
+ADR-0018  D-ARCH-018  Core automated testing toolchain              Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -916,66 +917,231 @@ After deployment, later implementation should verify safe signals such as:
 
 Sensitive financial/attendance flows should be validated primarily in sandbox/non-production rather than through destructive production synthetic transactions.
 
-## Task 0025 Implementation Status
 
-Task `0025-draft-ci-cd-release-secrets-adr` completed documentation/governance work only. Task 0025 governance synchronization is now complete.
+## Current Core Automated Testing Toolchain Proposal
 
-Created during Task 0025:
+`ADR-0018` now exists as `Proposed`; canonical `D-ARCH-018` remains `P1 PROPOSED`.
+
+Task 0026 defines the testing architecture before binding tools.
+
+### Evidence portfolio
 
 ```text
-docs/adr/ADR-0017-ci-cd-release-secrets.md
-.ai/task/0025-draft-ci-cd-release-secrets-adr.md
+L1 deterministic domain
+L2 application/use-case
+L3 authorization/policy
+L4 persistence / real-database integration
+L5 API/contract
+L6 provider adapter simulation/integration
+L7 durable worker/job
+L8 focused browser E2E
+L9 deployment/smoke evidence under ADR-0017
 ```
 
-Updated for completed governance synchronization:
+The portfolio is risk-based rather than a fixed unit/integration/E2E percentage.
+
+### Current leading tool direction
+
+```text
+Vitest
+  -> leading fast TypeScript domain/application/authorization runner
+
+real PostgreSQL if D-ARCH-002 is later accepted
+  -> required for transaction/constraint/concurrency/RLS proof
+  -> Testcontainers-style isolated ephemeral orchestration is leading
+  -> shared CI PostgreSQL remains a fallback
+
+Playwright
+  -> leading focused Owner/Staff + responsive-Member browser E2E
+
+provider fakes + sanitized fixtures + official sandboxes
++
+table-driven authorization and cross-tenant negatives
++
+worker retry/restart/idempotency integration
++
+application-level Clock / controlled time
++
+adapter/infrastructure failure injection
++
+native E2E deferred
+```
+
+Vitest, Testcontainers, Playwright, PostgreSQL, Node.js, Jest, Cypress, and every exact testing tool remain unaccepted.
+
+### Testing boundary invariants
+
+```text
+Test Runner != Test Architecture
+Mock != Integration Evidence
+Browser E2E != Domain Test
+SQLite/Fake DB != PostgreSQL Proof
+Code Coverage != Correctness
+Test Retry != Flake Fix
+Provider Sandbox != Production Truth
+CI Pipeline != Test Semantics
+```
+
+### Domain / application posture
+
+Core business rules are tested below UI/framework/provider boundaries.
+
+Application tests verify:
+
+```text
+load state
+-> authorize
+-> validate rule
+-> transact
+-> audit
+-> durable continuation
+-> result
+```
+
+External ports use controlled fakes when infrastructure semantics are not the subject.
+
+### Authorization / tenant-isolation posture
+
+Authorization tests are first-class, table-driven positive/negative evidence across capability, tenant/gym/branch scope, resource relationship, Member-self relationship, account eligibility, revoked assignment, and spoofed resource/tenant input.
+
+At least two tenant/gym fixture groups should be easy to construct.
+
+If selective PostgreSQL RLS is later accepted, real DB tests must cover runtime/worker/admin roles, tenant context, missing/wrong context, pool reuse, transaction reuse, rollback reuse, Tenant A -> Tenant B reuse, and BYPASSRLS/owner behavior.
+
+### Database integration posture
+
+If PostgreSQL is accepted, critical persistence evidence uses real PostgreSQL.
+
+Real-engine evidence is required for:
+
+- transactions and commit visibility;
+- constraints;
+- migrations;
+- locking/isolation/concurrency;
+- idempotency/provider-event uniqueness;
+- RLS where later accepted.
+
+Test-wide rollback cannot be the only isolation method because it can hide multi-connection/commit/worker/locking behavior.
+
+### API / provider posture
+
+API tests align with ADR-0011 runtime validation, DTO, stable error, authorization, pagination, idempotency, version, money/time, and raw webhook-signature boundaries.
+
+Provider adapters use deterministic fakes, sanitized fixtures, official sandboxes, and targeted non-production integration.
+
+Routine CI never uses production provider accounts.
+
+### Worker / job posture
+
+Worker tests target Durable Continuation behavior instead of pg-boss-specific APIs.
+
+Required evidence includes claim, retry, terminal failure, restart, lease/reclaim, duplicate delivery, multiple workers, tenant context, current-state reload, scheduler time behavior, and business idempotency.
+
+### Browser / device posture
+
+Browser E2E remains focused on critical Owner/Staff and Member journeys rather than every validation permutation.
+
+Playwright is the leading current browser runner candidate because its current browser-project, BrowserContext, multi-user, trace, and cross-browser capabilities fit the proposed client architecture.
+
+Browser emulation does not replace physical-device camera/mobile-OS evidence.
+
+Native E2E remains deferred until native Member delivery is accepted.
+
+### Test data / time / failure posture
+
+Use small deterministic builders/factories, focused scenario fixtures, synthetic PII/provider/payment references, and isolated test databases/sessions/contexts.
+
+Avoid one giant mutable seed database.
+
+Application/domain business time uses an injectable/testable Clock seam where practical.
+
+Failure injection occurs through ports/adapters/test infrastructure, not unsafe test-only branches inside production business logic.
+
+### CI relationship
+
+ADR-0018 defines what evidence exists.
+
+ADR-0017 defines when/how that evidence blocks promotion.
+
+Conceptual split:
+
+```text
+PR fast evidence
+  -> domain/application
+  -> auth/security
+  -> targeted integration
+
+full merge/release evidence
+  -> real DB/migration/concurrency
+  -> API/provider/worker
+  -> focused browser E2E
+  -> deployment smoke under ADR-0017
+```
+
+No CI workflow or release gate is implemented by Task 0026.
+
+## Task 0026 Implementation Status
+
+Task `0026-draft-testing-toolchain-adr` completed documentation/governance work only.
+
+Created:
+
+```text
+docs/adr/ADR-0018-testing-toolchain.md
+.ai/task/0026-draft-testing-toolchain-adr.md
+```
+
+Updated:
 
 ```text
 docs/adr/README.md
 docs/README.md
 .ai/current-state.md
-.ai/task/0025-draft-ci-cd-release-secrets-adr.md
 ```
 
-Explicitly not created/configured/accepted:
+Explicitly not created/installed/configured/accepted:
 
 ```text
-No .github/workflows
-No CI provider configured
-No GitHub Actions workflow
-No branch protection/ruleset configured
-No GitHub environment
-No repository/environment secret
-No OIDC trust
-No deployment token
-No production credential
-No release artifact
-No SBOM
-No attestation
-No migration executed
-No deployment executed
-No hosting resource
-No test infrastructure
-No application code
-No GitHub Actions acceptance
-No hosting provider acceptance
-No D-ARCH-019 promotion to PROPOSED or DECIDED
-No ADR-0017 promotion to Accepted
+No tests/ or __tests__/
+No *.test.ts / *.spec.ts
+No vitest.config
+No jest.config
+No playwright.config
+No cypress.config
+No testing dependency
+No browser install
+No Testcontainers setup
+No Docker/Docker Compose test stack
+No test database
+No fixture/factory implementation
+No mock server
+No provider sandbox account
+No CI workflow
+No coverage configuration
+No native E2E tooling
+No Vitest acceptance
+No Playwright acceptance
+No Testcontainers acceptance
+No PostgreSQL acceptance
+No Node.js acceptance
+No D-ARCH-018 promotion to DECIDED
 No previous ADR promotion to Accepted
 ```
 
 ## Last Completed Task
 
-`0025-draft-ci-cd-release-secrets-adr`
+`0026-draft-testing-toolchain-adr`
 
 ```text
-ADR-0017 Status: Proposed
-D-ARCH-019 canonical status: OPEN
-GitHub Actions: leading candidate only
-No CI/CD implementation
-Governance synchronization: complete
+ADR-0018 Status: Proposed
+D-ARCH-018 canonical status: PROPOSED
+Vitest: leading candidate only
+Testcontainers-style PostgreSQL orchestration: leading conditional candidate only
+Playwright: leading candidate only
+No testing implementation
 ```
 
-The CI/CD/release/secrets direction is not accepted or implemented merely because ADR-0017 exists.
+The testing direction is not accepted or implemented merely because ADR-0018 exists.
 
 ## Current Task
 
@@ -983,67 +1149,43 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0025 synchronization of the actual ADR dependency queue identifies the next undrafted bounded item as:
+Post-Task-0026 synchronization must fresh-read the ADR queue and canonical register before fixing the exact next bounded task.
+
+The current synchronized backlog places the next undrafted item at:
 
 ```text
-Task 0026: Draft Core Automated Testing Toolchain ADR
+Order 19
+D-ARCH-011
+Package manager
+Canonical status: ASSUMED
 ```
 
-Primary canonical decision:
+A likely next task is:
 
 ```text
-D-ARCH-018
+Task 0027: Draft Package Manager ADR
+Likely ADR number: ADR-0019
 ```
 
-Likely target when explicitly started:
+The exact target filename will be confirmed during final Task 0026 queue synchronization.
 
-```text
-docs/adr/ADR-0018-testing-toolchain.md
-```
-
-Canonical `D-ARCH-018` remains `P1 PROPOSED` until explicit review/approval changes it.
-
-The future Task 0026 should evaluate:
-
-- deterministic unit/domain tests;
-- application/use-case tests;
-- real-database integration tests;
-- authorization negative/positive matrix tests;
-- tenant-isolation/RLS tests where applicable;
-- API contract tests;
-- provider-adapter tests;
-- worker/job retry/idempotency tests;
-- browser E2E;
-- test-data/environment isolation;
-- CI test layering.
-
-Vitest, Playwright, Testcontainers, and any other exact testing tools remain unaccepted.
-
-Do not create ADR-0018 or execute Task 0026 as part of Task 0025 synchronization.
+Do not execute Task 0027 as part of Task 0026.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0025-draft-ci-cd-release-secrets-adr.md
+.ai/task/0026-draft-testing-toolchain-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
-docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
-docs/02-architecture/architecture-principles.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
 docs/adr/ADR-0002-primary-language-runtime.md
-docs/adr/ADR-0004-database-engine.md
-docs/adr/ADR-0005-data-access-migration-strategy.md
-docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md
-docs/adr/ADR-0011-api-contract-architecture.md
-docs/adr/ADR-0012-owner-staff-web-framework.md
-docs/adr/ADR-0014-api-deployment-boundary.md
-docs/adr/ADR-0015-background-jobs-scheduler.md
-docs/adr/ADR-0016-hosting-deployment-platform.md
+docs/adr/ADR-0003-monorepo-strategy.md
 docs/adr/ADR-0017-ci-cd-release-secrets.md
+docs/adr/ADR-0018-testing-toolchain.md
 legacy migration source: docs/13-testing-qa.md
 legacy migration source: docs/15-engineering-workflow.md
 ```
