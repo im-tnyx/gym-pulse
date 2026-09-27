@@ -97,6 +97,7 @@ ADR-0017-ci-cd-release-secrets.md
 ADR-0018-testing-toolchain.md
 ADR-0019-package-manager.md
 ADR-0020-observability-provider.md
+ADR-0021-object-storage.md
 ```
 
 Rules:
@@ -108,7 +109,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001` through `ADR-0020` now exist.
+`ADR-0001` through `ADR-0021` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -294,12 +295,13 @@ Their registration means ADRs can reference canonical IDs. It does not mean Type
 | `ADR-0018-testing-toolchain.md` | `D-ARCH-018` | Proposed | PROPOSED | Proposes layered automated-test evidence: Vitest as the leading fast TypeScript runner, real PostgreSQL semantics if PostgreSQL is accepted with Testcontainers-style orchestration as the leading candidate, focused Playwright browser E2E, provider fakes/sandboxes, first-class authorization/tenant negatives, worker replay/idempotency tests, and controlled time/failure injection. No tool, test, config, database, browser, or CI workflow is accepted or created. |
 | `ADR-0019-package-manager.md` | `D-ARCH-011` | Proposed | ASSUMED | Proposes pnpm as the leading Phase 1 package-manager direction with one committed root lockfile, explicit workspace dependencies, frozen CI installs, strict declared-dependency posture, package-manager version pinning, and reviewed dependency build scripts. pnpm, Turborepo, Node.js, CI tooling, frameworks, and exact versions remain unaccepted. |
 | `ADR-0020-observability-provider.md` | `D-PROVIDER-006` | Proposed | OPEN | Proposes Grafana Cloud as the leading managed observability provider with GymPulse-owned telemetry semantics, privacy-safe structured logs/correlation, OpenTelemetry server traces/metrics, focused alerting, and optional privacy-gated frontend telemetry. No provider, region, SDK, credential, dashboard, or telemetry pipeline is accepted or provisioned. |
+| `ADR-0021-object-storage.md` | `D-ARCH-010` | Proposed | OPEN | Defers persistent object storage because current Phase 1 evidence does not require persisted binary artifacts; preserves a conditional private/provider-neutral protected-object architecture with canonical ownership metadata, server-authorized short-lived access, explicit lifecycle/residency gates, and no provider acceptance or provisioning. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first twenty ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first twenty-one ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
@@ -323,7 +325,7 @@ The order reflects current GymPulse dependency reasoning. Presence in this backl
 | 18 | Core testing toolchain | `D-ARCH-018` | PROPOSED / ADR-0018 drafted | Proposes layered deterministic, authorization, real-database, provider/worker, contract, and focused browser evidence while keeping exact tools unaccepted. |
 | 19 | Package manager | `D-ARCH-011` | ASSUMED / ADR-0019 drafted | Proposes pnpm for deterministic workspace installation while keeping the canonical decision unaccepted. |
 | 20 | Observability provider | `D-PROVIDER-006` | OPEN / ADR-0020 drafted | Proposes Grafana Cloud with provider-neutral server telemetry semantics while keeping canonical provider selection open. |
-| 21 | Object storage | `D-ARCH-010` | OPEN | Conditional on real receipt/export/protected-file requirements. |
+| 21 | Object storage | `D-ARCH-010` | OPEN / ADR-0021 drafted | Defers baseline persistent storage; future private protected-object storage is introduced only when a confirmed artifact requirement justifies it. |
 | 22 | Payment provider | `D-PROVIDER-001` | OPEN | Depends on pilot methods, webhooks/refunds/reconciliation, fees, settlement, and support. |
 | 23 | Messaging provider | `D-PROVIDER-002` | OPEN | Depends on launch channels, templates, consent/service policy, and support. |
 | 24 | Product analytics provider | `D-PROVIDER-005` | OPEN | Remains non-canonical/provider-neutral until pilot instrumentation needs are concrete. |
@@ -401,11 +403,13 @@ D-PROVIDER-006 Observability provider                 OPEN / ADR-0020 drafted
 
 `ADR-0020` proposes Grafana Cloud as the leading Phase 1 managed observability provider while canonical `D-PROVIDER-006` remains `P1 OPEN`. GymPulse keeps application-owned structured telemetry semantics, correlation across request/job/provider paths, privacy-safe logs, OpenTelemetry-compatible server traces/metrics, focused alerting, and optional privacy-reviewed frontend telemetry. Audit logs and canonical business state remain separate; observability export failure must not block canonical operations. No provider, region, SDK, credential, dashboard, alert, session replay, collector, or telemetry pipeline is accepted or provisioned.
 
+`ADR-0021` concludes that current Phase 1 evidence does **not** justify persistent object storage as a baseline dependency while canonical `D-ARCH-010` remains `P1 OPEN`. Stable receipt business truth stays in canonical persistence; a persisted receipt PDF is not currently required. Controlled member import may process bounded temporary input without indefinite raw-file retention, and exports should use direct/on-demand generation before introducing persistent artifacts. If a future requirement justifies storage, the proposed boundary is private-by-default managed storage behind a narrow provider-neutral `ProtectedObjectStore`, with canonical ownership metadata, opaque non-PII keys, server authorization before short-lived signed access, explicit retention/deletion, a `D-SEC-001` region gate, and provider-exit validation. AWS S3, Cloudflare R2, Google Cloud Storage, and Supabase Storage remain evaluated alternatives only.
+
 Payment and messaging provider ADRs should follow confirmed pilot methods/channels and provider-specific evidence rather than being forced into the foundation batch.
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0020` are complete at Draft/Proposed level.
+The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0021` are complete at Draft/Proposed level.
 
 The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-ARCH-003`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-002`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
 
@@ -427,19 +431,21 @@ The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-A
 
 `ADR-0020` does not create a Grafana Cloud/Sentry/Datadog/Better Stack account or stack, install an observability/OpenTelemetry/Faro SDK, create ingestion credentials, dashboards, alerts, SLOs, session replay, log drains, Alloy/Collector processes, telemetry pipelines, or production telemetry. Grafana Cloud remains a leading proposal only; canonical `D-PROVIDER-006` remains `P1 OPEN`.
 
-Post-Task-0028 synchronization confirms the actual next bounded governance task as:
+`ADR-0021` does not create an object-storage account or bucket, install an S3/R2/GCS/Supabase Storage SDK, create storage/IAM credentials, create upload/download routes, generate receipt PDFs, implement export jobs, create database schema/migrations, configure lifecycle/versioning/replication/CDN, upload files, or create IaC/CI. AWS S3, Cloudflare R2, Google Cloud Storage, and Supabase Storage remain evaluated alternatives only; canonical `D-ARCH-010` remains `P1 OPEN`.
+
+Post-Task-0029 synchronization confirms the actual next bounded governance task as:
 
 ```text
-Task 0029: Draft Object Storage ADR
-Primary decision: D-ARCH-010
-Target: docs/adr/ADR-0021-object-storage.md
+Task 0030: Draft Payment Provider ADR
+Primary decision: D-PROVIDER-001
 Initial ADR status: Proposed
 Canonical status: P1 OPEN unless explicit approval changes it
+Target ADR filename/number: confirm from fresh latest-main audit before execution
 ```
 
-That task should evaluate whether Phase 1 object storage is required by confirmed receipt/export/protected-file workflows and, if required, define private-by-default access, tenant/resource authorization, object-key and metadata boundaries, encryption, upload/download validation, retention/deletion, region/residency, cost, provider portability, and hosting independence.
+That task should evaluate confirmed pilot payment methods and provider capabilities for authenticated checkout/initiation, webhook verification, idempotency, refunds/reversals, reconciliation, settlement/support, India applicability, fees/cost, provider abstraction, operational diagnostics, and migration/exit without allowing provider callbacks or client success to become canonical payment truth.
 
-Do not draft ADR-0021, provision storage, create buckets/credentials, or upload production data as part of Task 0028.
+Do not draft the payment-provider ADR, open a provider account, create credentials, install an SDK, or implement payment integration as part of Task 0029.
 
 ## 16. Related Documents
 
@@ -476,6 +482,7 @@ Do not draft ADR-0021, provision storage, create buckets/credentials, or upload 
 - `ADR-0018-testing-toolchain.md`
 - `ADR-0019-package-manager.md`
 - `ADR-0020-observability-provider.md`
+- `ADR-0021-object-storage.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../07-api-contracts.md`
 - legacy migration source: `../12-security-audit.md`
