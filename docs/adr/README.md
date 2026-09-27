@@ -357,6 +357,32 @@ D-ARCH-002  Canonical database engine                ADR-0004 drafted, Proposed
 
 These define the initial implementation envelope but remain unaccepted.
 
+#### Foundation acceptance-readiness review — 2026-09-27
+
+Fresh review used each ADR's own acceptance/validation sections plus the canonical decision register. This review does not approve or reject any ADR.
+
+| ADR | Canonical status | Reviewable now | Acceptance readiness | Current hard blockers / missing evidence |
+|---|---|---|---|---|
+| `ADR-0001` / `D-ARCH-005` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Authorized decision owner is still Open; no explicit approval record; no executable evidence yet proves module-boundary enforcement, shared request/worker use-case reuse, cross-domain write prevention, concurrency/idempotency behavior, authorization negatives, and module-aware diagnostics. |
+| `ADR-0002` / `D-ARCH-016` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Authorized decision owner is still Open; no explicit approval record; no representative strict-TypeScript/runtime-validation, raw-webhook, real transaction, worker-retry, correlation, or client/server import-isolation spike has been recorded. No canonical team/deployment/performance evidence currently overturns the TypeScript/Node.js recommendation. |
+| `ADR-0003` / `D-ARCH-001` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Authorized decision owner is still Open; no explicit approval record; no workspace spike proves dependency direction, server-only/client-safe isolation, independent artifact builds, cycle detection, shared contract/use-case reuse, or affected build/test behavior. Application scaffolding has not begun, so no measured repository/CI baseline exists. |
+| `ADR-0004` / `D-ARCH-002` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Authorized decision owner is still Open; no explicit approval record; no real-PostgreSQL concurrency/idempotency validation, backup/restore rehearsal, representative pooling/restart validation, or approved regional/hosting constraints. `D-DATA-007` still blocks final Member/Membership schema semantics, but the ADR itself explicitly states that this does **not** prevent reviewing the database-engine choice independently. |
+
+Common findings:
+
+```text
+all four ADRs have Decision Owner = Open
+all four lack explicit approval evidence
+all four still require bounded non-production validation
+no canonical status changes are justified
+no implementation/scaffold gate is opened
+```
+
+The foundation batch is therefore suitable for **decision-owner review and validation planning**, but not for acceptance yet.
+
+Acceptance-readiness must not be confused with implementation completion. The required evidence can be produced through bounded non-production spikes that prove architecture/runtime/repository/database semantics without provisioning production infrastructure or silently accepting downstream tools/providers.
+
+
 ### Second dependency/security batch
 
 ```text
