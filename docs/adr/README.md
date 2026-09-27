@@ -95,6 +95,7 @@ ADR-0015-background-jobs-scheduler.md
 ADR-0016-hosting-deployment-platform.md
 ADR-0017-ci-cd-release-secrets.md
 ADR-0018-testing-toolchain.md
+ADR-0019-package-manager.md
 ```
 
 Rules:
@@ -106,7 +107,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001` through `ADR-0018` now exist.
+`ADR-0001` through `ADR-0019` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -290,12 +291,13 @@ Their registration means ADRs can reference canonical IDs. It does not mean Type
 | `ADR-0016-hosting-deployment-platform.md` | `D-ARCH-009` | Proposed | OPEN | Proposes a conventional regional managed service/worker PaaS with separate request and worker services, one approved primary region, explicit residency/security gates, and provider portability; Render is a leading candidate only if validation passes. |
 | `ADR-0017-ci-cd-release-secrets.md` | `D-ARCH-019` | Proposed | OPEN | Proposes release-security capabilities before vendor binding: protected PR/required checks, traceable source/build/deploy identity, controlled environment promotion and migration, least-privilege/OIDC-preferred deployment identity, runtime-vs-migration secret separation, coordinated web/worker rollout, and rollback/forward-fix discipline; GitHub Actions is the leading candidate only. |
 | `ADR-0018-testing-toolchain.md` | `D-ARCH-018` | Proposed | PROPOSED | Proposes layered automated-test evidence: Vitest as the leading fast TypeScript runner, real PostgreSQL semantics if PostgreSQL is accepted with Testcontainers-style orchestration as the leading candidate, focused Playwright browser E2E, provider fakes/sandboxes, first-class authorization/tenant negatives, worker replay/idempotency tests, and controlled time/failure injection. No tool, test, config, database, browser, or CI workflow is accepted or created. |
+| `ADR-0019-package-manager.md` | `D-ARCH-011` | Proposed | ASSUMED | Proposes pnpm as the leading Phase 1 package-manager direction with one committed root lockfile, explicit workspace dependencies, frozen CI installs, strict declared-dependency posture, package-manager version pinning, and reviewed dependency build scripts. pnpm, Turborepo, Node.js, CI tooling, frameworks, and exact versions remain unaccepted. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first eighteen ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first nineteen ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
@@ -317,7 +319,7 @@ The order reflects current GymPulse dependency reasoning. Presence in this backl
 | 16 | Hosting/deployment platform | `D-ARCH-009` | OPEN / ADR-0016 drafted | Proposes a conventional regional managed service/worker PaaS with separate runtime units and an explicit jurisdiction/region/provider-validation gate. |
 | 17 | CI/CD + production release/secrets tooling | `D-ARCH-019` | OPEN / ADR-0017 drafted | Proposes protected CI/release gates, provenance, environment promotion, secret boundaries, one controlled migration action, web/worker rollout coordination, and rollback/forward-fix while leaving the CI vendor unaccepted. |
 | 18 | Core testing toolchain | `D-ARCH-018` | PROPOSED / ADR-0018 drafted | Proposes layered deterministic, authorization, real-database, provider/worker, contract, and focused browser evidence while keeping exact tools unaccepted. |
-| 19 | Package manager | `D-ARCH-011` | ASSUMED | Low-cost choice; finalize with repository/tooling governance. |
+| 19 | Package manager | `D-ARCH-011` | ASSUMED / ADR-0019 drafted | Proposes pnpm for deterministic workspace installation while keeping the canonical decision unaccepted. |
 | 20 | Observability provider | `D-PROVIDER-006` | OPEN | Select after runtime/job/hosting topology is understood. |
 | 21 | Object storage | `D-ARCH-010` | OPEN | Conditional on real receipt/export/protected-file requirements. |
 | 22 | Payment provider | `D-PROVIDER-001` | OPEN | Depends on pilot methods, webhooks/refunds/reconciliation, fees, settlement, and support. |
@@ -373,6 +375,7 @@ D-ARCH-007     Background jobs                        OPEN / ADR-0015 drafted
 D-ARCH-009     Hosting                                OPEN / ADR-0016 drafted
 D-ARCH-019     CI/CD + release/secrets tooling        OPEN / ADR-0017 drafted
 D-ARCH-018     Testing toolchain                      PROPOSED / ADR-0018 drafted
+D-ARCH-011     Package manager                       ASSUMED / ADR-0019 drafted
 D-PROVIDER-006 Observability provider                 OPEN
 ```
 
@@ -392,11 +395,13 @@ D-PROVIDER-006 Observability provider                 OPEN
 
 `ADR-0018` proposes a layered automated testing architecture: deterministic domain/application tests; table-driven authorization and cross-tenant negatives; real database integration where persistence semantics matter; API/provider/worker integration; focused browser E2E; controlled time and failure injection; and release-smoke evidence owned by ADR-0017. Vitest, Testcontainers-style real-PostgreSQL orchestration, and Playwright are the leading current concrete candidates, each conditional on the related runtime/database/client decisions and future implementation evidence. Native E2E remains deferred. Canonical `D-ARCH-018` remains `PROPOSED`; no tool is accepted or installed.
 
+`ADR-0019` proposes `pnpm` as the leading Phase 1 package-manager direction while keeping canonical `D-ARCH-011` `P1 ASSUMED`. The proposal uses one committed root lockfile, explicit workspace package edges, `workspace:` references where local-only resolution is intended, frozen CI/release installs, declared-dependency isolation, package-manager version pinning, and reviewed/restricted dependency build scripts. `npm` is the conservative fallback; `Yarn` and `Bun` remain credible alternatives with different linker/configuration semantics. Package manager, Turborepo, Node.js, frameworks, CI provider, registry/security tooling, and exact versions remain independently governed.
+
 Payment and messaging provider ADRs should follow confirmed pilot methods/channels and provider-specific evidence rather than being forced into the foundation batch.
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0018` are complete at Draft/Proposed level.
+The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0019` are complete at Draft/Proposed level.
 
 The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-ARCH-003`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-002`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
 
@@ -414,19 +419,21 @@ The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-A
 
 `ADR-0018` does not create test directories/files, Vitest/Jest/Playwright/Cypress configuration, Testcontainers/Docker setup, a test database, fixtures/factories, provider sandbox accounts, browser installs, coverage configuration, CI workflows, or native-E2E tooling. Vitest, Playwright, Testcontainers, Node's test runner, Jest, Cypress, PostgreSQL, Node.js, and all exact testing tools remain unaccepted; `D-ARCH-018` remains `PROPOSED`.
 
-Post-Task-0026 synchronization confirms the actual next bounded governance task as:
+`ADR-0019` does not install pnpm/npm/Yarn/Bun, create `package.json`, create `pnpm-workspace.yaml`, create any lockfile, create package-manager config, install dependencies, create CI cache/configuration, or accept Turborepo/Node.js/frameworks. `pnpm` remains a leading proposal only; canonical `D-ARCH-011` remains `P1 ASSUMED`.
+
+Post-Task-0027 synchronization confirms the actual next bounded governance task as:
 
 ```text
-Task 0027: Draft Package Manager ADR
-Primary decision: D-ARCH-011
-Target: docs/adr/ADR-0019-package-manager.md
+Task 0028: Draft Observability Provider ADR
+Primary decision: D-PROVIDER-006
+Target: docs/adr/ADR-0020-observability-provider.md
 Initial ADR status: Proposed
-Canonical status: ASSUMED unless explicit approval changes it
+Canonical status: P1 OPEN unless explicit approval changes it
 ```
 
-That task should evaluate the package-manager/workspace-installation baseline for the proposed monorepo, including lockfile determinism, workspace support, dependency isolation, CI/cache behavior, security/supply-chain controls, Node/runtime compatibility, and migration/reversibility while keeping Turborepo, Node.js, CI provider, and application frameworks separately governed.
+That task should evaluate the observability capability/provider boundary against GymPulse's structured logging, correlation, error monitoring, payment/job diagnostics, privacy/PII controls, OpenTelemetry compatibility, retention, cost, hosting/runtime integration, alerting/operability, and provider portability requirements.
 
-Do not draft ADR-0019 or change the package manager as part of Task 0026.
+Do not draft ADR-0020 or select/provision an observability provider as part of Task 0027.
 
 ## 16. Related Documents
 
@@ -461,6 +468,7 @@ Do not draft ADR-0019 or change the package manager as part of Task 0026.
 - `ADR-0016-hosting-deployment-platform.md`
 - `ADR-0017-ci-cd-release-secrets.md`
 - `ADR-0018-testing-toolchain.md`
+- `ADR-0019-package-manager.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../07-api-contracts.md`
 - legacy migration source: `../12-security-audit.md`
