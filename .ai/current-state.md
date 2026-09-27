@@ -48,6 +48,7 @@ ADR-0021  D-ARCH-010  Object Storage / Protected File Access              Propos
 ADR-0022  D-PROVIDER-001 Payment Provider / Integration Strategy           Proposed
 ADR-0023  D-PROVIDER-002 Messaging Provider / Notification Delivery Strategy Proposed
 ADR-0024  D-PROVIDER-005 Product Analytics Provider / Instrumentation Strategy       Proposed
+ADR-0025  D-ARCH-008     Redis / Cache / Ephemeral Coordination Requirement           Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -2344,20 +2345,384 @@ deployment
 
 No prior ADR is Accepted.
 
-## Last Completed Task
 
-0032-draft-product-analytics-provider-adr
+## Current Redis / Cache / Ephemeral Coordination Proposal
+
+ADR-0025 now exists as Proposed; canonical D-ARCH-008 remains P2 OPEN.
+
+Task 0033 first tested whether Phase 1 needs any shared low-latency ephemeral-state infrastructure.
+
+### Redis requirement finding
 
 ~~~text
-ADR-0024 Status: Proposed
-D-PROVIDER-005 canonical status: P2 OPEN
-Initial Phase 1 external analytics provider: none
-PostHog: future candidate only
-Mixpanel: future candidate only
-Amplitude: future candidate only
-Autocapture: not approved
-Session replay: not approved
-No analytics implementation
+Phase 1 Redis baseline
+-> no
+
+Phase 1 Valkey baseline
+-> no
+
+Required-now shared ephemeral use cases
+-> none
+~~~
+
+Current evidence supports deferral rather than selecting an engine/provider.
+
+### Use-case classification
+
+~~~text
+Required now
+  -> none
+
+Potential later
+  -> measured hot read/query cache
+  -> distributed shared rate limit after multi-replica evidence
+  -> shared session state only if accepted session architecture needs it
+  -> narrow ephemeral coordination/dedupe optimization
+
+Already solved elsewhere
+  -> durable jobs/scheduling
+  -> critical idempotency/business dedupe
+  -> canonical business counters
+  -> authorization truth
+
+Not justified
+  -> pub/sub/realtime
+  -> leader election
+  -> feature flags
+  -> analytics buffering
+  -> multi-purpose Redis platform
+
+Unsafe use
+  -> Redis as sole payment/attendance/membership/idempotency guard
+  -> stale authorization cache as authority
+  -> volatile pub/sub as durable critical continuation
+~~~
+
+### Canonical truth boundary
+
+Preserve:
+
+~~~text
+Redis != Canonical Business Database
+
+Cache Hit != Canonical Truth
+Cache Miss != Record Missing
+Cache Write != Canonical Commit
+
+Redis Dedupe != Business Exactly Once
+~~~
+
+Complete Redis/cache loss must not destroy or make unreconstructable canonical GymPulse business truth.
+
+Correctness continues to rely on durable state, transactions, constraints, verified provider evidence and business idempotency according to the owning decisions.
+
+### Read/query cache posture
+
+Database/query work comes first:
+
+~~~text
+measure
+-> query shape
+-> indexes
+-> bounded pagination
+-> N+1 analysis
+-> read models / projections where justified
+-> connection/runtime analysis
+-> shared cache only if a measured problem remains
+~~~
+
+Representative paths to measure before proposing a distributed read cache:
+
+~~~text
+Owner dashboard
+Member search
+no-show queue
+renewal queue
+payment-exception queue
+Member Home
+~~~
+
+No measured hot-query requirement currently exists.
+
+Small request/process-local caching remains acceptable only for safe non-authoritative state where instance-local incoherence is harmless.
+
+### Tenant-sensitive cache posture
+
+Authenticated tenant/member data remains private by default.
+
+Any future shared cache requires authority-complete scope/invalidation reasoning.
+
+Potential key dimensions may include tenant/gym, resource, query dimensions, visibility/permission context and representation/schema version.
+
+Do not trust client-supplied tenant/resource identifiers as cache authority.
+
+Future implementation requires explicit Tenant A -> Tenant B negative tests.
+
+Cache keys/values should minimize PII and must not casually contain phone, email, names, notes, tokens or sensitive payment data.
+
+### Authorization-cache posture
+
+ADR-0009 baseline remains:
+
+~~~text
+no distributed cross-request authorization cache required
+
+request-scoped trusted context / memoization
+allowed only when it cannot outlive the request safely
+~~~
+
+Preserve:
+
+~~~text
+Cached Authorization Result
+!=
+Canonical Authorization State
+~~~
+
+Any future cross-request authorization cache requires explicit invalidation, bounded staleness, revocation semantics, tenant-safe keys and negative tests.
+
+No Redis/Valkey product is selected for authorization.
+
+### Authentication/session posture
+
+Canonical:
+
+~~~text
+D-ARCH-004 = P0 OPEN
+ADR-0007 = Proposed
+D-SEC-004 = P1 OPEN
+~~~
+
+Preserve:
+
+~~~text
+Session Architecture
+!=
+Redis Requirement
+~~~
+
+ADR-0007 already states authentication/principal caching is not required and no Redis dependency follows.
+
+Task 0033 does not select a session store or change revocation/session-lifetime policy.
+
+### Rate-limit posture
+
+NFR-SECURITY-010 establishes an abuse-control capability requirement.
+
+It does not establish Redis storage.
+
+Initial mechanisms may include provider-native limits, API gateway/hosting controls, bounded DB-backed counters for selected low-volume paths, or carefully limited process-local controls where security semantics allow them.
+
+A shared Redis/Valkey limiter becomes a revisit trigger only if multiple stateless replicas, high-volume global limits and inadequate provider/platform/DB alternatives are actually demonstrated.
+
+If a security-critical shared limiter is later adopted, fail-open/fail-closed/degraded behavior must be explicit per operation.
+
+### Job / broker posture
+
+ADR-0015 continues to own durable background execution.
+
+Current proposal remains:
+
+~~~text
+PostgreSQL-backed durable jobs/scheduling
++
+separate Background Worker Runtime
+~~~
+
+conditionally on independently governed database/runtime decisions.
+
+Preserve:
+
+~~~text
+Background Work Exists
+!=
+Redis Required
+~~~
+
+Redis/BullMQ remains an alternative only if a later job evaluation proves a material throughput/operations advantage.
+
+Task 0033 does not move jobs to Redis.
+
+### Distributed-lock posture
+
+Redis locks are not the permanent correctness guard for:
+
+~~~text
+payment exactly once
+attendance uniqueness
+membership effect uniqueness
+provider-event dedupe
+refund history
+authorization truth
+~~~
+
+Prefer durable database/business mechanisms where applicable:
+
+~~~text
+unique constraints
+transactions
+conditional updates
+row locks
+advisory locks where narrowly justified
+durable idempotency/effect records
+~~~
+
+PostgreSQL-specific mechanics remain conditional while D-ARCH-002 is Proposed.
+
+Future distributed-lock evaluation must account for lease expiry, process pause, network partition, client crash, timing assumptions and stale/duplicate ownership.
+
+### Idempotency / dedupe posture
+
+Critical idempotency remains durable.
+
+Ephemeral duplicate suppression may later optimize low-value/repeated work, but deleting all Redis keys must not enable duplicate financial, attendance, membership or provider-event business effects.
+
+### Pub/Sub / realtime posture
+
+No current Phase 1 requirement establishes distributed Pub/Sub or realtime fanout.
+
+~~~text
+ordinary dashboard refresh
+!=
+realtime infrastructure requirement
+~~~
+
+Current Redis Pub/Sub semantics are at-most-once.
+
+Current Valkey Pub/Sub channels are non-persistent.
+
+Therefore volatile Pub/Sub is not a durable business continuation mechanism.
+
+### Failure / degraded-mode posture
+
+Different future shared-state responsibilities would require separate failure policy.
+
+Preferred optional-cache behavior:
+
+~~~text
+cache unavailable / evicted
+-> read canonical data or safely recompute
+-> product may be slower
+-> canonical correctness remains
+~~~
+
+A future security/session/job dependency must document its own fail-open/fail-closed/recovery model.
+
+### Security posture
+
+If Redis/Valkey is later introduced, baseline controls include:
+
+~~~text
+private/trusted network where practical
+TLS
+authentication / least privilege
+environment isolation
+server-only credentials
+no browser/mobile direct access
+tenant-safe keys/values
+PII minimization
+~~~
+
+Threat model includes public exposure, credential leakage, cross-tenant key collisions, poisoning, stale authorization, session theft, rate-limit bypass, lock expiry, volatile job loss and test/production crossover.
+
+### Reliability posture
+
+Deferring Redis avoids one additional stateful dependency and its network, eviction, invalidation, connection and failover failure modes.
+
+Ideal optional cache remains removable:
+
+~~~text
+remove cache
+-> system becomes slower
+-> system remains correct
+~~~
+
+### Performance posture
+
+No cache speedup is assumed.
+
+Before introduction measure representative query/request latency, DB load, index selectivity, N+1 behavior, connection use, repeated expensive calculations, concurrency and read frequency.
+
+Do not add Redis to hide poor query/index/read-model design.
+
+### Operations / cost posture
+
+No baseline Redis/Valkey means no additional managed cache account, memory/HA tier, connection operations, eviction/failover monitoring, region placement, credential rotation, local service, CI service or cache-specific incident runbook.
+
+Free tiers do not justify new infrastructure.
+
+### Revisit triggers
+
+Reopen D-ARCH-008 only when evidence shows:
+
+~~~text
+measured hot-query pressure survives index/read-model optimization
+
+approved distributed rate-limit requirement across multiple replicas
+
+accepted session architecture requires shared ephemeral state
+
+winning durable-job architecture requires Redis
+
+approved realtime/pubsub requirement emerges
+
+high-volume distributed coordination is demonstrated
+
+measured database contention is genuinely solved by cache
+~~~
+
+A trigger reopens governance; it does not accept Redis or Valkey.
+
+Task 0033 created no:
+
+~~~text
+Redis instance
+Valkey instance
+managed cache account
+cache database / cluster
+connection URL
+credential / certificate
+redis client
+ioredis
+@upstash/redis
+bullmq
+redlock
+rate-limit-redis
+cache adapter
+rate limiter
+session store
+distributed lock
+pub/sub
+Redis Stream
+queue migration
+BullMQ worker
+cache-key implementation
+Docker Redis container
+CI Redis service
+IaC
+deployment
+~~~
+
+No prior ADR is Accepted.
+
+## Last Completed Task
+
+0033-draft-redis-cache-requirement-adr
+
+~~~text
+ADR-0025 Status: Proposed
+D-ARCH-008 canonical status: P2 OPEN
+Phase 1 Redis baseline: no
+Phase 1 Valkey baseline: no
+Required-now shared ephemeral use: none
+Read cache: measure first
+Authorization cache: no distributed baseline
+Session store: separately governed
+Rate limiting: capability required where applicable; Redis not assumed
+Jobs: ADR-0015 remains independent
+Distributed locks: not canonical correctness authority
+Pub/Sub/realtime: not required
+No Redis/cache implementation
 ~~~
 
 ## Current Task
@@ -2366,57 +2731,58 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0032 synchronization confirms the next bounded governance task as:
+Post-Task-0033 synchronization confirms the next bounded governance task as:
 
 ~~~text
-Task 0033: Draft Redis / Cache Requirement ADR
-Primary decision: D-ARCH-008
-Canonical status: P2 OPEN
+Task 0034: Resolve / Draft Member vs Membership State Ownership ADR
+Primary decision: D-DATA-007
+Canonical status: P1 PROPOSED / unresolved
 Target ADR filename/number: confirm from fresh latest-main audit before execution
 ~~~
 
-The next task should first determine whether Redis/cache/ephemeral coordination is justified at all, then evaluate actual Phase 1 requirements for:
+The next task should resolve the existing overlap:
 
 ~~~text
-cache
-rate limiting
-distributed coordination
-sessions if applicable
-job/queue dependencies
-ephemeral locks
-dedupe assistance
-performance hotspots
+Member.status:
+Active / Paused / Expired / Cancelled / Blocked
+
+Membership.status:
+Pending / Active / Frozen / Expired / Cancelled
 ~~~
 
-while preserving canonical database truth, business idempotency, ADR-0015 durable-job boundaries, provider portability, failure isolation, and the existing no-premature-infrastructure principle.
+without treating the current D-DATA-007 proposal as already accepted.
 
-Do not create a Redis/Valkey account/instance, credentials, client dependency, cache/session implementation, distributed lock, queue migration, IaC or deployment during that ADR-only task.
+It must review FR-MEMBER-004 and Membership lifecycle requirements before finalizing any domain/schema state machine, entitlement query, import mapping, authorization distinction, retention rule, or migration constraint.
+
+Do not modify FR-MEMBER-004, finalize schema/migrations, or promote D-DATA-007 to DECIDED without explicit authorized approval.
 
 ## Files To Read Next
 
 ~~~text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0032-draft-product-analytics-provider-adr.md
+.ai/task/0033-draft-redis-cache-requirement-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
+docs/01-product/product-requirements.md
+docs/01-product/user-journeys.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
+docs/02-architecture/system-context.md
 docs/02-architecture/container-architecture.md
 docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
-docs/adr/ADR-0007-authentication-session-architecture.md
-docs/adr/ADR-0014-api-deployment-boundary.md
-docs/adr/ADR-0015-background-jobs-scheduler.md
-docs/adr/ADR-0016-hosting-deployment-platform.md
-docs/adr/ADR-0017-ci-cd-release-secrets.md
-docs/adr/ADR-0018-testing-toolchain.md
-docs/adr/ADR-0024-product-analytics-provider.md
-legacy migration source: docs/05-system-architecture.md
-legacy migration source: docs/12-security-audit.md
+docs/adr/ADR-0001-modular-monolith.md
+docs/adr/ADR-0004-database-engine.md
+docs/adr/ADR-0005-data-access-migration-strategy.md
+docs/adr/ADR-0008-member-authentication-method.md
+docs/adr/ADR-0009-authorization-implementation.md
+docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md
+docs/adr/ADR-0025-redis-cache-requirement.md
+legacy migration source: docs/06-database-schema.md
 legacy migration source: docs/16-open-decisions.md
 ~~~
