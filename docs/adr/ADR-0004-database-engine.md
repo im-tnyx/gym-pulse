@@ -871,23 +871,122 @@ Primary references:
 
 ### 16.3 Acceptance-readiness evidence update — 2026-09-27
 
-The shared validation harness at `../../validation/foundation/` proves several architecture/runtime prerequisites around retry-safe adapters and durable-state independence, but it **does not provide PostgreSQL evidence**.
+The shared validation harness at `../../validation/foundation/` proves architecture/runtime prerequisites around boundaries, retry-safe adapters, raw webhook handling, and durable-state independence.
 
-The execution environment used for the current harness had no PostgreSQL client/server tools and no Docker/Podman runtime. Therefore all PostgreSQL-specific scenarios remain explicitly `NOT RUN`.
+A fresh **Real PostgreSQL Foundation Validation** attempt was performed against the current execution environment.
+
+Observed environment:
+
+~~~text
+environment type:
+current isolated ChatGPT execution sandbox
+
+PostgreSQL server version:
+NOT AVAILABLE
+
+PostgreSQL client version:
+NOT AVAILABLE
+
+pg_dump / pg_restore version:
+NOT AVAILABLE
+
+temporary PostgreSQL driver:
+NOT USED
+
+container image/tag/digest:
+NOT USED
+
+PostgreSQL server/client executables:
+unavailable
+
+Docker / Podman / nerdctl:
+unavailable
+
+local PostgreSQL 5432 listener/socket:
+none found
+
+installed PostgreSQL server/client packages:
+none found
+
+installed libpq:
+17.10 only
+
+apt PostgreSQL candidate:
+none
+
+DNS/package-repository access:
+unavailable
+~~~
+
+Therefore the PostgreSQL-specific validation is **BLOCKED**, not failed.
+
+Actual technical results:
+
+~~~text
+migration from zero                         NOT RUN
+forward migration                           NOT RUN
+
+concurrent attendance uniqueness            NOT RUN
+provider-event dedupe under DB uniqueness   NOT RUN
+exactly-once business effect                NOT RUN
+single-active no-show invariant             NOT RUN
+transaction rollback                        NOT RUN
+tenant-scoped SQL isolation                 NOT RUN
+representative relational/history query     NOT RUN
+database error translation                  NOT RUN
+
+backup creation                             NOT RUN
+restore into separate database              NOT RUN
+restored invariant verification             NOT RUN
+
+application-style PostgreSQL connection     NOT RUN
+concurrent PostgreSQL connections           NOT RUN
+disconnect/unavailable behavior             NOT RUN
+database restart                            NOT RUN
+reconnect/recovery                          NOT RUN
+post-restart replay safety                  NOT RUN
+~~~
+
+No SQLSTATE was claimed because no real PostgreSQL operation executed.
+
+No validation database/schema was created.
+
+No PostgreSQL version is inferred or pinned.
+
+No temporary driver/package manager use occurred.
+
+No backup artifact or database credential was created.
+
+No cloud/managed database was provisioned.
+
+No production resource or production data was touched.
+
+The existing file-backed validation proof remains useful only for process-memory independence and adapter reuse.
+
+Preserve:
+
+~~~text
+File-backed durability
+!=
+PostgreSQL evidence
+~~~
 
 This ADR remains `Proposed` because:
 
 - no authorized decision owner is identified;
 - no explicit approval record exists;
-- no real-PostgreSQL concurrency/idempotency spike has been run;
+- the complete real-PostgreSQL concurrency/idempotency slice remains `NOT RUN`;
 - transaction rollback, tenant-scoped SQL, representative relational query, and database error-translation evidence remain missing;
+- PostgreSQL migration-from-zero and forward-migration feasibility remain unexecuted;
 - no PostgreSQL backup/restore rehearsal exists;
-- no representative PostgreSQL connection/pooling/restart validation exists;
-- no production hosting/regional constraints are approved;
-- `D-DATA-007` still blocks final Member/Membership schema semantics, while this ADR explicitly keeps the engine decision independently reviewable;
-- no final schema/migration/data-access design exists.
+- no representative PostgreSQL connection/concurrency/restart/recovery validation exists;
+- production launch jurisdiction, database region, RPO/RTO, backup retention, provider/admin/support access, and connection topology remain separately unresolved;
+- `D-DATA-007` still blocks final Member/Membership schema semantics, while this ADR continues to keep the engine decision independently reviewable;
+- `D-ARCH-017` remains separately governed and no production query/migration tool is accepted.
 
-The file-backed durability proof in the validation harness must not be cited as PostgreSQL acceptance evidence.
+The next technical prerequisite is an explicitly approved isolated real PostgreSQL validation environment that is non-production, synthetic-data-only, safe to restart, and safe to delete.
+
+Technical evidence alone cannot change this ADR to `Accepted` or promote `D-ARCH-002` to `DECIDED`.
 
 ## 17. Related Documents
 
