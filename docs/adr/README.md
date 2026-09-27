@@ -98,6 +98,7 @@ ADR-0018-testing-toolchain.md
 ADR-0019-package-manager.md
 ADR-0020-observability-provider.md
 ADR-0021-object-storage.md
+ADR-0022-payment-provider.md
 ```
 
 Rules:
@@ -109,7 +110,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001` through `ADR-0021` now exist.
+`ADR-0001` through `ADR-0022` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -296,12 +297,13 @@ Their registration means ADRs can reference canonical IDs. It does not mean Type
 | `ADR-0019-package-manager.md` | `D-ARCH-011` | Proposed | ASSUMED | Proposes pnpm as the leading Phase 1 package-manager direction with one committed root lockfile, explicit workspace dependencies, frozen CI installs, strict declared-dependency posture, package-manager version pinning, and reviewed dependency build scripts. pnpm, Turborepo, Node.js, CI tooling, frameworks, and exact versions remain unaccepted. |
 | `ADR-0020-observability-provider.md` | `D-PROVIDER-006` | Proposed | OPEN | Proposes Grafana Cloud as the leading managed observability provider with GymPulse-owned telemetry semantics, privacy-safe structured logs/correlation, OpenTelemetry server traces/metrics, focused alerting, and optional privacy-gated frontend telemetry. No provider, region, SDK, credential, dashboard, or telemetry pipeline is accepted or provisioned. |
 | `ADR-0021-object-storage.md` | `D-ARCH-010` | Proposed | OPEN | Defers persistent object storage because current Phase 1 evidence does not require persisted binary artifacts; preserves a conditional private/provider-neutral protected-object architecture with canonical ownership metadata, server-authorized short-lived access, explicit lifecycle/residency gates, and no provider acceptance or provisioning. |
+| `ADR-0022-payment-provider.md` | `D-PROVIDER-001` | Proposed | OPEN | Keeps Razorpay and Cashfree as the bounded Phase 1 sandbox shortlist while defining provider-managed browser checkout, server-owned amount/currency/purpose, raw webhook verification, normalized canonical payment state, separate event dedupe/business-effect uniqueness, reconciliation, refund/settlement boundaries, and provider exit. Production selection remains blocked by merchant/settlement ownership and business/commercial validation. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first twenty-one ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first twenty-two ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
@@ -326,7 +328,7 @@ The order reflects current GymPulse dependency reasoning. Presence in this backl
 | 19 | Package manager | `D-ARCH-011` | ASSUMED / ADR-0019 drafted | Proposes pnpm for deterministic workspace installation while keeping the canonical decision unaccepted. |
 | 20 | Observability provider | `D-PROVIDER-006` | OPEN / ADR-0020 drafted | Proposes Grafana Cloud with provider-neutral server telemetry semantics while keeping canonical provider selection open. |
 | 21 | Object storage | `D-ARCH-010` | OPEN / ADR-0021 drafted | Defers baseline persistent storage; future private protected-object storage is introduced only when a confirmed artifact requirement justifies it. |
-| 22 | Payment provider | `D-PROVIDER-001` | OPEN | Depends on pilot methods, webhooks/refunds/reconciliation, fees, settlement, and support. |
+| 22 | Payment provider | `D-PROVIDER-001` | OPEN / ADR-0022 drafted | Keeps Razorpay + Cashfree as a sandbox shortlist; production selection remains blocked by merchant/settlement ownership, pilot methods, business policy, sandbox correctness, commercial terms, and support evidence. |
 | 23 | Messaging provider | `D-PROVIDER-002` | OPEN | Depends on launch channels, templates, consent/service policy, and support. |
 | 24 | Product analytics provider | `D-PROVIDER-005` | OPEN | Remains non-canonical/provider-neutral until pilot instrumentation needs are concrete. |
 | 25 | Redis/cache requirement | `D-ARCH-008` | OPEN | Introduce only for a demonstrated cache/coordination need. |
@@ -405,11 +407,13 @@ D-PROVIDER-006 Observability provider                 OPEN / ADR-0020 drafted
 
 `ADR-0021` concludes that current Phase 1 evidence does **not** justify persistent object storage as a baseline dependency while canonical `D-ARCH-010` remains `P1 OPEN`. Stable receipt business truth stays in canonical persistence; a persisted receipt PDF is not currently required. Controlled member import may process bounded temporary input without indefinite raw-file retention, and exports should use direct/on-demand generation before introducing persistent artifacts. If a future requirement justifies storage, the proposed boundary is private-by-default managed storage behind a narrow provider-neutral `ProtectedObjectStore`, with canonical ownership metadata, opaque non-PII keys, server authorization before short-lived signed access, explicit retention/deletion, a `D-SEC-001` region gate, and provider-exit validation. AWS S3, Cloudflare R2, Google Cloud Storage, and Supabase Storage remain evaluated alternatives only.
 
+`ADR-0022` keeps Razorpay and Cashfree as the bounded Phase 1 payment-provider sandbox shortlist while canonical `D-PROVIDER-001` remains `P1 OPEN`. It defines the provider-independent payment architecture: provider-managed browser checkout, server-created provider context from canonical amount/currency/purpose, raw provider webhook verification, normalized GymPulse `Payment` states, separate provider-event dedupe and exactly-once membership/add-on effects, status reconciliation, refund/reversal history, settlement traceability, environment/secret isolation, and provider exit. A new decision-register gap was identified for merchant account / settlement ownership; GymPulse is not assumed to be merchant of record or a platform/sub-merchant operator. No production provider is selected.
+
 Payment and messaging provider ADRs should follow confirmed pilot methods/channels and provider-specific evidence rather than being forced into the foundation batch.
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0021` are complete at Draft/Proposed level.
+The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0022` are complete at Draft/Proposed level.
 
 The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-ARCH-003`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-002`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
 
@@ -433,19 +437,21 @@ The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-A
 
 `ADR-0021` does not create an object-storage account or bucket, install an S3/R2/GCS/Supabase Storage SDK, create storage/IAM credentials, create upload/download routes, generate receipt PDFs, implement export jobs, create database schema/migrations, configure lifecycle/versioning/replication/CDN, upload files, or create IaC/CI. AWS S3, Cloudflare R2, Google Cloud Storage, and Supabase Storage remain evaluated alternatives only; canonical `D-ARCH-010` remains `P1 OPEN`.
 
-Post-Task-0029 synchronization confirms the actual next bounded governance task as:
+`ADR-0022` does not create a Razorpay/Cashfree/PhonePe/PayU account, merchant ID, API/webhook secret, SDK dependency, checkout/payment/webhook/refund route, reconciliation worker, payment/provider-event schema, migration, sandbox/real transaction, refund, settlement, bank-account configuration, CI/environment secret, provider dashboard user, IaC, or deployment. Razorpay and Cashfree remain sandbox candidates only; canonical `D-PROVIDER-001` remains `P1 OPEN`.
+
+Post-Task-0030 synchronization confirms the actual next bounded governance task as:
 
 ```text
-Task 0030: Draft Payment Provider ADR
-Primary decision: D-PROVIDER-001
+Task 0031: Draft Messaging Provider ADR
+Primary decision: D-PROVIDER-002
 Initial ADR status: Proposed
 Canonical status: P1 OPEN unless explicit approval changes it
 Target ADR filename/number: confirm from fresh latest-main audit before execution
 ```
 
-That task should evaluate confirmed pilot payment methods and provider capabilities for authenticated checkout/initiation, webhook verification, idempotency, refunds/reversals, reconciliation, settlement/support, India applicability, fees/cost, provider abstraction, operational diagnostics, and migration/exit without allowing provider callbacks or client success to become canonical payment truth.
+That task should evaluate confirmed launch communication channels, service-versus-marketing policy, consent/template requirements, India/WhatsApp/SMS/email fit where applicable, provider webhook/delivery semantics, retries/idempotency, tenant-safe messaging, pricing/support, provider abstraction, and operational diagnostics.
 
-Do not draft the payment-provider ADR, open a provider account, create credentials, install an SDK, or implement payment integration as part of Task 0029.
+Do not draft the messaging-provider ADR, create a provider account/credentials/templates, install an SDK, send messages, or implement delivery callbacks as part of Task 0030.
 
 ## 16. Related Documents
 
@@ -483,6 +489,7 @@ Do not draft the payment-provider ADR, open a provider account, create credentia
 - `ADR-0019-package-manager.md`
 - `ADR-0020-observability-provider.md`
 - `ADR-0021-object-storage.md`
+- `ADR-0022-payment-provider.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../07-api-contracts.md`
 - legacy migration source: `../12-security-audit.md`
