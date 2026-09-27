@@ -368,7 +368,7 @@ This review does not approve or reject any ADR.
 | `ADR-0001` / `D-ARCH-005` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Partial PASS evidence now covers strict boundary checks, request/worker reuse, tenant/branch/capability negatives, replay-safe result, gym-time boundary, and narrow correlation. Still missing authorized decision owner, explicit approval, real DB concurrency/transaction evidence, broader multi-domain direct-write enforcement, and full provider-effect/production diagnostics evidence. |
 | `ADR-0002` / `D-ARCH-016` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Partial PASS evidence now covers strict TypeScript, runtime validation, protected command, raw-byte webhook verification, client/server import isolation, separate-process replay, gym-time behavior, and correlation. Still missing authorized decision owner, explicit approval, real PostgreSQL transaction-heavy evidence, final repository topology validation, and production provider/framework evidence. No canonical team/deployment/performance evidence currently overturns the TypeScript/Node.js recommendation. |
 | `ADR-0003` / `D-ARCH-001` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Partial PASS evidence now covers separate client/request/worker builds, forbidden-import detection, cycle detection, shared contract, and request/worker reuse. Still missing authorized decision owner, explicit approval, an actual eventual workspace/package graph, CI-integrated architecture rules, and measured repository/CI baseline. |
-| `ADR-0004` / `D-ARCH-002` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | PostgreSQL-specific evidence remains `NOT RUN`: no real concurrency/idempotency, rollback, tenant-scoped SQL, aggregate/history query, backup/restore, or pooling/restart proof. PostgreSQL/Docker tooling was unavailable in the validation environment. Authorized decision owner, explicit approval, and approved regional/hosting constraints also remain missing. `D-DATA-007` blocks final Member/Membership schema semantics but does **not** by itself block database-engine review. |
+| `ADR-0004` / `D-ARCH-002` | PROPOSED | Yes | **Remain Proposed — PostgreSQL action BLOCKED** | Fresh Real PostgreSQL Foundation Validation was environment-gated and `NOT RUN`: no PostgreSQL server/client tools, no local 5432 server/socket, no Docker/Podman/nerdctl, no apt PostgreSQL candidate, and no DNS/package-repository access. No substitute DB or cloud resource was used. Concurrency/idempotency, rollback, tenant-scoped SQL, relational query, migration, backup/restore, and connection/restart evidence remain missing. Authorized decision owner and external regional/recovery evidence also remain missing. `D-DATA-007` blocks final Member/Membership schema semantics but not database-engine review itself. |
 
 Executed validation evidence is recorded in:
 
@@ -525,11 +525,25 @@ validation/foundation/EVIDENCE.md
 
 ADR-0001 through ADR-0003 now have partial supporting technical evidence. ADR-0004 still lacks its required real-PostgreSQL evidence because the available execution sandbox has no PostgreSQL/container tooling and cannot reach package repositories.
 
-The next bounded technical evidence action is **real PostgreSQL foundation validation in an approved isolated environment**, covering concurrency/idempotency, rollback, tenant-scoped SQL, relational query behavior, backup/restore, and connection/restart recovery. File-backed validation, SQLite, mocks, or documentation inference are not substitutes.
+The Real PostgreSQL Foundation Validation action was freshly attempted and is **BLOCKED** by the execution environment. Stage 3 and Stage 6 remain `NOT RUN`.
 
-No potentially billable external CI/cloud environment is provisioned automatically.
+Exact environment blocker:
 
-After the missing PostgreSQL evidence is collected, prepare the human decision-owner review packet. No ADR may move to `Accepted` and no canonical decision may move to `DECIDED` without explicit authorized approval.
+```text
+PostgreSQL server/client executables unavailable
+no local 5432 listener/socket
+Docker / Podman / nerdctl unavailable
+PostgreSQL server/client packages absent
+libpq 17.10 libraries only
+apt PostgreSQL candidate unavailable
+DNS/package-repository access unavailable
+```
+
+No SQLite/file/mock substitute and no external managed database/cloud resource was used.
+
+The next bounded prerequisite is to **obtain/authorize an isolated real PostgreSQL validation environment**. Only after Stage 3/Stage 6 technical evidence is sufficiently complete should the human Foundation Decision-Owner Review Packet be prepared.
+
+No ADR may move to `Accepted` and no canonical decision may move to `DECIDED` without explicit authorized approval.
 
 For `ADR-0026` specifically, later acceptance review must cover the proposed Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived policy, import/reporting terminology, attendance/no-show/authorization interaction, and historical migration strategy.
 
