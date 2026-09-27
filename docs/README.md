@@ -245,6 +245,7 @@ docs/adr/ADR-0013-member-client-strategy.md               Proposed   D-ARCH-013
 docs/adr/ADR-0014-api-deployment-boundary.md              Proposed   D-ARCH-006
 docs/adr/ADR-0015-background-jobs-scheduler.md             Proposed   D-ARCH-007
 docs/adr/ADR-0016-hosting-deployment-platform.md            Proposed   D-ARCH-009
+docs/adr/ADR-0017-ci-cd-release-secrets.md                  Proposed   D-ARCH-019
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -279,11 +280,13 @@ docs/adr/ADR-0016-hosting-deployment-platform.md            Proposed   D-ARCH-00
 
 `ADR-0016` proposes a conventional regional managed service/worker PaaS as the Phase 1 hosting category: a stateless public request service plus a separately deployable non-public-by-default Background Worker, both near canonical persistence and independently scalable. Render is the leading current provider candidate only if jurisdiction/privacy, region/locality, DB connectivity, runtime, worker, webhook, secret, migration, rollback, and load gates pass. Its current documented service-region set includes Singapore but not India, so `D-SEC-001` may materially change the provider direction. Google Cloud Run and Fly.io remain serious region-flexible alternatives; Vercel plus a separate worker remains a credible web-led split. No provider or production region is accepted. Canonical `D-ARCH-009` remains `OPEN`.
 
+`ADR-0017` proposes the Phase 1 CI/CD, production-release, artifact-provenance, environment-promotion, migration-gate, and secrets architecture. It keeps GitHub Actions as the leading orchestration candidate only, requires protected PR/required checks, traceable source/build/deployment identity, environment-aware promotion, least-privilege CI credentials, OIDC/federated deployment identity where supported, isolation of production secrets from PR/preview contexts, separate runtime and migration credentials where practical, one controlled production migration action, compatible web/worker rollout, post-deploy verification, and explicit rollback-versus-forward-fix handling. No CI vendor, workflow, GitHub environment, secret, artifact, deployment, hosting provider, or production credential is accepted or created. Canonical `D-ARCH-019` remains `OPEN`.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first sixteen ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first seventeen ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -550,27 +553,62 @@ The request runtime remains stateless/disposable. The worker remains a separate 
 
 No cloud account/project/service, environment, DNS/TLS record, Dockerfile, deployment manifest, IaC, database, queue, Redis instance, migration, CI workflow, production secret, or monitoring integration was created by Task 0024.
 
+### CI/CD / production release / secrets proposal
+
+`ADR-0017` now defines the Proposed CI/CD/release/secrets direction under `D-ARCH-019` without accepting a CI vendor.
+
+Current proposal:
+
+```text
+source revision
+-> required CI gates
+-> traceable build/artifact identity
+-> controlled environment promotion
+-> one controlled migration action
+-> coordinated web/worker deployment
+-> post-deploy smoke/observation
+-> rollback where safe / forward-fix where rollback is unsafe
+```
+
+Security posture:
+
+```text
+untrusted PR/preview
+!=
+production trust
+
+least-privilege CI credentials
++
+OIDC/federated deployment identity where supported
++
+environment-scoped secrets
++
+runtime DB credential != migration DB credential where practical
+```
+
+GitHub Actions remains the leading candidate only. No `.github/workflows`, GitHub environment, repository/environment secret, OIDC trust, production credential, release artifact, migration execution, deployment, or hosting-provider acceptance was created by Task 0025.
+
 The exact next bounded governance task from the synchronized ADR dependency queue is now:
 
 ```text
-Task 0025: Draft CI/CD + Production Release / Secrets ADR
+Task 0026: Draft Core Automated Testing Toolchain ADR
 ```
 
 Primary decision:
 
 ```text
-D-ARCH-019
+D-ARCH-018
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0017-ci-cd-release-secrets.md
+docs/adr/ADR-0018-testing-toolchain.md
 ```
 
-That next task should define production build/test gates, controlled promotion, artifact/version provenance, environment and secret ownership, migration sequencing, release smoke tests, rollback/forward-fix, branch/review protections, and hosting integration without creating CI workflows or production secrets.
+That next task should evaluate deterministic domain/application tests, real-database integration, authorization and tenant-isolation negative tests, API contract tests, provider-adapter tests, worker/job tests, browser E2E, test data/isolation, and CI test layering. Exact tools such as Vitest, Playwright, and Testcontainers remain unaccepted until that ADR is executed.
 
-Do not create ADR-0017 or release infrastructure as part of Task 0024.
+Do not create ADR-0018 or execute Task 0026 as part of Task 0025 synchronization.
 
 ## Legacy Migration State
 
@@ -595,7 +633,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting recommendations remain evidence only. ADR-0012 through ADR-0016 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, nor Cloud Run is accepted merely because current evaluation recommends or compares them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI recommendations remain evidence only. ADR-0012 through ADR-0017 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, nor GitHub Actions is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
