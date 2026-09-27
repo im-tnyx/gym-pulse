@@ -484,13 +484,30 @@ These remain separate decisions or evidence gaps:
 - The current component architecture already separates domain/application contracts from transport, provider, database, and job-runner-specific objects, which limits runtime lock-in.
 - Current candidate Owner/Staff and Member technology directions are TypeScript-oriented, increasing the value of one primary application language without making those framework decisions accepted.
 
-### Missing acceptance evidence
+### Acceptance-readiness evidence update — 2026-09-27
 
-- Authorized decision owner is not identified.
-- No explicit approval record exists.
-- No representative implementation spike has yet proven strict TS boundaries, raw webhook handling, real transaction behavior, worker retry behavior, or client/server import isolation in the final repository topology.
-- No production benchmark or deployment constraint has been collected that compares Node.js with JVM, Go, or Python for GymPulse's actual workload.
-- No canonical team-capability evidence is recorded that materially changes the tradeoff.
+The validation-only harness at `../../validation/foundation/` now provides partial runtime evidence using Node.js `v22.16.0` and TypeScript compiler `5.8.3` as **validation-only versions**:
+
+- strict TypeScript compilation passes for separate client/request/worker validation artifacts;
+- malformed external input is rejected by runtime validation;
+- one protected command exercises Principal -> tenant/branch/capability -> eligibility -> application -> persistence-port flow;
+- a deliberate client-safe -> server-only import violation is detected;
+- raw webhook bytes are HMAC-verified before parsing, and byte tampering is rejected;
+- request and worker adapters reuse the same application/domain behavior;
+- replay after a separate Node process returns the prior effective result from validation-only durable state;
+- gym-timezone boundary logic is deterministic;
+- correlation IDs are propagated through the representative request/worker paths.
+
+These results support runtime feasibility but do not accept these exact versions.
+
+Remaining acceptance gaps include:
+
+- authorized decision owner is not identified;
+- no explicit approval record exists;
+- no real PostgreSQL transaction-heavy path has been executed in the current environment;
+- the validation harness is not the final repository/workspace topology;
+- production provider/framework integration remains unproven;
+- no production benchmark/deployment constraint or canonical team-capability evidence has been recorded that materially changes the tradeoff.
 
 Therefore this ADR remains `Proposed`.
 
