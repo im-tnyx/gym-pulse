@@ -49,6 +49,7 @@ ADR-0022  D-PROVIDER-001 Payment Provider / Integration Strategy           Propo
 ADR-0023  D-PROVIDER-002 Messaging Provider / Notification Delivery Strategy Proposed
 ADR-0024  D-PROVIDER-005 Product Analytics Provider / Instrumentation Strategy       Proposed
 ADR-0025  D-ARCH-008     Redis / Cache / Ephemeral Coordination Requirement           Proposed
+ADR-0026  D-DATA-007     Member / Membership State Ownership                          Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -2705,84 +2706,503 @@ deployment
 
 No prior ADR is Accepted.
 
-## Last Completed Task
 
-0033-draft-redis-cache-requirement-adr
+## Current Member / Membership State-Ownership Proposal
+
+ADR-0026 now exists as Proposed; canonical D-DATA-007 remains P1 PROPOSED / unresolved.
+
+Task 0034 resolves the state-ownership conflict at proposal level only.
+
+### Current conflict
 
 ~~~text
-ADR-0025 Status: Proposed
-D-ARCH-008 canonical status: P2 OPEN
-Phase 1 Redis baseline: no
-Phase 1 Valkey baseline: no
-Required-now shared ephemeral use: none
-Read cache: measure first
-Authorization cache: no distributed baseline
-Session store: separately governed
-Rate limiting: capability required where applicable; Redis not assumed
-Jobs: ADR-0015 remains independent
-Distributed locks: not canonical correctness authority
-Pub/Sub/realtime: not required
-No Redis/cache implementation
+Member.status
+Active / Paused / Expired / Cancelled / Blocked
+
+Membership.status
+Pending / Active / Frozen / Expired / Cancelled
+~~~
+
+The overlap creates duplicate ownership for Active, pause/freeze, expiry and cancellation semantics.
+
+### Proposed domain ownership
+
+~~~text
+Member
+=
+stable tenant-scoped member relationship / operational record
++
+independent administrative/relationship state
+
+Membership
+=
+time-bounded commercial entitlement
+~~~
+
+A Member may exist before, during and after any one Membership period.
+
+Multiple historical Membership periods remain reconstructable.
+
+### Proposed entitlement owner
+
+~~~text
+Membership
+~~~
+
+Membership owns:
+
+~~~text
+Pending
+Active
+Frozen
+Expired
+Cancelled
+
+start/expiry period context
+freeze/pause
+attendance entitlement
+standard no-show Membership eligibility
+renewal-window context
+verified renewal Membership effect
+~~~
+
+### Proposed Member-state meaning
+
+Member state becomes a separate administrative/relationship axis.
+
+Leading candidate:
+
+~~~text
+Enabled
+Blocked
+Archived
+~~~
+
+Enabled means the Member record/relationship may participate in ordinary workflows subject to independent authorization/business eligibility.
+
+Enabled does not imply an Active Membership.
+
+Blocked is an independent administrative/member restriction, not Membership expiry/freeze/cancellation and not automatically an AuthIdentity disable.
+
+Archived means the Member relationship/record is inactive in normal operations while required history remains retained.
+
+Archived is not deletion.
+
+### Why Member Active is not recommended
+
+~~~text
+Member Active
+vs
+Membership Active
+~~~
+
+creates avoidable ambiguity.
+
+Enabled is preferred because it does not imply paid/current entitlement.
+
+### No mirrored lifecycle
+
+Reject:
+
+~~~text
+Membership Expired
+-> Member Expired
+
+Membership Frozen
+-> Member Paused
+
+Membership Active
+-> Member Active
+
+Membership Cancelled
+-> Member Cancelled
+~~~
+
+unless a separately approved Member relationship transition independently occurs.
+
+### Authentication boundary
+
+Preserve:
+
+~~~text
+AuthIdentity / Principal
+!=
+Member
+!=
+Membership
+~~~
+
+Therefore:
+
+~~~text
+Membership Expired
+!=
+AuthIdentity Deleted
+
+Member Blocked
+!=
+AuthIdentity Disabled
+
+Member Archived
+!=
+Auth Provider Account Deleted
+~~~
+
+D-ARCH-004 / D-SEC-004 remain separate.
+
+### Attendance impact
+
+Conceptual lifecycle/security gate:
+
+~~~text
+verified Member identity / Member-self
++
+Member administrative eligibility
++
+relevant Membership entitlement
++
+branch/context rules
++
+duplicate policy
+=
+attendance eligibility
+~~~
+
+Do not use Member Active as entitlement truth.
+
+Representative combinations:
+
+~~~text
+Enabled + Active Membership
+-> lifecycle gate may pass
+
+Enabled + Frozen Membership
+-> not entitled during approved freeze
+
+Enabled + Expired Membership
+-> not entitled; renewal/history may remain
+
+Enabled + no current Membership
+-> no current entitlement
+
+Blocked + Active Membership
+-> commercial entitlement remains;
+   administrative restriction is independent
+~~~
+
+### Retention / no-show impact
+
+FR-RETENTION-003 already excludes relevant Memberships that are frozen/paused, expired or cancelled.
+
+Standard population conceptually uses:
+
+~~~text
+Member
++
+eligible relevant Membership
++
+last valid Attendance
++
+separate Member administrative exclusion if later approved
+~~~
+
+Return Attendance does not imply a Member pause/active transition.
+
+### Renewal impact
+
+FR-RENEWAL-001 uses Memberships entering renewal windows.
+
+Preserve:
+
+~~~text
+Renewal eligibility
+-> Membership
+~~~
+
+Enabled + Expired Membership is a normal representable renewal/history/re-engagement scenario.
+
+D-BIZ-010 early-renewal effective-date policy remains OPEN.
+
+Extend-existing-vs-create-new Membership period remains separately unresolved where applicable.
+
+### Payment impact
+
+FR-PAYMENT-006:
+
+~~~text
+verified successful renewal payment
+-> intended Membership effect exactly once
+~~~
+
+No mirrored Member Active/Expired effect is proposed.
+
+D-BIZ-011 cancellation/refund remains OPEN.
+
+### Blocked policy
+
+Blocked is defined only as an independent administrative fact.
+
+Exact consequences remain Open, including whether it affects:
+
+~~~text
+attendance
+self-service
+renewal initiation
+selected staff operations
+~~~
+
+Do not invent those consequences.
+
+### Import impact
+
+One source status is never copied automatically into both Member and Membership.
+
+Guidance:
+
+~~~text
+Expired
+-> likely Membership evidence
+
+Paused / Frozen
+-> possible Membership freeze evidence
+
+Blocked
+-> possible Member administrative evidence
+
+Cancelled
+-> ambiguous; reconcile meaning
+
+Inactive
+-> ambiguous; reconcile meaning
+
+missing / ambiguous
+-> reconciliation
+~~~
+
+Do not fabricate semantics.
+
+### Reporting / read-model impact
+
+Future purposeful representations should distinguish:
+
+~~~text
+memberState
+membershipState
+membershipExpiry
+freezeContext
+~~~
+
+Member search should not rely on ambiguous status=Active.
+
+Member 360/read models may combine both axes but remain non-authoritative for writes.
+
+Active Members requires explicit metric definition:
+
+~~~text
+Members with Active Membership
+vs
+Administratively Enabled Members
+~~~
+
+### Data-quality impact
+
+Valid independent combinations may include:
+
+~~~text
+Enabled + Active Membership
+Enabled + Frozen Membership
+Enabled + Expired Membership
+Enabled + no current Membership
+Blocked + Active Membership
+historical Cancelled Membership + later Active Membership
+~~~
+
+Potential review cases include Archived + current Active Membership, multiple applicable Active Memberships and state/date mismatches.
+
+Exact constraints remain unfinalized.
+
+### Proposed FR-MEMBER-004 follow-up if accepted
+
+Current canonical FR-MEMBER-004 remains unchanged.
+
+If ADR-0026 is explicitly accepted, proposed replacement should make Member status an independent administrative/relationship state and use:
+
+~~~text
+Enabled
+Blocked
+Archived
+~~~
+
+with explicit rules:
+
+~~~text
+Enabled != Active Membership
+Blocked = independent administrative restriction
+Archived != deletion
+Member state must not duplicate Membership entitlement
+~~~
+
+The exact proposed replacement wording is recorded in ADR-0026 and Task 0034 continuity.
+
+### Schema follow-up if accepted
+
+Acceptance would unblock a later data-model/schema task for:
+
+~~~text
+Member 1 -> N Memberships
+state representation
+dates
+tenant ownership
+relevant/current Membership resolution
+constraints
+indexes
+import migration
+historical mapping
+DTOs
+state transitions
+tests
+~~~
+
+Task 0034 creates none of this.
+
+### Security findings
+
+Preserve:
+
+~~~text
+Member Blocked != AuthIdentity Disabled
+Membership Active != Authorization Allowed
+Membership Expired != Authentication Revoked
+~~~
+
+Authorization remains Principal + scope + capability/self + business eligibility.
+
+### Privacy findings
+
+Preserve:
+
+~~~text
+Member Archived != Data Subject Deletion Complete
+~~~
+
+D-SEC-005 deletion/export remains OPEN.
+
+D-SEC-006 retention remains OPEN.
+
+### Business policies kept separate
+
+~~~text
+D-BIZ-005 freeze reasons                    OPEN
+D-BIZ-006 freeze approval                   OPEN
+D-BIZ-007 freeze expiry extension           OPEN
+D-BIZ-010 early renewal period start        OPEN
+D-BIZ-011 cancellation/refund               OPEN
+~~~
+
+### Validation before acceptance
+
+Future review/implementation must prove at least the 26 examples recorded in ADR-0026, including:
+
+- Enabled + Active/Frozen/Expired/no Membership;
+- Blocked + Active Membership;
+- historical cancelled then later active Membership;
+- Membership expiry preserves Member identity/history;
+- no-show/attendance/renewal use Membership;
+- renewal effect changes Membership once;
+- follow-up Cancelled remains separate;
+- import mappings do not duplicate state;
+- API/search/reporting distinguish both axes;
+- AuthIdentity remains separate;
+- historical records remain reconstructable.
+
+Task 0034 created no tests.
+
+Task 0034 created no:
+
+~~~text
+Member table
+Membership table
+enum/type
+ORM model
+database migration
+CHECK constraint
+index
+trigger
+RLS policy
+API endpoint
+DTO implementation
+domain/state-machine code
+import mapper
+test implementation
+UI status badge
+production-data change
+FR-MEMBER-004 canonical change
+assumptions.md canonical status change
+~~~
+
+No prior ADR is Accepted.
+
+## Last Completed Task
+
+0034-resolve-member-membership-state-ownership-adr
+
+~~~text
+ADR-0026 Status: Proposed
+D-DATA-007 canonical status: P1 PROPOSED / unresolved
+
+Entitlement owner:
+Membership
+
+Member-state meaning:
+administrative / relationship state
+
+Leading Member-state candidate:
+Enabled / Blocked / Archived
+
+Membership states:
+Pending / Active / Frozen / Expired / Cancelled
+
+FR-MEMBER-004:
+unchanged
+
+schema/migrations/code:
+not created
+
+production behavior:
+unchanged
 ~~~
 
 ## Current Task
 
 None in progress.
 
-## Next Task
+## Next Governance Action
 
-Post-Task-0033 synchronization confirms the next bounded governance task as:
+The existing numbered ADR backlog is complete through order 26.
 
-~~~text
-Task 0034: Resolve / Draft Member vs Membership State Ownership ADR
-Primary decision: D-DATA-007
-Canonical status: P1 PROPOSED / unresolved
-Target ADR filename/number: confirm from fresh latest-main audit before execution
-~~~
+Do not invent Task 0035.
 
-The next task should resolve the existing overlap:
+A fresh synchronized governance audit is required to choose the next bounded action from repository evidence.
+
+Candidate categories only:
 
 ~~~text
-Member.status:
-Active / Paused / Expired / Cancelled / Blocked
-
-Membership.status:
-Pending / Active / Frozen / Expired / Cancelled
+decision review / acceptance preparation
+canonical requirement synchronization after approval
+business/security blocker resolution
+data-model/schema phase
+another governance phase
 ~~~
 
-without treating the current D-DATA-007 proposal as already accepted.
-
-It must review FR-MEMBER-004 and Membership lifecycle requirements before finalizing any domain/schema state machine, entitlement query, import mapping, authorization distinction, retention rule, or migration constraint.
-
-Do not modify FR-MEMBER-004, finalize schema/migrations, or promote D-DATA-007 to DECIDED without explicit authorized approval.
+The actual next action must be recorded after re-reading synchronized governance files.
 
 ## Files To Read Next
 
 ~~~text
-.ai/README.md
-.ai/current-state.md
-.ai/task/0033-draft-redis-cache-requirement-adr.md
-docs/README.md
-docs/00-overview/assumptions.md
-docs/01-product/functional-requirements.md
-docs/01-product/non-functional-requirements.md
-docs/01-product/product-requirements.md
-docs/01-product/user-journeys.md
-docs/02-architecture/architecture-principles.md
-docs/02-architecture/architecture-overview.md
-docs/02-architecture/system-context.md
-docs/02-architecture/container-architecture.md
-docs/02-architecture/component-architecture.md
-docs/02-architecture/data-flow.md
-docs/02-architecture/technology-stack.md
 docs/adr/README.md
-docs/adr/ADR-0001-modular-monolith.md
-docs/adr/ADR-0004-database-engine.md
-docs/adr/ADR-0005-data-access-migration-strategy.md
-docs/adr/ADR-0008-member-authentication-method.md
-docs/adr/ADR-0009-authorization-implementation.md
-docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md
-docs/adr/ADR-0025-redis-cache-requirement.md
-legacy migration source: docs/06-database-schema.md
-legacy migration source: docs/16-open-decisions.md
+docs/00-overview/assumptions.md
+docs/README.md
+.ai/current-state.md
+docs/adr/ADR-0026-member-membership-state-ownership.md
+docs/01-product/functional-requirements.md
 ~~~
