@@ -44,6 +44,7 @@ ADR-0017  D-ARCH-019  CI/CD / production release / secrets        Proposed
 ADR-0018  D-ARCH-018  Core automated testing toolchain              Proposed
 ADR-0019  D-ARCH-011  Package manager                                Proposed
 ADR-0020  D-PROVIDER-006 Observability provider                          Proposed
+ADR-0021  D-ARCH-010  Object Storage / Protected File Access              Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -1265,20 +1266,149 @@ CI workflow
 
 No observability provider is Accepted or provisioned.
 
-## Last Completed Task
 
-`0028-draft-observability-provider-adr`
+## Current Object Storage / Protected File Access Proposal
+
+`ADR-0021` now exists as `Proposed`; canonical `D-ARCH-010` remains `P1 OPEN`.
+
+Task 0029 first tested whether current Phase 1 scope actually requires persistent binary/object storage.
+
+### Confirmed artifact requirement assessment
 
 ```text
-ADR-0020 Status: Proposed
-D-PROVIDER-006 canonical status: P1 OPEN
-Grafana Cloud: leading proposal only
-OpenTelemetry server traces/metrics: proposed portable direction
-Browser telemetry: optional/privacy-gated
-No observability implementation
+stable receipt business record             confirmed/conditional
+persisted receipt PDF                      not required
+controlled member import                   confirmed
+indefinite raw import-file retention       not required
+protected export capability                anticipated/possible
+long-lived persisted export artifact       not required
+general member/staff uploads               not required
+profile/media/document upload platform     future/not required
 ```
 
-The observability direction is not accepted or implemented merely because ADR-0020 exists.
+Current decision outcome:
+
+```text
+Phase 1 does not currently justify persistent object storage as a baseline dependency.
+```
+
+### Receipt artifact posture
+
+`FR-RECEIPT-001..002` establish receipt record/truth but do not establish a stored PDF requirement.
+
+Preferred current flow:
+
+```text
+canonical Payment / Receipt data
+-> authorized request
+-> generate representation on demand
+-> stream/download
+```
+
+If persistence becomes necessary later, the PDF remains a derived/regenerable artifact. A storage failure never invalidates a canonical successful payment.
+
+### Export artifact posture
+
+`export.create` plus `NFR-PRIVACY-003` requires scoped authorization and auditability.
+
+Preferred order:
+
+```text
+direct stream
+-> on-demand generation
+-> short-lived private artifact when asynchronous download is justified
+-> long-term persistence only with explicit requirement evidence
+```
+
+### Controlled import posture
+
+`FR-IMPORT-001..002` confirms controlled member import, not long-term raw-file storage.
+
+```text
+bounded untrusted source
+-> validate / parse
+-> preview / reconcile
+-> authorized controlled write
+-> retain required canonical/audit metadata
+-> discard temporary raw source according to policy
+```
+
+### Conditional future protected-storage model
+
+If a persisted-artifact requirement is later approved:
+
+```text
+private managed object storage
++
+narrow provider-neutral ProtectedObjectStore
++
+canonical object ownership metadata
++
+opaque non-PII keys
++
+server authorization
++
+short-lived signed/presigned access
++
+explicit artifact-class retention/deletion
++
+D-SEC-001 region gate
++
+provider-exit/checksum/bulk-transfer validation
+```
+
+Key boundaries:
+
+```text
+Object Storage != Canonical Business Database
+Signed URL != Authorization Decision
+Storage Policy != Complete Authorization System
+Object Key / Tenant Prefix != Authorization
+Provider Durability != Complete Backup/Recovery
+```
+
+Current provider research covered AWS S3, Cloudflare R2, Google Cloud Storage, and Supabase Storage. None is accepted.
+
+`D-SEC-001`, `D-SEC-005`, and `D-SEC-006` remain separate open gates for residency, deletion/export authority, and retention.
+
+Task 0029 created no:
+
+```text
+storage bucket/account
+IAM/storage credential
+storage SDK/client
+upload route
+download route
+signed URL implementation
+receipt PDF
+export job
+file generator
+database schema/migration
+worker
+lifecycle rule
+versioning/replication config
+CDN config
+Terraform/Pulumi/cloud config
+file upload
+CI workflow
+```
+
+No prior ADR is Accepted.
+
+## Last Completed Task
+
+`0029-draft-object-storage-adr`
+
+```text
+ADR-0021 Status: Proposed
+D-ARCH-010 canonical status: P1 OPEN
+Persistent object storage: deferred
+Receipt PDF persistence: not required by current canonical evidence
+Export artifact persistence: not required by current canonical evidence
+Controlled import: no indefinite raw-file retention requirement
+Provider selected: none
+No object-storage implementation
+```
 
 ## Current Task
 
@@ -1286,58 +1416,49 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0028 synchronization of the ADR index, canonical register, documentation index, and current state confirms the next bounded governance task as:
+Post-Task-0029 synchronization confirms the next bounded governance task as:
 
 ```text
-Task 0029: Draft Object Storage ADR
+Task 0030: Draft Payment Provider ADR
+Primary decision: D-PROVIDER-001
+Canonical status: P1 OPEN
+Target ADR filename/number: confirm from fresh latest-main audit before execution
 ```
 
-Primary canonical decision:
+The next task should verify current pilot payment-method requirements and evaluate bounded serious payment-provider candidates for:
 
 ```text
-D-ARCH-010
+India/launch-market applicability
+checkout/payment initiation
+server-side verification
+webhook authenticity
+idempotency/replay handling
+refund/reversal semantics
+reconciliation
+settlement
+payment-method coverage
+fees/cost
+sandbox/testing
+operational support
+security/privacy
+provider abstraction
+migration/exit
 ```
 
-Target:
-
-```text
-docs/adr/ADR-0021-object-storage.md
-```
-
-Initial ADR status should be `Proposed`. Canonical `D-ARCH-010` remains `P1 OPEN` unless explicit review/approval changes it.
-
-The next task should first verify whether Phase 1 has a concrete object-storage requirement. If required, evaluate:
-
-```text
-private-by-default object access
-tenant/resource authorization
-receipt/export/protected-file use cases
-object key + metadata boundaries
-upload/download validation
-content type / size limits
-malware/file-safety controls where uploads exist
-encryption
-signed/authorized retrieval
-retention + deletion
-backup/durability assumptions
-region/data residency
-cost
-hosting independence
-provider portability
-```
-
-Do not provision a bucket/provider, create storage credentials, upload production data, or silently accept a storage vendor during the ADR-only task.
+Do not open a payment-provider account, create credentials, install an SDK, implement checkout/webhooks, or silently accept a provider during the ADR-only task.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0028-draft-observability-provider-adr.md
+.ai/task/0029-draft-object-storage-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
+docs/01-product/user-roles.md
+docs/01-product/user-journeys.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
 docs/02-architecture/container-architecture.md
@@ -1346,10 +1467,13 @@ docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
 docs/adr/ADR-0006-managed-backend-responsibilities.md
-docs/adr/ADR-0014-api-deployment-boundary.md
-docs/adr/ADR-0016-hosting-deployment-platform.md
+docs/adr/ADR-0011-api-contract-architecture.md
+docs/adr/ADR-0015-background-jobs-scheduler.md
 docs/adr/ADR-0017-ci-cd-release-secrets.md
+docs/adr/ADR-0018-testing-toolchain.md
 docs/adr/ADR-0020-observability-provider.md
+docs/adr/ADR-0021-object-storage.md
+legacy migration source: docs/09-payments-billing.md
 legacy migration source: docs/12-security-audit.md
 legacy migration source: docs/16-open-decisions.md
 ```
