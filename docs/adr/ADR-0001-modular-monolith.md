@@ -539,11 +539,30 @@ This ADR does not require these questions to be resolved before review, but they
 - Current data flows repeatedly depend on local transactional correctness, explicit idempotency layers, and provider-boundary reconciliation.
 - Current technology evaluation rates the modular-monolith direction as high-confidence but explicitly leaves `D-ARCH-005` `PROPOSED` pending ADR/decision-owner approval.
 
-### Missing acceptance evidence
+### Acceptance-readiness evidence update — 2026-09-27
 
-- Authorized decision owner is not identified in canonical evidence.
-- No explicit approval record exists.
-- No implementation/scaffold validation has yet demonstrated module-boundary enforcement.
+The validation-only harness at `../../validation/foundation/` now provides partial non-production evidence for this ADR:
+
+- strict source-boundary checking reports no violations in the validation source;
+- a deliberate client-to-server forbidden import is detected;
+- deliberate dependency-cycle fixtures are detected;
+- request and worker adapters reuse the same application `checkIn` behavior;
+- cross-tenant, cross-branch, and capability negative paths pass;
+- malformed external input is rejected before application/domain execution;
+- request replay and worker replay return one effective attendance result using validation-only durable state;
+- gym-local date behavior is tested across a UTC -> `Asia/Kolkata` date boundary;
+- correlation identifiers survive request/worker adapter paths.
+
+This is supporting evidence, not production implementation and not approval.
+
+Remaining acceptance gaps include:
+
+- authorized decision owner is not identified in canonical evidence;
+- no explicit approval record exists;
+- real database concurrency/transaction evidence is still missing;
+- the narrow harness does not yet prove broader multi-domain direct-write prevention in a production-scale module graph;
+- provider-event/business-effect evidence is validation-only and does not yet prove the full payment-domain effect path;
+- production module-aware observability remains separately governed.
 
 Therefore this ADR remains `Proposed`.
 
