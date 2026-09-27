@@ -852,26 +852,62 @@ unchanged
 
 ## Next Recommended Task
 
-D-DATA-007 is currently the final numbered item in the existing ADR dependency queue.
+The existing numbered ADR dependency queue is complete through order 26.
 
 Do not invent Task 0035.
 
-After Task 0034 governance synchronization, fresh-read:
+Fresh post-synchronization review of:
 
 - docs/adr/README.md
 - docs/00-overview/assumptions.md
 - docs/README.md
 - .ai/current-state.md
 
-Then record only the actual next bounded governance action proven by synchronized repository state.
+identifies the next bounded governance action as:
 
-Possible categories include:
+~~~text
+Architecture Decision Review / Acceptance Readiness
+~~~
 
-- missing ADR;
-- decision-acceptance/review batch;
-- canonical requirement synchronization after approval;
-- business/security blocker;
-- data-model/schema phase;
-- another governance phase.
+No new task number is assigned by Task 0034.
 
-Do not execute that next action as part of Task 0034.
+Begin with the existing first foundation review batch:
+
+~~~text
+ADR-0001  Phase 1 architecture style
+ADR-0002  Primary language/runtime
+ADR-0003  Repository/workspace strategy
+ADR-0004  Canonical database engine
+~~~
+
+For each ADR, confirm decision owner and unresolved evidence and classify it as:
+
+~~~text
+ready for explicit approval
+blocked on product/security/business evidence
+or
+remain Proposed
+~~~
+
+Do not automatically Accept any ADR.
+
+Do not synchronize canonical decisions/requirements until explicit authorized approval exists.
+
+ADR-0026 / D-DATA-007 specifically requires review of:
+
+- Member administrative semantics;
+- Membership entitlement ownership;
+- proposed FR-MEMBER-004 replacement;
+- Blocked behavior;
+- Archived/relationship-end behavior;
+- renewal-after-expiry behavior;
+- import mapping;
+- reporting terminology;
+- attendance/no-show predicates;
+- authorization interaction;
+- historical migration strategy;
+- decision-owner approval.
+
+Only after explicit acceptance should FR-MEMBER-004 / assumptions synchronization and later Member/Membership schema work proceed.
+
+Do not execute this review/acceptance-readiness action as part of Task 0034.
