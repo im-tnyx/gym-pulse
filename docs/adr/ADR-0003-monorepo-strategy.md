@@ -689,13 +689,28 @@ Atomic source changes are not permission for runtime coupling. Stable applicatio
 - Current technology evaluation recommends an explicit monorepo because GymPulse frequently needs coordinated changes across clients, domain rules, contracts, jobs, provider adapters, tests, migrations, and documentation.
 - `ADR-0002` identifies client-safe/server-only separation as a material security requirement if source sharing is adopted.
 
-### Missing acceptance evidence
+### Acceptance-readiness evidence update — 2026-09-27
 
-- Authorized decision owner is not identified.
-- No explicit approval record exists.
-- No implementation/workspace spike has demonstrated dependency enforcement, client/server import isolation, independent artifact builds, cycle detection, or affected-test/build behavior.
-- No measured repository/CI baseline exists because application scaffolding has not begun.
-- No team/release/security constraint has been recorded that requires multiple repositories.
+The validation-only harness at `../../validation/foundation/` now provides partial repository-boundary evidence:
+
+- separate strict TypeScript builds exist for client, request, and worker validation artifacts;
+- client-safe/server-only boundary checking detects a deliberate forbidden import;
+- deliberate dependency cycles are detected;
+- request and worker entry artifacts reuse one shared application command;
+- one client-safe contract module is reused without importing server infrastructure;
+- scoped build commands demonstrate narrow affected-artifact compilation.
+
+This is not yet a production monorepo/workspace scaffold. The harness intentionally avoids accepting a package manager, workspace orchestrator, CI platform, or final app/package topology.
+
+Remaining acceptance gaps include:
+
+- authorized decision owner is not identified;
+- no explicit approval record exists;
+- no actual workspace/package graph using the eventual workspace mechanism has been validated;
+- no production-scale architecture dependency rule has been integrated into CI;
+- no measured repository/CI baseline exists because application scaffolding has not begun;
+- no team/release/security constraint has been recorded that requires multiple repositories;
+- final application/package placement still depends on separately governed runtime/framework/topology decisions.
 
 Therefore this ADR remains `Proposed` and `D-ARCH-001` remains `PROPOSED`.
 
