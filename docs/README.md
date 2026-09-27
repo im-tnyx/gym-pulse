@@ -248,6 +248,7 @@ docs/adr/ADR-0016-hosting-deployment-platform.md            Proposed   D-ARCH-00
 docs/adr/ADR-0017-ci-cd-release-secrets.md                  Proposed   D-ARCH-019
 docs/adr/ADR-0018-testing-toolchain.md                       Proposed   D-ARCH-018
 docs/adr/ADR-0019-package-manager.md                           Proposed   D-ARCH-011
+docs/adr/ADR-0020-observability-provider.md                      Proposed   D-PROVIDER-006
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -288,11 +289,13 @@ docs/adr/ADR-0019-package-manager.md                           Proposed   D-ARCH
 
 `ADR-0019` proposes `pnpm` as the leading package-manager direction for the proposed multi-package repository. It requires one committed root lockfile, explicit workspace dependencies, `workspace:` references where local-only package resolution is intended, frozen CI/release installation, declared-dependency isolation, package-manager version pinning, and reviewed/restricted dependency build scripts. `npm` remains the conservative fallback; `Yarn` and `Bun` remain credible alternatives. No package manager, lockfile, workspace config, dependency, Turborepo setup, Node.js runtime, or CI workflow is accepted or created. Canonical `D-ARCH-011` remains `P1 ASSUMED`.
 
+`ADR-0020` proposes Grafana Cloud as the leading managed observability provider while canonical `D-PROVIDER-006` remains `P1 OPEN`. It preserves GymPulse-owned structured telemetry semantics, privacy-safe logs, request/job/provider correlation, OpenTelemetry-compatible server traces/metrics, focused alerting, and optional privacy-reviewed frontend telemetry. Observability remains diagnostic rather than canonical business/audit truth, and telemetry exporter failure must not block business operations. No provider account, region, SDK, credential, dashboard, alert, SLO, session replay, collector, or production telemetry is accepted or created.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first nineteen ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -652,7 +655,43 @@ package-manager version pinning
 
 No package manager, lockfile, workspace file, dependency, package-manager config, CI workflow, or cache configuration was created by Task 0027.
 
-Post-Task-0027 synchronization confirms the next bounded governance task as **Task 0028: Draft Observability Provider ADR**, primary decision `D-PROVIDER-006`, target `docs/adr/ADR-0020-observability-provider.md`. Canonical `D-PROVIDER-006` remains `P1 OPEN`; Task 0028 must not silently select or provision an observability provider.
+### Observability provider proposal
+
+`ADR-0020` now defines the Proposed observability direction under `D-PROVIDER-006` without accepting or provisioning a provider.
+
+Current proposal:
+
+```text
+Grafana Cloud as leading managed provider
++
+GymPulse-owned structured telemetry semantics
++
+privacy-safe application / worker logs
++
+request / job / provider correlation
++
+OpenTelemetry server traces + metrics where mature/useful
++
+focused operational alerts
++
+optional privacy-reviewed Faro frontend telemetry
+```
+
+Key boundaries remain explicit:
+
+```text
+Observability != Audit Log
+Observability != Product Analytics
+OpenTelemetry != Observability Backend
+Correlation ID != Tenant Authority
+Telemetry Export Failure != Business Operation Failure
+```
+
+OpenTelemetry JavaScript server traces and metrics are the proposed portability path; OTel JS logs/browser instrumentation are not forced for uniformity. Browser monitoring remains optional and privacy-gated, with unrestricted session replay excluded from the Phase 1 baseline.
+
+No observability account/stack, SDK dependency, OpenTelemetry/Faro package, ingestion credential, dashboard, alert, SLO, session replay, log drain, Alloy/Collector process, telemetry pipeline, or production telemetry was created by Task 0028.
+
+Post-Task-0028 synchronization confirms the next bounded governance task as **Task 0029: Draft Object Storage ADR**, primary decision `D-ARCH-010`, target `docs/adr/ADR-0021-object-storage.md`. Canonical `D-ARCH-010` remains `P1 OPEN`; Task 0029 must first confirm the actual Phase 1 storage need and must not provision storage.
 
 ## Legacy Migration State
 
@@ -677,7 +716,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0019 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, nor Turborepo is accepted merely because current evaluation recommends or compares them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0020 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, nor Grafana Faro is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
