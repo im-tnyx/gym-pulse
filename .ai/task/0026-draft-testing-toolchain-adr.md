@@ -690,13 +690,23 @@ No D-ARCH-018 promotion to DECIDED
 
 ## Next Recommended Task
 
-After governance synchronization, fresh-read:
+Post-Task-0026 governance state was freshly re-read from:
 
 - `docs/adr/README.md`
 - `docs/00-overview/assumptions.md`
 - `docs/README.md`
 - `.ai/current-state.md`
 
-and record the actual next bounded task.
+The synchronized repository confirms the actual next bounded task as:
 
-The pre-task queue currently suggests `D-ARCH-011` Package Manager as order 19, but Task 0026 does not assume or execute Task 0027 until synchronization confirms the queue.
+```text
+Task 0027: Draft Package Manager ADR
+Primary decision: D-ARCH-011
+Target: docs/adr/ADR-0019-package-manager.md
+Initial ADR status: Proposed
+Canonical D-ARCH-011 status: P1 ASSUMED
+```
+
+The next task should evaluate pnpm and credible alternatives for lockfile determinism, workspace support, dependency isolation, CI/cache behavior, supply-chain/security controls, Node/runtime compatibility, developer ergonomics, migration cost, and reversibility while keeping Turborepo, Node.js, CI provider, and application frameworks separately governed.
+
+Task 0027 was not executed as part of Task 0026.
