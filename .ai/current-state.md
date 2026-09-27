@@ -1149,25 +1149,29 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0026 synchronization must fresh-read the ADR queue and canonical register before fixing the exact next bounded task.
-
-The current synchronized backlog places the next undrafted item at:
-
-```text
-Order 19
-D-ARCH-011
-Package manager
-Canonical status: ASSUMED
-```
-
-A likely next task is:
+Post-Task-0026 synchronization of the ADR index, canonical register, documentation index, and current state confirms the next bounded governance task as:
 
 ```text
 Task 0027: Draft Package Manager ADR
-Likely ADR number: ADR-0019
 ```
 
-The exact target filename will be confirmed during final Task 0026 queue synchronization.
+Primary canonical decision:
+
+```text
+D-ARCH-011
+```
+
+Target:
+
+```text
+docs/adr/ADR-0019-package-manager.md
+```
+
+Initial ADR status should be `Proposed`. Canonical `D-ARCH-011` remains `P1 ASSUMED` unless explicit review/approval changes it.
+
+The next task should evaluate the package-manager/workspace-installation baseline for the proposed monorepo, including lockfile determinism, workspace support, dependency isolation, CI/cache behavior, security/supply-chain controls, Node/runtime compatibility, developer ergonomics, migration cost, and reversibility. The legacy/current working assumption is pnpm workspaces, but pnpm must not become accepted merely because it is currently assumed/recommended.
+
+Keep Turborepo, Node.js, CI/CD provider, web/native frameworks, and application architecture separately governed.
 
 Do not execute Task 0027 as part of Task 0026.
 
@@ -1180,12 +1184,13 @@ Do not execute Task 0027 as part of Task 0026.
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/non-functional-requirements.md
+docs/02-architecture/architecture-principles.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
 docs/adr/ADR-0002-primary-language-runtime.md
 docs/adr/ADR-0003-monorepo-strategy.md
 docs/adr/ADR-0017-ci-cd-release-secrets.md
 docs/adr/ADR-0018-testing-toolchain.md
-legacy migration source: docs/13-testing-qa.md
 legacy migration source: docs/15-engineering-workflow.md
+legacy migration source: docs/16-open-decisions.md
 ```
