@@ -42,6 +42,7 @@ ADR-0015  D-ARCH-007  Background jobs / scheduler                Proposed
 ADR-0016  D-ARCH-009  Hosting / deployment platform               Proposed
 ADR-0017  D-ARCH-019  CI/CD / production release / secrets        Proposed
 ADR-0018  D-ARCH-018  Core automated testing toolchain              Proposed
+ADR-0019  D-ARCH-011  Package manager                                Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -1128,20 +1129,82 @@ No D-ARCH-018 promotion to DECIDED
 No previous ADR promotion to Accepted
 ```
 
-## Last Completed Task
 
-`0026-draft-testing-toolchain-adr`
+## Current Package Manager Proposal
+
+`ADR-0019` now exists as `Proposed`; canonical `D-ARCH-011` remains `P1 ASSUMED`.
+
+Task 0027 compared `pnpm`, `npm`, `Yarn`, and `Bun` using current official documentation.
+
+Current proposed direction:
 
 ```text
-ADR-0018 Status: Proposed
-D-ARCH-018 canonical status: PROPOSED
-Vitest: leading candidate only
-Testcontainers-style PostgreSQL orchestration: leading conditional candidate only
-Playwright: leading candidate only
-No testing implementation
+pnpm
++
+one committed root pnpm-lock.yaml
++
+pnpm workspace definition if the monorepo is accepted
++
+workspace: for intentional local package edges
++
+frozen CI/release install
++
+strict declared dependency posture
++
+package-manager version pinning
++
+reviewed/restricted dependency build scripts
 ```
 
-The testing direction is not accepted or implemented merely because ADR-0018 exists.
+Key boundaries:
+
+```text
+Package Manager != Repository Strategy
+Package Manager != Workspace Orchestrator
+Package Manager != Application Runtime
+Package Manager != CI Provider
+Lockfile != Supply-Chain Security
+Frozen Install != Dependency Approval
+```
+
+`npm` remains the conservative fallback. `Yarn` and `Bun` remain credible alternatives with different linker/configuration semantics.
+
+No package manager is Accepted or installed.
+
+Task 0027 created no:
+
+```text
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+package-lock.json
+yarn.lock
+bun.lock
+.npmrc
+.yarnrc.yml
+bunfig.toml
+node_modules
+package-manager dependency install
+CI workflow/cache
+Turborepo configuration
+```
+
+`D-ARCH-001`, `D-ARCH-016`, `D-ARCH-019`, `D-ARCH-018`, `D-ARCH-012`, `D-ARCH-013`, and `D-ARCH-009` remain independently governed.
+
+## Last Completed Task
+
+`0027-draft-package-manager-adr`
+
+```text
+ADR-0019 Status: Proposed
+D-ARCH-011 canonical status: P1 ASSUMED
+pnpm: leading proposal only
+npm: conservative fallback
+Yarn/Bun: evaluated alternatives
+No package-manager implementation
+```
+
+The package-manager direction is not accepted or implemented merely because ADR-0019 exists.
 
 ## Current Task
 
@@ -1149,48 +1212,67 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0026 synchronization of the ADR index, canonical register, documentation index, and current state confirms the next bounded governance task as:
+Post-Task-0027 synchronization of the ADR index, canonical register, documentation index, and current state confirms the next bounded governance task as:
 
 ```text
-Task 0027: Draft Package Manager ADR
+Task 0028: Draft Observability Provider ADR
 ```
 
 Primary canonical decision:
 
 ```text
-D-ARCH-011
+D-PROVIDER-006
 ```
 
 Target:
 
 ```text
-docs/adr/ADR-0019-package-manager.md
+docs/adr/ADR-0020-observability-provider.md
 ```
 
-Initial ADR status should be `Proposed`. Canonical `D-ARCH-011` remains `P1 ASSUMED` unless explicit review/approval changes it.
+Initial ADR status should be `Proposed`. Canonical `D-PROVIDER-006` remains `P1 OPEN` unless explicit review/approval changes it.
 
-The next task should evaluate the package-manager/workspace-installation baseline for the proposed monorepo, including lockfile determinism, workspace support, dependency isolation, CI/cache behavior, security/supply-chain controls, Node/runtime compatibility, developer ergonomics, migration cost, and reversibility. The legacy/current working assumption is pnpm workspaces, but pnpm must not become accepted merely because it is currently assumed/recommended.
+The next task should evaluate the observability capability/provider boundary for:
 
-Keep Turborepo, Node.js, CI/CD provider, web/native frameworks, and application architecture separately governed.
+```text
+structured logs
+correlation/request/job IDs
+error monitoring
+payment/webhook/job diagnostics
+privacy/PII/secret scrubbing
+OpenTelemetry compatibility
+runtime + worker instrumentation
+hosting integration
+alerting/operability
+retention
+cost
+data residency/jurisdiction
+provider portability
+```
 
-Do not execute Task 0027 as part of Task 0026.
+Do not provision a provider, add an SDK, create telemetry credentials, or silently accept an observability vendor during the ADR-only task.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0026-draft-testing-toolchain-adr.md
+.ai/task/0027-draft-package-manager-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/non-functional-requirements.md
 docs/02-architecture/architecture-principles.md
+docs/02-architecture/architecture-overview.md
+docs/02-architecture/container-architecture.md
+docs/02-architecture/component-architecture.md
+docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
-docs/adr/ADR-0002-primary-language-runtime.md
-docs/adr/ADR-0003-monorepo-strategy.md
+docs/adr/ADR-0016-hosting-deployment-platform.md
 docs/adr/ADR-0017-ci-cd-release-secrets.md
 docs/adr/ADR-0018-testing-toolchain.md
+docs/adr/ADR-0019-package-manager.md
+legacy migration source: docs/12-security-audit.md
 legacy migration source: docs/15-engineering-workflow.md
 legacy migration source: docs/16-open-decisions.md
 ```
