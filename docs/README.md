@@ -246,6 +246,7 @@ docs/adr/ADR-0014-api-deployment-boundary.md              Proposed   D-ARCH-006
 docs/adr/ADR-0015-background-jobs-scheduler.md             Proposed   D-ARCH-007
 docs/adr/ADR-0016-hosting-deployment-platform.md            Proposed   D-ARCH-009
 docs/adr/ADR-0017-ci-cd-release-secrets.md                  Proposed   D-ARCH-019
+docs/adr/ADR-0018-testing-toolchain.md                       Proposed   D-ARCH-018
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -282,11 +283,13 @@ docs/adr/ADR-0017-ci-cd-release-secrets.md                  Proposed   D-ARCH-01
 
 `ADR-0017` proposes the Phase 1 CI/CD, production-release, artifact-provenance, environment-promotion, migration-gate, and secrets architecture. It keeps GitHub Actions as the leading orchestration candidate only, requires protected PR/required checks, traceable source/build/deployment identity, environment-aware promotion, least-privilege CI credentials, OIDC/federated deployment identity where supported, isolation of production secrets from PR/preview contexts, separate runtime and migration credentials where practical, one controlled production migration action, compatible web/worker rollout, post-deploy verification, and explicit rollback-versus-forward-fix handling. No CI vendor, workflow, GitHub environment, secret, artifact, deployment, hosting provider, or production credential is accepted or created. Canonical `D-ARCH-019` remains `OPEN`.
 
+`ADR-0018` proposes a layered automated-testing architecture driven by `NFR-TESTABILITY-001..005`: deterministic domain/application tests, table-driven authorization and cross-tenant negatives, real database integration where persistence semantics matter, API/provider/worker integration, focused browser E2E, controlled time/failure injection, and release-smoke evidence coordinated with ADR-0017. Vitest is the leading fast TypeScript runner candidate, Testcontainers-style real-PostgreSQL orchestration is the leading database-test candidate if PostgreSQL is later accepted, and Playwright is the leading focused browser-E2E candidate. Native E2E remains deferred. No testing tool, dependency, configuration, test, browser, container, test database, or CI workflow is accepted or created. Canonical `D-ARCH-018` remains `PROPOSED`.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first seventeen ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first eighteen ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -588,27 +591,37 @@ runtime DB credential != migration DB credential where practical
 
 GitHub Actions remains the leading candidate only. No `.github/workflows`, GitHub environment, repository/environment secret, OIDC trust, production credential, release artifact, migration execution, deployment, or hosting-provider acceptance was created by Task 0025.
 
-The exact next bounded governance task from the synchronized ADR dependency queue is now:
+### Core automated testing proposal
+
+`ADR-0018` now defines the Proposed test-evidence architecture under `D-ARCH-018` without accepting a tool.
+
+Current proposal:
 
 ```text
-Task 0026: Draft Core Automated Testing Toolchain ADR
+many deterministic domain/application tests
++
+table-driven authorization + cross-tenant negative tests
++
+real database integration where DB semantics matter
++
+provider fakes / sanitized fixtures / official sandboxes
++
+worker retry/restart/idempotency integration
++
+focused browser E2E
++
+controlled Clock + failure injection
++
+release evidence layered with ADR-0017
 ```
 
-Primary decision:
+Vitest is the leading TypeScript test-runner candidate. If PostgreSQL is later accepted, real PostgreSQL integration is required for transaction/constraint/concurrency/RLS semantics, with Testcontainers-style ephemeral orchestration as the leading approach and a shared CI PostgreSQL service as a fallback. Playwright is the leading browser-E2E candidate because the current Member/Staff strategy benefits from Chromium/WebKit/Firefox projects, isolated multi-user browser contexts, tracing, and focused cross-browser coverage. Cypress remains a credible alternative. Native E2E is deferred unless native Member delivery is accepted.
 
-```text
-D-ARCH-018
-```
+`Test Runner != Test Architecture`, `Browser E2E != Domain Test`, `SQLite/Fake DB != PostgreSQL Proof`, `Code Coverage != Correctness`, and `Test Retry != Flake Fix` remain explicit boundaries.
 
-Likely target when explicitly started:
+No test dependency, test config, test file, browser, Testcontainers/Docker setup, test database, provider sandbox account, coverage config, or CI workflow was created by Task 0026.
 
-```text
-docs/adr/ADR-0018-testing-toolchain.md
-```
-
-That next task should evaluate deterministic domain/application tests, real-database integration, authorization and tenant-isolation negative tests, API contract tests, provider-adapter tests, worker/job tests, browser E2E, test data/isolation, and CI test layering. Exact tools such as Vitest, Playwright, and Testcontainers remain unaccepted until that ADR is executed.
-
-Do not create ADR-0018 or execute Task 0026 as part of Task 0025 synchronization.
+The current dependency queue places the next undrafted bounded decision at `D-ARCH-011` Package Manager. Task 0026 governance synchronization will confirm the exact Task 0027 wording/ADR filename before it is started.
 
 ## Legacy Migration State
 
@@ -633,7 +646,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI recommendations remain evidence only. ADR-0012 through ADR-0017 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, nor GitHub Actions is accepted merely because current evaluation recommends or compares them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0018 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, nor Cypress is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
