@@ -253,6 +253,7 @@ docs/adr/ADR-0021-object-storage.md                                Proposed   D-
 docs/adr/ADR-0022-payment-provider.md                              Proposed   D-PROVIDER-001
 docs/adr/ADR-0023-messaging-provider.md                            Proposed   D-PROVIDER-002
 docs/adr/ADR-0024-product-analytics-provider.md                    Proposed   D-PROVIDER-005
+docs/adr/ADR-0025-redis-cache-requirement.md                      Proposed   D-ARCH-008
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -303,11 +304,13 @@ docs/adr/ADR-0024-product-analytics-provider.md                    Proposed   D-
 
 `ADR-0024` defers any external product-analytics provider for the initial Phase 1 pilot while canonical `D-PROVIDER-005` remains `P2 OPEN`. Attendance, QR adoption, no-show recovery, renewals, verified revenue/refunds, add-on revenue, payment exceptions, and follow-up completion continue to derive from canonical GymPulse records. Future behavioral instrumentation is limited to concrete unanswered questions using precise provider-neutral event names, property allowlists, pseudonymous identity, trusted tenant context, and non-blocking delivery. Autocapture, session replay, analytics-owned feature flags/experiments, warehouse/CDP infrastructure, and broad track-everything collection are not Phase 1 baselines. PostHog, Mixpanel, and Amplitude remain future candidates only; no provider is selected.
 
+`ADR-0025` defers Redis/Valkey as a Phase 1 baseline while canonical `D-ARCH-008` remains `P2 OPEN`. No cache/session/queue/lock/pubsub responsibility is currently classified Required now. Database query/index/read-model optimization comes before distributed read caching; authorization has no distributed cross-request cache baseline; authentication/session storage remains separately governed; abuse controls do not imply Redis; ADR-0015 durable jobs remain PostgreSQL-oriented and independent; Redis locks/dedupe cannot replace durable business correctness; and no realtime/pubsub requirement exists. Redis/Valkey may be reconsidered only for one measured shared-ephemeral need with explicit outage, eviction, tenant-isolation, security, operations, and cost evidence.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-four ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-five ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -911,7 +914,69 @@ warehouse/CDP = not required
 
 PostHog, Mixpanel, and Amplitude were checked as credible future managed options only. `D-SEC-001`, `D-SEC-005`, and `D-SEC-006` remain open gates for jurisdiction/privacy, deletion/export, and retention. No analytics account/project/key, SDK, event, dashboard, funnel, replay, autocapture, feature flag, experiment, pipeline, CI secret, or production/test analytics traffic was created by Task 0032.
 
-Post-Task-0032 synchronization confirms the next bounded governance task as **Task 0033: Draft Redis / Cache Requirement ADR**, primary decision `D-ARCH-008`. Canonical `D-ARCH-008` remains `P2 OPEN`; the exact ADR filename/number must be confirmed from latest `main` before execution.
+### Redis / cache / ephemeral coordination proposal
+
+`ADR-0025` now defines the Proposed shared-cache/ephemeral-state posture under `D-ARCH-008` without introducing Redis or Valkey into the Phase 1 baseline.
+
+Current requirement finding:
+
+```text
+Required-now Redis/Valkey use cases
+-> none
+
+Phase 1 Redis baseline
+-> no
+
+Phase 1 Valkey baseline
+-> no
+```
+
+Current responsibility split:
+
+```text
+read/query cache
+-> measure first; indexes/read models/database optimization first
+
+tenant-sensitive cache
+-> private by default; authority-complete isolation required if introduced
+
+cross-request authorization cache
+-> no baseline
+
+session store
+-> D-ARCH-004 / D-SEC-004 remain separately governed
+
+rate limiting
+-> abuse-control capability required where applicable
+-> Redis storage not assumed
+
+durable jobs / broker
+-> ADR-0015 remains independently governed
+-> Redis/BullMQ not baseline
+
+distributed locks
+-> not canonical correctness authority
+
+idempotency / dedupe
+-> durable business semantics remain outside ephemeral cache
+
+pub/sub / realtime
+-> no current Phase 1 requirement
+```
+
+Preferred future optional-cache behavior remains:
+
+```text
+cache unavailable / evicted
+-> canonical persistence or safe recomputation
+-> business correctness remains intact
+```
+
+Revisit `D-ARCH-008` only after measured hot-query pressure survives index/read-model work, an approved cross-replica distributed rate-limit requirement emerges, accepted session/job architecture genuinely requires shared ephemeral state, a realtime/pubsub requirement is approved, or another high-volume coordination need is demonstrated.
+
+No Redis/Valkey instance/account/credential, client dependency, cache adapter, rate limiter, session store, distributed lock, queue/worker migration, pub/sub, Docker/CI service, IaC, or deployment was created by Task 0033.
+
+Post-Task-0033 synchronization confirms the next bounded governance task as **Task 0034: Resolve / Draft Member vs Membership State Ownership ADR**, primary decision `D-DATA-007`. Canonical `D-DATA-007` remains `P1 PROPOSED / unresolved`; the exact ADR filename/number and task shape must be confirmed from latest `main` before execution.
 
 ## Legacy Migration State
 
@@ -936,7 +1001,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0024 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage, Razorpay, Cashfree, PhonePe Payment Gateway, PayU, Direct Meta WhatsApp Cloud API, Twilio WhatsApp, Gupshup, MSG91, Interakt, AiSensy, PostHog, Mixpanel, or Amplitude is accepted merely because current evaluation recommends or compares them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0025 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage, Razorpay, Cashfree, PhonePe Payment Gateway, PayU, Direct Meta WhatsApp Cloud API, Twilio WhatsApp, Gupshup, MSG91, Interakt, AiSensy, PostHog, Mixpanel, Amplitude, Redis, Valkey, Upstash, Redis Cloud, ElastiCache, Memorystore, BullMQ, or Redlock is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
