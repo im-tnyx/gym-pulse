@@ -250,6 +250,7 @@ docs/adr/ADR-0018-testing-toolchain.md                       Proposed   D-ARCH-0
 docs/adr/ADR-0019-package-manager.md                           Proposed   D-ARCH-011
 docs/adr/ADR-0020-observability-provider.md                      Proposed   D-PROVIDER-006
 docs/adr/ADR-0021-object-storage.md                                Proposed   D-ARCH-010
+docs/adr/ADR-0022-payment-provider.md                              Proposed   D-PROVIDER-001
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -294,11 +295,13 @@ docs/adr/ADR-0021-object-storage.md                                Proposed   D-
 
 `ADR-0021` concludes that persistent object storage is not currently justified as a Phase 1 baseline and keeps canonical `D-ARCH-010` `P1 OPEN`. Receipt/payment truth remains canonical structured data; no current requirement mandates a persisted receipt PDF. Controlled import may use bounded temporary input, while exports and receipt representations prefer streaming/on-demand generation unless a future workflow proves persistence necessary. Any future storage must be private by default, provider-neutral at the application boundary, server-authorized, tenant/resource scoped, lifecycle-controlled, residency-gated, and independently migratable. AWS S3, Cloudflare R2, Google Cloud Storage, and Supabase Storage are research candidates only.
 
+`ADR-0022` keeps Razorpay and Cashfree as the bounded Phase 1 payment-provider sandbox shortlist while canonical `D-PROVIDER-001` remains `P1 OPEN`. The payment architecture is provider-neutral: server-owned amount/currency/purpose, provider-managed browser checkout, raw webhook verification, canonical GymPulse payment-state mapping, separate provider-event dedupe and business-effect uniqueness, reconciliation, refund/reversal history, settlement evidence, and provider exit. Merchant account / settlement ownership is an explicitly identified decision-register gap; GymPulse is not assumed to be merchant of record. No provider account, credential, SDK, route, payment, refund, migration, or production integration is created.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-one ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-two ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -736,7 +739,61 @@ A stable receipt business record is required where applicable, but current canon
 
 No object-storage account/bucket, storage/IAM credential, SDK dependency, upload/download route, signed-URL implementation, receipt PDF, export job, database schema/migration, lifecycle/versioning/replication/CDN configuration, IaC, file upload, or CI workflow was created by Task 0029.
 
-Post-Task-0029 synchronization confirms the next bounded governance task as **Task 0030: Draft Payment Provider ADR**, primary decision `D-PROVIDER-001`. Canonical `D-PROVIDER-001` remains `P1 OPEN`; the exact ADR filename/number must be confirmed from latest `main` before Task 0030 executes.
+### Payment provider / integration strategy proposal
+
+`ADR-0022` now defines the Proposed payment-provider architecture under `D-PROVIDER-001` without accepting or integrating a provider.
+
+Current provider outcome:
+
+```text
+Razorpay + Cashfree
+-> bounded sandbox shortlist only
+
+production provider
+-> not selected
+```
+
+Current integration posture:
+
+```text
+canonical RenewalOrder / AddOnOrder / Payment
++
+server-owned amount / currency / purpose
++
+provider-managed browser checkout
++
+provider-specific raw webhook verification
++
+normalized GymPulse payment states
++
+provider-event dedupe
++
+separate exactly-once membership/add-on effect
++
+status/reconciliation API
++
+refund/reversal history
++
+settlement traceability
++
+provider-neutral PaymentProvider port
+```
+
+Key boundaries remain explicit:
+
+```text
+Provider Payment State != GymPulse Payment State
+Client Success != Canonical Payment Success
+Payment Return / Redirect = Navigation + UX Signal
+Provider Event Dedupe != Business Effect Exactly Once
+Customer Payment Success != Merchant Bank Settlement Complete
+```
+
+A material decision-register gap was found: **merchant account / settlement ownership** is not canonically decided. Task 0030 does not assume GymPulse is merchant of record and does not select a platform/sub-merchant architecture. `D-BIZ-011` refund policy, `D-BIZ-012` offline payment policy, and `D-BIZ-013` receipt/invoice fields remain open.
+
+No payment provider account, merchant ID, API/webhook secret, SDK, checkout/payment/webhook/refund route, reconciliation worker, payment migration/schema, sandbox/real transaction, refund, settlement configuration, provider-dashboard user, CI/environment secret, IaC, or deployment was created by Task 0030.
+
+Post-Task-0030 synchronization confirms the next bounded governance task as **Task 0031: Draft Messaging Provider ADR**, primary decision `D-PROVIDER-002`. Canonical `D-PROVIDER-002` remains `P1 OPEN`; the exact ADR filename/number must be confirmed from latest `main` before execution.
 
 ## Legacy Migration State
 
@@ -761,7 +818,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0021 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage is accepted merely because current evaluation recommends or compares them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0022 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage, Razorpay, Cashfree, PhonePe Payment Gateway, or PayU is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
