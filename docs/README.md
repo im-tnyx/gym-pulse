@@ -247,6 +247,7 @@ docs/adr/ADR-0015-background-jobs-scheduler.md             Proposed   D-ARCH-007
 docs/adr/ADR-0016-hosting-deployment-platform.md            Proposed   D-ARCH-009
 docs/adr/ADR-0017-ci-cd-release-secrets.md                  Proposed   D-ARCH-019
 docs/adr/ADR-0018-testing-toolchain.md                       Proposed   D-ARCH-018
+docs/adr/ADR-0019-package-manager.md                           Proposed   D-ARCH-011
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -284,6 +285,8 @@ docs/adr/ADR-0018-testing-toolchain.md                       Proposed   D-ARCH-0
 `ADR-0017` proposes the Phase 1 CI/CD, production-release, artifact-provenance, environment-promotion, migration-gate, and secrets architecture. It keeps GitHub Actions as the leading orchestration candidate only, requires protected PR/required checks, traceable source/build/deployment identity, environment-aware promotion, least-privilege CI credentials, OIDC/federated deployment identity where supported, isolation of production secrets from PR/preview contexts, separate runtime and migration credentials where practical, one controlled production migration action, compatible web/worker rollout, post-deploy verification, and explicit rollback-versus-forward-fix handling. No CI vendor, workflow, GitHub environment, secret, artifact, deployment, hosting provider, or production credential is accepted or created. Canonical `D-ARCH-019` remains `OPEN`.
 
 `ADR-0018` proposes a layered automated-testing architecture driven by `NFR-TESTABILITY-001..005`: deterministic domain/application tests, table-driven authorization and cross-tenant negatives, real database integration where persistence semantics matter, API/provider/worker integration, focused browser E2E, controlled time/failure injection, and release-smoke evidence coordinated with ADR-0017. Vitest is the leading fast TypeScript runner candidate, Testcontainers-style real-PostgreSQL orchestration is the leading database-test candidate if PostgreSQL is later accepted, and Playwright is the leading focused browser-E2E candidate. Native E2E remains deferred. No testing tool, dependency, configuration, test, browser, container, test database, or CI workflow is accepted or created. Canonical `D-ARCH-018` remains `PROPOSED`.
+
+`ADR-0019` proposes `pnpm` as the leading package-manager direction for the proposed multi-package repository. It requires one committed root lockfile, explicit workspace dependencies, `workspace:` references where local-only package resolution is intended, frozen CI/release installation, declared-dependency isolation, package-manager version pinning, and reviewed/restricted dependency build scripts. `npm` remains the conservative fallback; `Yarn` and `Bun` remain credible alternatives. No package manager, lockfile, workspace config, dependency, Turborepo setup, Node.js runtime, or CI workflow is accepted or created. Canonical `D-ARCH-011` remains `P1 ASSUMED`.
 
 No decision ADR is currently `Accepted`.
 
@@ -621,7 +624,35 @@ Vitest is the leading TypeScript test-runner candidate. If PostgreSQL is later a
 
 No test dependency, test config, test file, browser, Testcontainers/Docker setup, test database, provider sandbox account, coverage config, or CI workflow was created by Task 0026.
 
-Post-Task-0026 synchronization confirms the next bounded governance task as **Task 0027: Draft Package Manager ADR**, primary decision `D-ARCH-011`, target `docs/adr/ADR-0019-package-manager.md`. Canonical `D-ARCH-011` remains `ASSUMED`; the task must not silently accept pnpm, Turborepo, Node.js, CI tooling, or application frameworks.
+### Package manager proposal
+
+`ADR-0019` now defines the Proposed package-manager direction under `D-ARCH-011` without accepting or installing a tool.
+
+Current proposal:
+
+```text
+pnpm
++
+one committed root lockfile
++
+explicit workspace dependency edges
++
+workspace: for intentional local-only package resolution
++
+frozen CI/release install
++
+declared-dependency isolation
++
+reviewed dependency build scripts
++
+package-manager version pinning
+```
+
+`Package Manager != Repository Strategy`, `Package Manager != Turborepo`, `Package Manager != Node Runtime`, and `Lockfile != Supply-Chain Security` remain explicit boundaries.
+
+No package manager, lockfile, workspace file, dependency, package-manager config, CI workflow, or cache configuration was created by Task 0027.
+
+Post-Task-0027 synchronization confirms the next bounded governance task as **Task 0028: Draft Observability Provider ADR**, primary decision `D-PROVIDER-006`, target `docs/adr/ADR-0020-observability-provider.md`. Canonical `D-PROVIDER-006` remains `P1 OPEN`; Task 0028 must not silently select or provision an observability provider.
 
 ## Legacy Migration State
 
@@ -646,7 +677,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0018 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, nor Cypress is accepted merely because current evaluation recommends or compares them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0019 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, nor Turborepo is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
