@@ -474,7 +474,15 @@ FR-MEMBER-004 remains unchanged
 Schema/migrations remain unfinalized
 ```
 
-No Task 0035 is invented here. The next bounded governance action must be selected from fresh synchronized repository evidence after Task 0034, with likely categories including decision review/acceptance preparation, canonical requirement synchronization after approval, unresolved business/security blockers, or a later data-model/schema phase.
+No Task 0035 is invented here.
+
+Fresh post-Task-0034 governance review identifies the next bounded action as an **Architecture Decision Review / Acceptance Readiness batch**, not another ADR draft and not schema implementation.
+
+The review should start from the existing batch-readiness ordering, verify decision owners and unresolved evidence, and classify each Proposed/Open ADR as ready for explicit approval, blocked on product/security/business evidence, or remaining Proposed. The foundation batch (`ADR-0001` through `ADR-0004`) is the first review set because it defines the implementation envelope; later dependency/security/runtime/provider decisions remain subject to their own evidence gates.
+
+For `ADR-0026` specifically, acceptance review must cover the proposed Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived policy, import/reporting terminology, attendance/no-show/authorization interaction, and historical migration strategy.
+
+No status changes, canonical requirement synchronization, or schema work are performed as part of Task 0034.
 
 ## 16. Related Documents
 
