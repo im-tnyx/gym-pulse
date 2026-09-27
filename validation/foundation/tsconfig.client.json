@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {"outDir": "./out/client", "rootDir": "./src"},
+  "include": ["src/node-shim.d.ts", "src/contracts.ts", "src/client-probe.ts"]
+}

@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {"outDir": "./out/worker", "rootDir": "./src"},
+  "include": ["src/node-shim.d.ts", "src/contracts.ts", "src/domain.ts", "src/application.ts", "src/infrastructure.ts", "src/worker-entry.ts"]
+}
