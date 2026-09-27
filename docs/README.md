@@ -1075,11 +1075,35 @@ PostgreSQL backup + restore                               NOT RUN
 PostgreSQL connection/pooling/restart                     NOT RUN
 ```
 
-The executed environment provided Node.js `v22.16.0` and TypeScript `5.8.3` but no PostgreSQL client/server tools and no Docker/Podman. A later attempt to install PostgreSQL could not reach Debian package repositories because the sandbox has no DNS/network access. These exact versions and environment facts are validation evidence only; they are not production choices.
+A fresh **Real PostgreSQL Foundation Validation** attempt was environment-gated and is now recorded as `BLOCKED`.
 
-`validation/foundation/EVIDENCE.md` is the current evidence matrix. ADR-0001 through ADR-0004 all remain Proposed. Passing validation does not Accept an ADR, and the validation-only file-backed durability proof is explicitly **not** PostgreSQL evidence.
+Observed environment:
 
-The next bounded evidence action is real PostgreSQL validation in an approved isolated environment, followed by decision-owner review. No external CI/cloud runner is provisioned automatically because that may create provider/cost/governance side effects.
+```text
+Node.js v22.16.0
+TypeScript 5.8.3
+
+PostgreSQL server/client version: NOT AVAILABLE
+pg_dump / pg_restore: NOT AVAILABLE
+temporary PostgreSQL driver: NOT USED
+container image: NOT USED
+
+no PostgreSQL server/client executables
+no local 5432 listener/socket
+no Docker / Podman / nerdctl
+no PostgreSQL server/client packages
+libpq 17.10 libraries only
+no apt PostgreSQL candidate
+no DNS/package-repository access
+```
+
+Therefore all real PostgreSQL migration, concurrency/idempotency, rollback, tenant-scoped SQL, relational-query, error-translation, backup/restore, connection, restart, and recovery rows remain `NOT RUN`.
+
+`validation/foundation/EVIDENCE.md` is the current evidence matrix. ADR-0001 through ADR-0004 all remain Proposed. Passing existing validation does not Accept an ADR, and the validation-only file-backed durability proof is explicitly **not** PostgreSQL evidence.
+
+No SQLite/mock/file substitute was used and no external managed database/cloud resource was provisioned.
+
+The next bounded prerequisite is to obtain/authorize an isolated real PostgreSQL validation environment. Decision-owner review follows only after the missing technical evidence is sufficiently complete.
 
 `ADR-0026` still requires later explicit review of Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived effects, import/reporting semantics, attendance/no-show/authorization interaction, and historical migration approach before `D-DATA-007` can become Decided.
 
