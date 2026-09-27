@@ -1053,9 +1053,33 @@ All four remain Proposed. Common hard blockers are an unidentified authorized de
 
 No ADR was Accepted or Rejected, no canonical status changed, and no implementation/scaffold gate was opened by this review.
 
-The **Foundation Acceptance Evidence Plan** now exists at `docs/adr/foundation-acceptance-evidence-plan.md`. It converts the missing evidence for ADR-0001 through ADR-0004 into one minimal shared isolated validation program and preserves the later human decision-owner/approval step. The plan does not create production infrastructure or silently accept downstream frameworks, package managers, database tooling, hosting, CI, or providers.
+The **Foundation Acceptance Evidence Plan** exists at `docs/adr/foundation-acceptance-evidence-plan.md`, and the first isolated validation pass is now committed under `validation/foundation/`.
 
-The next bounded action is to execute that isolated Foundation Validation Harness and produce its evidence matrix; no ADR may be marked Accepted merely because a validation test passes.
+Current evidence:
+
+```text
+strict client/request/worker TypeScript builds            PASS
+clean source dependency graph                             PASS
+forbidden client -> server import detection               PASS
+dependency-cycle detection                                PASS
+tenant/branch/capability authorization negatives          PASS
+malformed external input rejection                        PASS
+request/worker reuse of one application command           PASS
+replay-safe result across separate Node processes         PASS
+gym-timezone boundary behavior                            PASS
+raw-byte webhook verification + tamper rejection          PASS
+provider-event replay dedupe                              PASS
+
+real PostgreSQL concurrency / rollback / SQL isolation    NOT RUN
+PostgreSQL backup + restore                               NOT RUN
+PostgreSQL connection/pooling/restart                     NOT RUN
+```
+
+The executed environment provided Node.js `v22.16.0` and TypeScript `5.8.3` but no PostgreSQL client/server tools and no Docker/Podman. A later attempt to install PostgreSQL could not reach Debian package repositories because the sandbox has no DNS/network access. These exact versions and environment facts are validation evidence only; they are not production choices.
+
+`validation/foundation/EVIDENCE.md` is the current evidence matrix. ADR-0001 through ADR-0004 all remain Proposed. Passing validation does not Accept an ADR, and the validation-only file-backed durability proof is explicitly **not** PostgreSQL evidence.
+
+The next bounded evidence action is real PostgreSQL validation in an approved isolated environment, followed by decision-owner review. No external CI/cloud runner is provisioned automatically because that may create provider/cost/governance side effects.
 
 `ADR-0026` still requires later explicit review of Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived effects, import/reporting semantics, attendance/no-show/authorization interaction, and historical migration approach before `D-DATA-007` can become Decided.
 
