@@ -359,30 +359,41 @@ These define the initial implementation envelope but remain unaccepted.
 
 #### Foundation acceptance-readiness review — 2026-09-27
 
-Fresh review used each ADR's own acceptance/validation sections plus the canonical decision register. This review does not approve or reject any ADR.
+Fresh review used each ADR's own acceptance/validation sections plus the canonical decision register. The first shared validation pass has now also been executed through `validation/foundation/`.
 
-| ADR | Canonical status | Reviewable now | Acceptance readiness | Current hard blockers / missing evidence |
+This review does not approve or reject any ADR.
+
+| ADR | Canonical status | Reviewable now | Acceptance readiness | Current evidence / remaining blockers |
 |---|---|---|---|---|
-| `ADR-0001` / `D-ARCH-005` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Authorized decision owner is still Open; no explicit approval record; no executable evidence yet proves module-boundary enforcement, shared request/worker use-case reuse, cross-domain write prevention, concurrency/idempotency behavior, authorization negatives, and module-aware diagnostics. |
-| `ADR-0002` / `D-ARCH-016` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Authorized decision owner is still Open; no explicit approval record; no representative strict-TypeScript/runtime-validation, raw-webhook, real transaction, worker-retry, correlation, or client/server import-isolation spike has been recorded. No canonical team/deployment/performance evidence currently overturns the TypeScript/Node.js recommendation. |
-| `ADR-0003` / `D-ARCH-001` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Authorized decision owner is still Open; no explicit approval record; no workspace spike proves dependency direction, server-only/client-safe isolation, independent artifact builds, cycle detection, shared contract/use-case reuse, or affected build/test behavior. Application scaffolding has not begun, so no measured repository/CI baseline exists. |
-| `ADR-0004` / `D-ARCH-002` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Authorized decision owner is still Open; no explicit approval record; no real-PostgreSQL concurrency/idempotency validation, backup/restore rehearsal, representative pooling/restart validation, or approved regional/hosting constraints. `D-DATA-007` still blocks final Member/Membership schema semantics, but the ADR itself explicitly states that this does **not** prevent reviewing the database-engine choice independently. |
+| `ADR-0001` / `D-ARCH-005` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Partial PASS evidence now covers strict boundary checks, request/worker reuse, tenant/branch/capability negatives, replay-safe result, gym-time boundary, and narrow correlation. Still missing authorized decision owner, explicit approval, real DB concurrency/transaction evidence, broader multi-domain direct-write enforcement, and full provider-effect/production diagnostics evidence. |
+| `ADR-0002` / `D-ARCH-016` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Partial PASS evidence now covers strict TypeScript, runtime validation, protected command, raw-byte webhook verification, client/server import isolation, separate-process replay, gym-time behavior, and correlation. Still missing authorized decision owner, explicit approval, real PostgreSQL transaction-heavy evidence, final repository topology validation, and production provider/framework evidence. No canonical team/deployment/performance evidence currently overturns the TypeScript/Node.js recommendation. |
+| `ADR-0003` / `D-ARCH-001` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Partial PASS evidence now covers separate client/request/worker builds, forbidden-import detection, cycle detection, shared contract, and request/worker reuse. Still missing authorized decision owner, explicit approval, an actual eventual workspace/package graph, CI-integrated architecture rules, and measured repository/CI baseline. |
+| `ADR-0004` / `D-ARCH-002` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | PostgreSQL-specific evidence remains `NOT RUN`: no real concurrency/idempotency, rollback, tenant-scoped SQL, aggregate/history query, backup/restore, or pooling/restart proof. PostgreSQL/Docker tooling was unavailable in the validation environment. Authorized decision owner, explicit approval, and approved regional/hosting constraints also remain missing. `D-DATA-007` blocks final Member/Membership schema semantics but does **not** by itself block database-engine review. |
 
-Common findings:
+Executed validation evidence is recorded in:
+
+```text
+validation/foundation/EVIDENCE.md
+```
+
+Current cross-batch findings:
 
 ```text
 all four ADRs have Decision Owner = Open
 all four lack explicit approval evidence
-all four still require bounded non-production validation
+
+ADR-0001..0003 now have partial technical supporting evidence
+ADR-0004 still lacks its core real-PostgreSQL evidence
+
 no canonical status changes are justified
 no implementation/scaffold gate is opened
 ```
 
-The foundation batch is therefore suitable for **decision-owner review and validation planning**, but not for acceptance yet.
+The foundation batch is therefore still suitable for **continued validation + later decision-owner review**, not acceptance yet.
 
-Acceptance-readiness must not be confused with implementation completion. The required evidence can be produced through bounded non-production spikes that prove architecture/runtime/repository/database semantics without provisioning production infrastructure or silently accepting downstream tools/providers.
+Acceptance-readiness must not be confused with implementation completion. Passing spike tests are supporting evidence only.
 
-The shared validation program is defined in `foundation-acceptance-evidence-plan.md`. It combines overlapping architecture/runtime/repository/database proofs, keeps temporary spike tooling non-canonical, preserves `D-DATA-007` as unresolved for final schema semantics, and requires a later human decision-owner approval step after technical evidence is gathered.
+The shared validation program is defined in `foundation-acceptance-evidence-plan.md`. Its next required step is real PostgreSQL validation; file-backed validation state must not be cited as PostgreSQL evidence.
 
 
 ### Second dependency/security batch
