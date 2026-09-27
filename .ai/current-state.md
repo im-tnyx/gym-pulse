@@ -46,6 +46,7 @@ ADR-0019  D-ARCH-011  Package manager                                Proposed
 ADR-0020  D-PROVIDER-006 Observability provider                          Proposed
 ADR-0021  D-ARCH-010  Object Storage / Protected File Access              Proposed
 ADR-0022  D-PROVIDER-001 Payment Provider / Integration Strategy           Proposed
+ADR-0023  D-PROVIDER-002 Messaging Provider / Notification Delivery Strategy Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -81,6 +82,9 @@ D-SEC-004   session lifecycle                    P1 OPEN
 D-SEC-008   RLS/data-layer tenant isolation      OPEN when applicable
 D-PROVIDER-001 payment provider                  P1 OPEN
 D-PROVIDER-002 messaging provider                P1 OPEN
+D-PROVIDER-003 email provider                    P2 OPEN
+D-PROVIDER-004 push provider                     P2 OPEN
+D-PROVIDER-005 product analytics provider        P2 OPEN
 D-PROVIDER-006 observability provider            P1 OPEN
 D-DATA-004  Member/AuthIdentity separation       P1 PROPOSED
 D-DATA-007  Member/Membership state ownership    P1 PROPOSED / unresolved
@@ -1587,20 +1591,373 @@ deployment
 
 No prior ADR is Accepted.
 
+
+## Current Messaging Provider / Notification Delivery Proposal
+
+ADR-0023 now exists as Proposed; canonical D-PROVIDER-002 remains P1 OPEN.
+
+Task 0031 compared Direct Meta WhatsApp Business Platform / Cloud API, Twilio WhatsApp, and Gupshup using current first-party evidence.
+
+### Launch-channel finding
+
+Canonical notification requirements define supported service/transactional intent types and correctness rules, but do not select an external launch channel.
+
+~~~text
+WhatsApp
+  -> leading external candidate
+  -> not canonically mandatory
+
+SMS
+  -> optional/fallback candidate only
+
+email
+  -> optional/fallback candidate only
+  -> D-PROVIDER-003 remains OPEN
+
+in-app state
+  -> canonical product baseline
+  -> not an external-provider channel
+
+push
+  -> future / not Phase 1 baseline
+  -> D-PROVIDER-004 remains OPEN
+~~~
+
+Legacy D-039 remains OPEN evidence only and was not promoted.
+
+### Sender / WABA ownership finding
+
+No canonical structured decision answers:
+
+~~~text
+Whose WABA / business sender / phone number
+sends a tenant's messages?
+~~~
+
+Models remain:
+
+~~~text
+A. GymPulse-owned shared sender
+B. gym-owned sender/WABA
+C. provider/platform multi-tenant onboarding model
+~~~
+
+None is selected.
+
+This decision affects member-visible branding, business verification, phone ownership, template ownership, credentials, billing, tenant offboarding, account-suspension blast radius, support and provider migration.
+
+### Decision-register gaps
+
+Task 0031 identifies these unresolved governance gaps without inventing IDs:
+
+~~~text
+initial launch communication channels
+sender / WABA / phone-number ownership
+which supported service intents are externally enabled at pilot launch
+~~~
+
+### Consent / service-policy posture
+
+D-BIZ-014 remains P1 OPEN.
+
+~~~text
+Marketing Consent
+!=
+Service / Transactional Communication Policy
+
+Provider Template Category
+!=
+GymPulse Policy Category
+~~~
+
+No marketing campaign is enabled.
+
+Current WhatsApp platform policy requires appropriate WhatsApp opt-in for business messaging and respect for opt-out/stop requests; business-initiated messages outside the customer-service window use approved templates.
+
+Legal/privacy conclusions remain outside Task 0031.
+
+### Provider comparison
+
+~~~text
+Direct Meta Cloud API
+  -> credible direct candidate
+  -> higher operational ownership
+  -> direct technical callback/security proof still required
+
+Twilio WhatsApp
+  -> credible BSP candidate
+  -> signed X-Twilio-Signature callbacks
+  -> strong documented Tech Provider + subaccount/WABA onboarding
+  -> sandbox/test model
+  -> extra provider fee layer
+
+Gupshup
+  -> credible India-focused BSP candidate
+  -> direct + ISV/Tech Provider onboarding
+  -> strong template/status lifecycle
+  -> audited public webhook docs emphasize IP allowlisting;
+     cryptographic callback authenticity remains a security gate
+~~~
+
+No provider is selected.
+
+Outcome:
+
+~~~text
+Provider Selection Deferred
+~~~
+
+If WhatsApp is later approved as a pilot external channel, Direct Meta, Twilio, and Gupshup remain the bounded comparison set.
+
+### Notification architecture
+
+~~~text
+Business Event / Schedule
+-> NotificationIntent
+-> current eligibility / policy
+-> current preference / destination
+-> tenant-approved sender configuration
+-> GymPulse business template key
+-> provider template/language mapping
+-> MessagingProvider adapter
+-> Provider
+-> verified/normalized provider observation
+~~~
+
+GymPulse owns notification eligibility and policy.
+
+### Business-template posture
+
+~~~text
+GymPulse Business Template Key
+!=
+Meta / Twilio / Gupshup Provider Template ID
+~~~
+
+Provider template IDs/language mappings remain configuration/integration metadata.
+
+Exact language policy remains unresolved.
+
+### Tenant / sender posture
+
+Trusted configuration concept:
+
+~~~text
+tenant/gym
+-> channel
+-> approved provider/account/sender
+-> approved template mappings
+~~~
+
+Client input cannot choose arbitrary sender, WABA, provider credential or template.
+
+Tenant A -> Tenant B sender/template negative tests are required later.
+
+### Async dispatch posture
+
+Messaging is outside canonical correctness-sensitive transactions.
+
+~~~text
+canonical business transaction
+-> durable notification intent
+-> worker reloads current state
+-> policy/preference/destination recheck
+-> provider adapter send
+-> attempt/reference/status evidence
+~~~
+
+ADR-0015 continues to own durable background technology.
+
+### Retry / dedupe posture
+
+~~~text
+Notification Intent Dedupe
+!=
+Provider Attempt ID
+
+Provider Callback Dedupe
+!=
+Business Notification Dedupe
+
+GymPulse job retry
+!=
+Provider API retry
+!=
+Provider internal delivery retry
+!=
+Provider callback retry
+~~~
+
+Permanent failures are not retried blindly.
+
+### Delivery callback posture
+
+Twilio current docs provide signed X-Twilio-Signature callbacks and warn that status callbacks can arrive out of order.
+
+Gupshup current docs expose message/user/system callbacks and quick-ack/retry behavior. The audited public docs recommend IP allowlisting; equivalent cryptographic signing was not established during Task 0031 and remains an acceptance gate.
+
+Direct Meta technical callback mechanics require current first-party proof before acceptance.
+
+### Delivery-state truth
+
+Preserve FR-NOTIFICATION-003:
+
+~~~text
+Provider Accepted != Delivered
+Delivered != Read
+~~~
+
+Twilio may expose queued/failed/sent/delivered/read where the channel supports it.
+
+Gupshup exposes enqueued/failed/sent/delivered/read and documents that arrival order may differ from event chronology.
+
+Unsupported/unobserved states are never fabricated.
+
+### Stale-state / preference posture
+
+Before every delayed send or retry:
+
+~~~text
+reload current canonical business state
+reload current preference/policy
+reload current allowed contact destination
+reload current tenant sender/template config
+~~~
+
+Queued work is not irrevocable permission to send.
+
+A Member who renewed before an old reminder dispatch causes that reminder to be suppressed.
+
+A changed/invalid destination is not blindly reused.
+
+### SMS / email / push posture
+
+SMS is not a canonical pilot-launch requirement, so Task 0031 does not perform or accept an SMS/DLT provider architecture.
+
+If SMS is later promoted, current TRAI/DLT/provider requirements must be researched separately.
+
+Email remains D-PROVIDER-003 OPEN.
+
+Push remains D-PROVIDER-004 OPEN and is not mandatory under ADR-0013.
+
+No automatic WhatsApp -> SMS/email fallback is accepted.
+
+### Authentication OTP separation
+
+~~~text
+Authentication OTP Channel
+!=
+Business Messaging Provider / Consent Policy
+~~~
+
+Task 0031 does not select Member OTP transport.
+
+### Security / privacy posture
+
+Required controls include:
+
+- server-only provider secrets;
+- provider-supported callback authenticity validation;
+- callback replay/idempotency handling;
+- tenant sender/template isolation;
+- current destination resolution;
+- no marketing without approved policy;
+- stale-state suppression;
+- restricted provider-dashboard/template administration;
+- non-production send guardrails;
+- link authorization through GymPulse;
+- minimized message content and telemetry.
+
+Full phone numbers, full message bodies, provider secrets, callback signatures and raw provider payloads are not general-purpose logs/metrics.
+
+D-SEC-001 remains OPEN.
+
+### Pricing / support posture
+
+Current public evidence is time-sensitive.
+
+~~~text
+Twilio:
+  USD 0.005/message handling fee
+  + Meta template fees
+  (public pricing current as of Aug 2026)
+
+Gupshup:
+  public partner pricing from about USD 0.001/message
+  + WhatsApp fees
+  exact contract/support terms still required
+
+Direct Meta:
+  upstream fees without BSP handling layer
+  but higher direct operational ownership
+~~~
+
+Headline price does not select a provider.
+
+Support/escalation evidence for onboarding, template issues, sender/account suspension, API incidents, callbacks, billing and migration remains an acceptance gate.
+
+### Provider-exit posture
+
+Keep GymPulse-owned:
+
+~~~text
+NotificationIntent
+business template key
+policy / preference
+business dedupe identity
+attempt/history
+tenant configuration identity
+~~~
+
+Provider-specific WABA/sender/template/message IDs remain bounded integration metadata.
+
+Number/WABA/template migration is not assumed frictionless.
+
+No active-active provider failover is a Phase 1 baseline.
+
+Task 0031 created no:
+
+~~~text
+Meta Business account
+WhatsApp Business Account
+sender / phone registration
+Twilio account / subaccount
+Gupshup account / app
+other BSP account
+API/access/webhook secret
+WhatsApp/SMS/email template
+messaging SDK
+messaging/callback/webhook route
+NotificationIntent table
+database migration
+notification worker/job
+test message
+production message
+broadcast/campaign
+provider-dashboard user
+CI/environment secret
+IaC
+deployment
+~~~
+
+No prior ADR is Accepted.
+
 ## Last Completed Task
 
-`0030-draft-payment-provider-adr`
+0031-draft-messaging-provider-adr
 
-```text
-ADR-0022 Status: Proposed
-D-PROVIDER-001 canonical status: P1 OPEN
-Razorpay: sandbox shortlist only
-Cashfree: sandbox shortlist only
-Production provider selected: no
-Merchant-of-record model: not decided
-Payment integration architecture: Proposed
-No payment implementation
-```
+~~~text
+ADR-0023 Status: Proposed
+D-PROVIDER-002 canonical status: P1 OPEN
+WhatsApp: leading external candidate only, not mandatory
+Direct Meta: comparison candidate only
+Twilio: comparison candidate only
+Gupshup: comparison candidate only
+Production messaging provider selected: no
+Sender/WABA ownership: unresolved
+Marketing enabled: no
+No messaging implementation
+~~~
 
 ## Current Task
 
@@ -1608,65 +1965,51 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0030 synchronization confirms the next bounded governance task as:
+Post-Task-0031 synchronization confirms the next bounded governance task as:
 
-```text
-Task 0031: Draft Messaging Provider ADR
-Primary decision: D-PROVIDER-002
-Canonical status: P1 OPEN
+~~~text
+Task 0032: Draft Product Analytics Provider ADR
+Primary decision: D-PROVIDER-005
+Canonical status: P2 OPEN
 Target ADR filename/number: confirm from fresh latest-main audit before execution
-```
+~~~
 
-The next task should verify actual launch messaging channels and evaluate:
+The next task should first decide whether an external product-analytics provider is justified at all, then evaluate only concrete approved instrumentation needs while preserving:
 
-```text
-service vs marketing policy
-consent/source requirements
-WhatsApp / SMS / email launch scope
-template and approval model
-India provider fit
-delivery/webhook semantics
-retry / dedupe
-quiet-hours/timezone behavior
-tenant isolation
+~~~text
+canonical business truth outside analytics events
 PII minimization
-provider credentials
-sandbox/test behavior
-pricing
-support/escalation
-provider abstraction
-migration/exit
-```
+purpose / consent separation
+tenant isolation
+provider-neutral event semantics
+safe browser/server instrumentation
+operational observability separation
+provider exit
+~~~
 
-Do not create a messaging-provider account, credentials, templates, SDK integration, delivery callback, production message, or silently accept a provider during the ADR-only task.
+Do not create an analytics account/key/SDK, instrument events, create dashboards, send production analytics, or silently accept a provider during that ADR-only task.
 
 ## Files To Read Next
 
-```text
+~~~text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0030-draft-payment-provider-adr.md
+.ai/task/0031-draft-messaging-provider-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
-docs/01-product/user-roles.md
 docs/01-product/user-journeys.md
-docs/01-product/personas.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
-docs/02-architecture/container-architecture.md
-docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
-docs/adr/ADR-0011-api-contract-architecture.md
-docs/adr/ADR-0015-background-jobs-scheduler.md
+docs/adr/ADR-0013-member-client-strategy.md
 docs/adr/ADR-0017-ci-cd-release-secrets.md
 docs/adr/ADR-0018-testing-toolchain.md
 docs/adr/ADR-0020-observability-provider.md
-docs/adr/ADR-0022-payment-provider.md
-legacy migration source: docs/10-notifications-whatsapp.md
+docs/adr/ADR-0023-messaging-provider.md
 legacy migration source: docs/12-security-audit.md
 legacy migration source: docs/16-open-decisions.md
-```
+~~~
