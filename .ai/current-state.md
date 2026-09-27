@@ -3176,70 +3176,176 @@ unchanged
 
 None in progress.
 
+## Foundation Acceptance-Readiness Review
+
+Fresh review completed for the first foundation batch:
+
+~~~text
+ADR-0001  D-ARCH-005  Phase 1 architecture style
+ADR-0002  D-ARCH-016  Primary language/runtime
+ADR-0003  D-ARCH-001  Repository/workspace strategy
+ADR-0004  D-ARCH-002  Canonical database engine
+~~~
+
+Result:
+
+~~~text
+ADR-0001  reviewable, not acceptance-ready, remain Proposed
+ADR-0002  reviewable, not acceptance-ready, remain Proposed
+ADR-0003  reviewable, not acceptance-ready, remain Proposed
+ADR-0004  reviewable, not acceptance-ready, remain Proposed
+~~~
+
+Common hard blockers:
+
+~~~text
+Decision Owner = Open
+explicit approval evidence = absent
+required bounded non-production validation = incomplete
+~~~
+
+ADR-specific evidence gaps:
+
+### ADR-0001
+
+Needs executable evidence for:
+
+~~~text
+module-boundary enforcement
+shared request/worker use-case reuse
+cross-domain direct-write prevention
+attendance/payment idempotency examples
+authorization negative tests
+gym-time tests
+module-aware diagnostics
+~~~
+
+### ADR-0002
+
+Needs representative evidence for:
+
+~~~text
+strict TypeScript compile
+runtime validation at trust boundaries
+protected application command
+real transaction-heavy path
+raw-body webhook verification
+worker retry/restart behavior
+gym-time clock handling
+request -> continuation -> worker correlation
+client-safe -> server-only import prohibition
+~~~
+
+No canonical team/deployment/performance evidence currently overturns the TypeScript/Node.js recommendation.
+
+### ADR-0003
+
+Needs workspace/repository evidence for:
+
+~~~text
+dependency graph
+client-safe/server-only import isolation
+architecture dependency rule
+independent build artifacts
+shared validated contract
+request + worker reuse
+cycle detection
+affected build/test behavior
+one traceable code/test/docs/migration-placeholder change
+~~~
+
+Application scaffolding has not begun, so no measured repository/CI baseline exists.
+
+### ADR-0004
+
+Needs real PostgreSQL / operational evidence for:
+
+~~~text
+concurrent attendance uniqueness
+provider-event dedupe
+exactly-once payment effect
+single-active no-show invariant
+transaction rollback
+tenant-scoped query isolation
+representative aggregate/history query
+migration-from-zero / forward-compatible migration planning
+backup + restore rehearsal
+connection pooling / restart behavior
+regional/hosting constraint review
+~~~
+
+D-DATA-007 still blocks final Member/Membership schema semantics.
+
+ADR-0004 itself explicitly says D-DATA-007 does not block reviewing the database-engine choice independently.
+
+No ADR was Accepted or Rejected.
+
+No canonical decision status changed.
+
+No implementation/scaffold gate opened.
+
 ## Next Governance Action
 
-The existing numbered ADR backlog is complete through order 26.
+The existing numbered ADR backlog remains complete through order 26.
 
 Do not invent Task 0035.
 
-Fresh post-Task-0034 synchronization identifies the next bounded governance action as:
+The next bounded action is:
 
 ~~~text
-Architecture Decision Review / Acceptance Readiness
+Foundation Acceptance Evidence Planning
 ~~~
 
-No new task number is assigned by Task 0034.
-
-Purpose:
+Scope:
 
 ~~~text
-review existing Proposed/Open ADRs
--> confirm decision owners
--> confirm evidence gaps
--> classify ready-for-approval vs blocked vs remain Proposed
--> obtain explicit authorized approval where appropriate
--> only then synchronize canonical decisions/requirements
+ADR-0001 through ADR-0004 only
 ~~~
 
-Start with the existing first foundation batch:
+Goal:
 
 ~~~text
-ADR-0001  Phase 1 architecture style
-ADR-0002  Primary language/runtime
-ADR-0003  Repository/workspace strategy
-ADR-0004  Canonical database engine
+turn each missing acceptance-evidence item
+into a minimal isolated non-production validation plan
++
+identify human decision-owner / approval step
 ~~~
 
-Then follow the repository's existing dependency/security/runtime/provider batch ordering rather than drafting speculative new ADRs.
+The plan must:
 
-For ADR-0026 / D-DATA-007, acceptance review must explicitly cover:
+- reuse overlapping spikes instead of creating four separate prototypes;
+- avoid production infrastructure;
+- avoid accepting downstream frameworks/tools/providers;
+- keep exact Node/PostgreSQL/package-manager/framework/hosting versions separately governed;
+- distinguish evidence that can be gathered before approval from evidence that requires a later implementation scaffold;
+- define what artifact/output proves each ADR gate;
+- preserve canonical statuses until explicit authorized approval.
+
+Likely shared validation sequence:
 
 ~~~text
-Member administrative-state semantics
-Membership entitlement ownership
-proposed FR-MEMBER-004 replacement
-Blocked behavior
-Archived / relationship-end behavior
-renewal-after-expiry behavior
-import mapping
-reporting terminology
-attendance/no-show predicates
-authorization interaction
-historical migration strategy
-decision-owner approval
+1. architecture/repository skeleton in an isolated validation area
+2. strict TypeScript + dependency-direction/client-server boundary proof
+3. one protected application use case shared by request + worker adapters
+4. one real PostgreSQL correctness slice
+5. raw webhook boundary + idempotent effect example
+6. isolated backup/restore and connection/restart exercise
+7. collect evidence matrix
+8. human decision-owner review / explicit approval
 ~~~
 
-Do not begin canonical FR synchronization or Member/Membership schema work until explicit approval exists.
-
-Task 0034 does not execute this review batch.
+Do not treat this plan as ADR acceptance.
 
 ## Files To Read Next
 
 ~~~text
 docs/adr/README.md
+docs/adr/ADR-0001-modular-monolith.md
+docs/adr/ADR-0002-primary-language-runtime.md
+docs/adr/ADR-0003-monorepo-strategy.md
+docs/adr/ADR-0004-database-engine.md
 docs/00-overview/assumptions.md
+docs/02-architecture/technology-stack.md
 docs/README.md
 .ai/current-state.md
-docs/adr/ADR-0026-member-membership-state-ownership.md
-docs/01-product/functional-requirements.md
 ~~~
