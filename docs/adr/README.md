@@ -100,6 +100,7 @@ ADR-0020-observability-provider.md
 ADR-0021-object-storage.md
 ADR-0022-payment-provider.md
 ADR-0023-messaging-provider.md
+ADR-0024-product-analytics-provider.md
 ```
 
 Rules:
@@ -111,7 +112,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001` through `ADR-0023` now exist.
+`ADR-0001` through `ADR-0024` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -300,12 +301,13 @@ Their registration means ADRs can reference canonical IDs. It does not mean Type
 | `ADR-0021-object-storage.md` | `D-ARCH-010` | Proposed | OPEN | Defers persistent object storage because current Phase 1 evidence does not require persisted binary artifacts; preserves a conditional private/provider-neutral protected-object architecture with canonical ownership metadata, server-authorized short-lived access, explicit lifecycle/residency gates, and no provider acceptance or provisioning. |
 | `ADR-0022-payment-provider.md` | `D-PROVIDER-001` | Proposed | OPEN | Keeps Razorpay and Cashfree as the bounded Phase 1 sandbox shortlist while defining provider-managed browser checkout, server-owned amount/currency/purpose, raw webhook verification, normalized canonical payment state, separate event dedupe/business-effect uniqueness, reconciliation, refund/settlement boundaries, and provider exit. Production selection remains blocked by merchant/settlement ownership and business/commercial validation. |
 | `ADR-0023-messaging-provider.md` | `D-PROVIDER-002` | Proposed | OPEN | Defers production messaging-provider selection because launch channels, sender/WABA ownership, consent/service policy, and validation remain unresolved; preserves Direct Meta, Twilio, and Gupshup as a bounded WhatsApp comparison set behind GymPulse-owned notification policy, tenant-safe template/sender mapping, stale-state suppression, business-stage dedupe, and provider-observed delivery truth. |
+| `ADR-0024-product-analytics-provider.md` | `D-PROVIDER-005` | Proposed | OPEN | Defers external product analytics for the initial Phase 1 pilot because core KPIs are derivable from canonical records; preserves a minimal provider-neutral behavioral-event vocabulary for concrete future questions, with pseudonymous identity, tenant-safe context, explicit property allowlists, and no autocapture/session replay baseline. PostHog, Mixpanel, and Amplitude remain future candidates only. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first twenty-three ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first twenty-four ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
@@ -332,7 +334,7 @@ The order reflects current GymPulse dependency reasoning. Presence in this backl
 | 21 | Object storage | `D-ARCH-010` | OPEN / ADR-0021 drafted | Defers baseline persistent storage; future private protected-object storage is introduced only when a confirmed artifact requirement justifies it. |
 | 22 | Payment provider | `D-PROVIDER-001` | OPEN / ADR-0022 drafted | Keeps Razorpay + Cashfree as a sandbox shortlist; production selection remains blocked by merchant/settlement ownership, pilot methods, business policy, sandbox correctness, commercial terms, and support evidence. |
 | 23 | Messaging provider | `D-PROVIDER-002` | OPEN / ADR-0023 drafted | Defers provider selection until launch channels, sender/WABA ownership, consent/service policy, callback security, pricing/support, and tenant-isolation evidence are resolved. |
-| 24 | Product analytics provider | `D-PROVIDER-005` | OPEN | Remains non-canonical/provider-neutral until pilot instrumentation needs are concrete. |
+| 24 | Product analytics provider | `D-PROVIDER-005` | OPEN / ADR-0024 drafted | Defers an external provider for the initial pilot; canonical KPIs stay in GymPulse records and behavioral instrumentation is introduced only for a concrete question with privacy/identity/tenant/exit validation. |
 | 25 | Redis/cache requirement | `D-ARCH-008` | OPEN | Introduce only for a demonstrated cache/coordination need. |
 | 26 | Member vs Membership state ownership | `D-DATA-007` | PROPOSED | Must resolve before canonical lifecycle schema/state-machine finalization; can proceed in parallel with platform ADRs. |
 
@@ -413,11 +415,13 @@ D-PROVIDER-006 Observability provider                 OPEN / ADR-0020 drafted
 
 `ADR-0023` defers production messaging-provider selection while canonical `D-PROVIDER-002` remains `P1 OPEN`. WhatsApp remains a leading external candidate rather than a mandatory launch channel; Direct Meta, Twilio, and Gupshup remain a bounded comparison set only if WhatsApp is approved. The proposal keeps notification intent/policy, consent separation, business template keys, tenant sender/template mapping, stale-state and preference rechecks, business-stage dedupe, delivery-state truth, async dispatch, and provider exit GymPulse-owned. New decision-register gaps were identified for initial launch communication channels, sender/WABA/phone ownership, and which supported service intents are externally enabled at pilot launch. No provider, channel, sender model, or marketing capability is accepted.
 
+`ADR-0024` proposes **no external product-analytics provider for the initial Phase 1 pilot** while canonical `D-PROVIDER-005` remains `P2 OPEN`. Core pilot KPIs continue to come from canonical attendance, membership, follow-up, payment, renewal, and add-on records. Behavioral events are introduced only when a concrete pilot question cannot be answered adequately from canonical data/manual observation, using precise provider-neutral names, explicit property allowlists, pseudonymous identity, trusted tenant context, environment separation, and non-blocking delivery. Autocapture, session replay, analytics-owned feature flags/experiments, and warehouse/CDP infrastructure are not Phase 1 baselines. PostHog, Mixpanel, and Amplitude are credible future candidates only; none is selected or accepted.
+
 Payment and messaging provider ADRs should follow confirmed pilot methods/channels and provider-specific evidence rather than being forced into the foundation batch.
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0023` are complete at Draft/Proposed level.
+The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0024` are complete at Draft/Proposed level.
 
 The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-ARCH-003`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-002`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
 
@@ -445,19 +449,21 @@ The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-A
 
 `ADR-0023` does not create a Meta Business account, WABA, sender/phone registration, Twilio/Gupshup/BSP account, API/access/webhook secret, WhatsApp/SMS/email template, SDK dependency, messaging/callback/webhook route, NotificationIntent table, migration, worker/job, test/production message, broadcast/campaign, provider-dashboard user, CI/environment secret, IaC, or deployment. Direct Meta, Twilio, and Gupshup remain comparison candidates only; canonical `D-PROVIDER-002` remains `P1 OPEN`.
 
-Post-Task-0031 synchronization confirms the actual next bounded governance task as:
+`ADR-0024` does not create a PostHog/Mixpanel/Amplitude/other analytics account or project, API/project/management key, browser/server SDK, analytics helper/port, event instrumentation, dashboard, funnel, cohort, retention report, heatmap, session replay, autocapture, feature flag, experiment, analytics database/warehouse/CDP/event pipeline, CI/environment secret, production/test analytics traffic, or deployment. Canonical operational metrics remain independent of product analytics; canonical `D-PROVIDER-005` remains `P2 OPEN`.
+
+Post-Task-0032 synchronization confirms the actual next bounded governance task as:
 
 ```text
-Task 0032: Draft Product Analytics Provider ADR
-Primary decision: D-PROVIDER-005
+Task 0033: Draft Redis / Cache Requirement ADR
+Primary decision: D-ARCH-008
 Initial ADR status: Proposed
 Canonical status: P2 OPEN unless explicit approval changes it
 Target ADR filename/number: confirm from fresh latest-main audit before execution
 ```
 
-That task should evaluate whether Phase 1 needs an external product-analytics provider at all, preserve canonical operational/business truth outside analytics events, minimize PII, keep consent/tracking scope explicit, compare provider options only against concrete instrumentation needs, and preserve portability.
+That task should first determine whether Redis/cache/ephemeral coordination is required at all for Phase 1, then evaluate only demonstrated caching, rate-limiting, distributed coordination, session, or queue needs without duplicating canonical database/job semantics or adding infrastructure by default.
 
-Do not draft the product-analytics ADR, create an analytics account/key/SDK/event pipeline, instrument tracking, or silently accept a provider as part of Task 0031.
+Do not draft the Redis/cache ADR, provision Redis/Valkey or another cache, install a client, create credentials, change session/job architecture, or silently accept infrastructure as part of Task 0032.
 
 ## 16. Related Documents
 
@@ -497,6 +503,7 @@ Do not draft the product-analytics ADR, create an analytics account/key/SDK/even
 - `ADR-0021-object-storage.md`
 - `ADR-0022-payment-provider.md`
 - `ADR-0023-messaging-provider.md`
+- `ADR-0024-product-analytics-provider.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../07-api-contracts.md`
 - legacy migration source: `../12-security-audit.md`
