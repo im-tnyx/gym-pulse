@@ -280,7 +280,7 @@ Their registration means ADRs can reference canonical IDs. It does not mean Type
 
 | ADR | Primary Decision | ADR Status | Canonical Status | Summary |
 |---|---|---|---|---|
-| `ADR-0001-modular-monolith.md` | `D-ARCH-005` | Proposed | PROPOSED | Proposes a Phase 1 modular monolith with explicit domain/application/component boundaries; no acceptance evidence exists. |
+| `ADR-0001-modular-monolith.md` | `D-ARCH-005` | Proposed | PROPOSED | Proposes a Phase 1 modular monolith with explicit domain/application/component boundaries; partial validation evidence now exists, but no authorized approval evidence exists. |
 | `ADR-0002-primary-language-runtime.md` | `D-ARCH-016` | Proposed | PROPOSED | Proposes strict TypeScript with a supported Node.js LTS runtime while preserving framework/deployment/provider independence. |
 | `ADR-0003-monorepo-strategy.md` | `D-ARCH-001` | Proposed | PROPOSED | Proposes an explicit monorepo with deliberate application/package boundaries and independent build/deployment artifacts. |
 | `ADR-0004-database-engine.md` | `D-ARCH-002` | Proposed | PROPOSED | Proposes PostgreSQL as the canonical transactional database engine; PostgreSQL is not accepted. |
@@ -515,13 +515,23 @@ Schema/migrations remain unfinalized
 
 No Task 0035 is invented here.
 
-Fresh post-Task-0034 governance review moved into **Architecture Decision Review / Acceptance Readiness**. The first foundation batch review is complete and its shared evidence plan now exists; the next bounded action is execution of the isolated Foundation Validation Harness defined in `foundation-acceptance-evidence-plan.md`, without accepting any ADR.
+Fresh post-Task-0034 governance review moved into **Architecture Decision Review / Acceptance Readiness**. The first foundation review and first isolated validation pass are complete.
 
-The review should start from the existing batch-readiness ordering, verify decision owners and unresolved evidence, and classify each Proposed/Open ADR as ready for explicit approval, blocked on product/security/business evidence, or remaining Proposed. The foundation batch (`ADR-0001` through `ADR-0004`) is the first review set because it defines the implementation envelope; later dependency/security/runtime/provider decisions remain subject to their own evidence gates.
+Current validation evidence is recorded at:
 
-For `ADR-0026` specifically, acceptance review must cover the proposed Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived policy, import/reporting terminology, attendance/no-show/authorization interaction, and historical migration strategy.
+```text
+validation/foundation/EVIDENCE.md
+```
 
-No status changes, canonical requirement synchronization, or schema work are performed as part of Task 0034.
+ADR-0001 through ADR-0003 now have partial supporting technical evidence. ADR-0004 still lacks its required real-PostgreSQL evidence because the available execution sandbox has no PostgreSQL/container tooling and cannot reach package repositories.
+
+The next bounded technical evidence action is **real PostgreSQL foundation validation in an approved isolated environment**, covering concurrency/idempotency, rollback, tenant-scoped SQL, relational query behavior, backup/restore, and connection/restart recovery. File-backed validation, SQLite, mocks, or documentation inference are not substitutes.
+
+No potentially billable external CI/cloud environment is provisioned automatically.
+
+After the missing PostgreSQL evidence is collected, prepare the human decision-owner review packet. No ADR may move to `Accepted` and no canonical decision may move to `DECIDED` without explicit authorized approval.
+
+For `ADR-0026` specifically, later acceptance review must cover the proposed Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived policy, import/reporting terminology, attendance/no-show/authorization interaction, and historical migration strategy.
 
 ## 16. Related Documents
 
