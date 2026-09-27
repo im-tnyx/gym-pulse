@@ -45,6 +45,7 @@ ADR-0018  D-ARCH-018  Core automated testing toolchain              Proposed
 ADR-0019  D-ARCH-011  Package manager                                Proposed
 ADR-0020  D-PROVIDER-006 Observability provider                          Proposed
 ADR-0021  D-ARCH-010  Object Storage / Protected File Access              Proposed
+ADR-0022  D-PROVIDER-001 Payment Provider / Integration Strategy           Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -1395,19 +1396,210 @@ CI workflow
 
 No prior ADR is Accepted.
 
-## Last Completed Task
 
-`0029-draft-object-storage-adr`
+## Current Payment Provider / Integration Strategy Proposal
+
+`ADR-0022` now exists as `Proposed`; canonical `D-PROVIDER-001` remains `P1 OPEN`.
+
+Task 0030 freshly compared Razorpay and Cashfree using current official documentation.
+
+### Merchant / settlement ownership finding
+
+No canonical structured decision currently answers:
 
 ```text
-ADR-0021 Status: Proposed
-D-ARCH-010 canonical status: P1 OPEN
-Persistent object storage: deferred
-Receipt PDF persistence: not required by current canonical evidence
-Export artifact persistence: not required by current canonical evidence
-Controlled import: no indefinite raw-file retention requirement
-Provider selected: none
-No object-storage implementation
+Whose payment-provider merchant account receives member funds?
+```
+
+Potential models remain:
+
+```text
+A. gym-owned merchant account
+B. GymPulse-owned merchant account
+C. platform / sub-merchant model
+```
+
+No model is accepted by Task 0030.
+
+A new canonical decision-register gap is recorded conceptually:
+
+```text
+merchant account / settlement ownership
+```
+
+No new decision ID was invented.
+
+### Provider shortlist
+
+```text
+Razorpay
++
+Cashfree
+=
+bounded sandbox shortlist
+```
+
+No production provider is selected.
+
+No third provider was added because the unresolved fund-flow/business/commercial inputs are more decision-critical than expanding the technically credible India shortlist.
+
+### Payment trust model
+
+```text
+Provider Payment State != GymPulse Payment State
+Client Success != Canonical Payment Success
+Payment Return / Redirect = navigation + UX signal
+Customer Payment Success != Merchant Bank Settlement Complete
+Provider Event Dedupe != Business Effect Exactly Once
+```
+
+Canonical payment states remain:
+
+```text
+Created
+Pending
+Paid
+Failed
+Refunded
+Reversed
+```
+
+### Checkout / UPI posture
+
+Phase 1 remains browser-first.
+
+```text
+trusted server
+-> canonical amount / currency / purpose
+-> provider order/payment session
+-> provider-managed checkout
+-> mobile UPI Intent / supported app handoff
+   or desktop Dynamic QR where appropriate
+-> return to GymPulse
+-> refresh canonical server state
+```
+
+Do not build around stale/manual UPI Collect assumptions. Exact merchant-category/provider/network behavior remains an acceptance-time validation.
+
+UPI AutoPay is not a Phase 1 baseline.
+
+### Webhook posture
+
+```text
+raw callback
+-> provider-specific authenticity verification
+-> normalized verified evidence
+-> resolve canonical Payment/resource
+-> validate amount/currency/purpose/reference
+-> provider-event dedupe
+-> legal canonical transition
+-> exactly-once business effect
+```
+
+Razorpay current docs explicitly document raw-body HMAC verification, `x-razorpay-event-id`, at-least-once delivery, out-of-order delivery, and 24-hour exponential-backoff retry behavior.
+
+Cashfree current docs/tools require signature + timestamp verification and current first-party guidance requires raw-body/idempotent handling. Exact production retry/timeout behavior remains a sandbox/support validation gate.
+
+### Reconciliation posture
+
+Webhooks are not sufficient alone.
+
+```text
+Pending / Ambiguous
+-> immutable provider references
+-> trusted status lookup
+-> normalize + verify
+-> same canonical transition rules
+-> same exactly-once effect rules
+-> record reconciliation result
+```
+
+### Refund posture
+
+Provider refund capability is evaluated separately from business entitlement.
+
+`D-BIZ-011` remains `OPEN`.
+
+Original Payment history is preserved; refund/reversal never becomes silent deletion.
+
+### Settlement posture
+
+Settlement reporting is operational/financial evidence.
+
+```text
+Payment success
+!=
+merchant bank settlement completion
+```
+
+Merchant account ownership must be resolved before settlement architecture can be accepted.
+
+### Sandbox/commercial gates
+
+Before production provider acceptance require:
+
+- merchant/settlement ownership;
+- launch payment methods;
+- merchant onboarding eligibility;
+- refund policy;
+- receipt/invoice requirements;
+- sandbox correctness;
+- Android/iPhone UPI evidence;
+- webhook/reconciliation evidence;
+- settlement/report evidence;
+- merchant-specific pricing;
+- support/escalation confidence;
+- security/privacy review;
+- explicit decision-owner approval.
+
+### Provider-exit posture
+
+Canonical financial history remains GymPulse-owned.
+
+Old historical payments retain their original provider identity and immutable external references after any future migration.
+
+Provider-specific checkout/webhook/refund/reconciliation semantics remain behind adapters.
+
+Task 0030 created no:
+
+```text
+payment provider account
+merchant ID
+API key / client secret
+webhook secret
+payment SDK
+checkout/payment route
+webhook route
+refund route
+reconciliation worker
+payment/provider-event schema
+database migration
+sandbox transaction
+real payment
+refund
+settlement configuration
+bank-account configuration
+CI/environment secret
+provider-dashboard user
+Terraform / IaC
+deployment
+```
+
+No prior ADR is Accepted.
+
+## Last Completed Task
+
+`0030-draft-payment-provider-adr`
+
+```text
+ADR-0022 Status: Proposed
+D-PROVIDER-001 canonical status: P1 OPEN
+Razorpay: sandbox shortlist only
+Cashfree: sandbox shortlist only
+Production provider selected: no
+Merchant-of-record model: not decided
+Payment integration architecture: Proposed
+No payment implementation
 ```
 
 ## Current Task
@@ -1416,49 +1608,51 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0029 synchronization confirms the next bounded governance task as:
+Post-Task-0030 synchronization confirms the next bounded governance task as:
 
 ```text
-Task 0030: Draft Payment Provider ADR
-Primary decision: D-PROVIDER-001
+Task 0031: Draft Messaging Provider ADR
+Primary decision: D-PROVIDER-002
 Canonical status: P1 OPEN
 Target ADR filename/number: confirm from fresh latest-main audit before execution
 ```
 
-The next task should verify current pilot payment-method requirements and evaluate bounded serious payment-provider candidates for:
+The next task should verify actual launch messaging channels and evaluate:
 
 ```text
-India/launch-market applicability
-checkout/payment initiation
-server-side verification
-webhook authenticity
-idempotency/replay handling
-refund/reversal semantics
-reconciliation
-settlement
-payment-method coverage
-fees/cost
-sandbox/testing
-operational support
-security/privacy
+service vs marketing policy
+consent/source requirements
+WhatsApp / SMS / email launch scope
+template and approval model
+India provider fit
+delivery/webhook semantics
+retry / dedupe
+quiet-hours/timezone behavior
+tenant isolation
+PII minimization
+provider credentials
+sandbox/test behavior
+pricing
+support/escalation
 provider abstraction
 migration/exit
 ```
 
-Do not open a payment-provider account, create credentials, install an SDK, implement checkout/webhooks, or silently accept a provider during the ADR-only task.
+Do not create a messaging-provider account, credentials, templates, SDK integration, delivery callback, production message, or silently accept a provider during the ADR-only task.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0029-draft-object-storage-adr.md
+.ai/task/0030-draft-payment-provider-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
 docs/01-product/user-roles.md
 docs/01-product/user-journeys.md
+docs/01-product/personas.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
 docs/02-architecture/container-architecture.md
@@ -1466,14 +1660,13 @@ docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
-docs/adr/ADR-0006-managed-backend-responsibilities.md
 docs/adr/ADR-0011-api-contract-architecture.md
 docs/adr/ADR-0015-background-jobs-scheduler.md
 docs/adr/ADR-0017-ci-cd-release-secrets.md
 docs/adr/ADR-0018-testing-toolchain.md
 docs/adr/ADR-0020-observability-provider.md
-docs/adr/ADR-0021-object-storage.md
-legacy migration source: docs/09-payments-billing.md
+docs/adr/ADR-0022-payment-provider.md
+legacy migration source: docs/10-notifications-whatsapp.md
 legacy migration source: docs/12-security-audit.md
 legacy migration source: docs/16-open-decisions.md
 ```
