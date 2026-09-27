@@ -3290,146 +3290,219 @@ The existing numbered ADR backlog remains complete through order 26.
 
 Do not invent Task 0035.
 
-Foundation Acceptance Evidence Planning is complete.
-
-Canonical plan:
+The bounded action just attempted was:
 
 ~~~text
-docs/adr/foundation-acceptance-evidence-plan.md
+Real PostgreSQL Foundation Validation
 ~~~
 
-Validation harness:
+## Real PostgreSQL Foundation Validation Result
+
+Overall:
 
 ~~~text
-validation/foundation/
-validation/foundation/EVIDENCE.md
+BLOCKED
 ~~~
 
-## Foundation Validation Result
-
-First isolated validation pass executed successfully for non-PostgreSQL stages.
-
-Validation environment:
+Fresh repository audit started from:
 
 ~~~text
-Node.js v22.16.0
-TypeScript compiler 5.8.3
-PostgreSQL tools unavailable
-Docker / Podman unavailable
-sandbox DNS/network unavailable for apt package retrieval
+245a38f6e9874b45ce3131f6cbe14a7fe0072e2e
 ~~~
 
-Exact versions are evidence only.
-
-PASS evidence:
-
-~~~text
-strict client build
-strict request build
-strict worker build
-clean source boundary graph
-deliberate forbidden client -> server import detection
-deliberate dependency-cycle detection
-runtime input validation
-tenant negative authorization
-branch negative authorization
-capability negative authorization
-request replay dedupe
-worker replay dedupe
-separate-process replay using validation-only durable state
-gym-local timezone date boundary
-raw webhook exact-byte HMAC verification
-webhook tamper rejection
-provider-event replay dedupe
-~~~
-
-NOT RUN:
-
-~~~text
-real PostgreSQL concurrency/idempotency
-transaction rollback
-tenant-scoped SQL
-representative relational aggregate/history query
-database error translation
-backup + restore
-connection/pooling/restart behavior
-~~~
-
-Important:
-
-~~~text
-file-backed validation durability
-!=
-PostgreSQL evidence
-~~~
-
-Canonical ADR status remains:
+and confirmed:
 
 ~~~text
 ADR-0001 Proposed
 ADR-0002 Proposed
 ADR-0003 Proposed
 ADR-0004 Proposed
+
+D-ARCH-005 PROPOSED
+D-ARCH-016 PROPOSED
+D-ARCH-001 PROPOSED
+D-ARCH-002 PROPOSED
+
+Decision Owner = Open for ADR-0001..0004
+No ADR Accepted
+No canonical foundation decision DECIDED
 ~~~
 
-Decision Owner remains Open for all four.
-
-No approval record exists.
-
-No production infrastructure was created.
-
-No package manager/framework/DB tooling/CI/hosting/provider was accepted.
-
-## Next Governance Action
-
-The next technical evidence action is:
+Existing validation evidence remains preserved under:
 
 ~~~text
-Real PostgreSQL Foundation Validation
+validation/foundation/
+validation/foundation/EVIDENCE.md
 ~~~
 
-It requires an approved isolated environment with real PostgreSQL.
+Existing non-PostgreSQL PASS evidence remains unchanged.
 
-Required evidence:
+### Environment used
 
 ~~~text
-concurrent attendance uniqueness
-provider-event dedupe under database uniqueness
-exactly-once business effect
-single-active no-show invariant
-transaction rollback
-tenant-scoped SQL isolation
-representative aggregate/history query
-database error translation
-backup + restore
-connection / restart recovery
+environment:
+current isolated ChatGPT execution sandbox
+
+Node.js:
+v22.16.0
+
+TypeScript compiler:
+5.8.3
+
+PostgreSQL server version:
+NOT AVAILABLE
+
+PostgreSQL client version:
+NOT AVAILABLE
+
+pg_dump / pg_restore version:
+NOT AVAILABLE
+
+temporary PostgreSQL driver:
+NOT USED
+
+container image/tag/digest:
+NOT USED
 ~~~
 
-Current sandbox cannot execute this because PostgreSQL/container tooling is absent and package installation cannot reach external repositories.
-
-Do not substitute SQLite, file storage, mocks, or documentation inference.
-
-Do not provision a potentially billable external CI/cloud environment without explicit authorization.
-
-After real PostgreSQL evidence is collected:
+Environment gate verified:
 
 ~~~text
-prepare decision-owner review packet
--> authorized owner chooses Accept / Reject / Remain Proposed
--> only then synchronize canonical decisions
+PostgreSQL server/client executables: unavailable
+Docker / Podman / nerdctl: unavailable
+local TCP listener on 5432: none
+local PostgreSQL socket on 5432: none
+installed PostgreSQL server/client packages: none
+installed libpq: 17.10 libraries only
+apt PostgreSQL candidate: none
+DNS/package-repository access: unavailable
 ~~~
+
+### Stage 3 result
+
+~~~text
+real PostgreSQL correctness slice = NOT RUN
+
+migration from zero = NOT RUN
+forward migration = NOT RUN
+concurrent attendance uniqueness = NOT RUN
+provider-event dedupe under DB uniqueness = NOT RUN
+exactly-once business effect = NOT RUN
+single-active no-show invariant = NOT RUN
+transaction rollback = NOT RUN
+tenant-scoped SQL isolation = NOT RUN
+representative relational/history query = NOT RUN
+database error translation = NOT RUN
+~~~
+
+### Stage 6 result
+
+~~~text
+backup creation = NOT RUN
+restore into separate database = NOT RUN
+restored invariant verification = NOT RUN
+application-style connection = NOT RUN
+concurrent DB connections = NOT RUN
+disconnect/unavailable behavior = NOT RUN
+database restart = NOT RUN
+reconnect/recovery = NOT RUN
+post-restart replay safety = NOT RUN
+~~~
+
+Important:
+
+~~~text
+file-backed durability
+!=
+PostgreSQL evidence
+
+explicit tenant-scoped SQL proof
+!=
+RLS acceptance
+~~~
+
+No SQLSTATE is claimed because no real PostgreSQL operation executed.
+
+No validation PostgreSQL database/schema was created.
+
+No final Member/Membership schema or D-DATA-007 semantics were encoded.
+
+No PostgreSQL driver/package dependency was installed.
+
+No external managed database/cloud resource was provisioned.
+
+No production infrastructure/data/secrets were touched.
+
+### Remaining external/security gaps
+
+~~~text
+launch jurisdiction
+production region
+managed provider
+RPO / RTO
+backup retention
+admin/support access
+production connection topology
+~~~
+
+### Remaining human governance gaps
+
+~~~text
+Decision Owner = Open
+Explicit Approval = Missing
+~~~
+
+Preserve:
+
+~~~text
+No ADR Accepted
+No canonical decision DECIDED
+No production implementation gate opened
+~~~
+
+## Actual Next Bounded Prerequisite
+
+Because the technical validation is environment-blocked, the next prerequisite remains:
+
+~~~text
+obtain / authorize an isolated real PostgreSQL validation environment
+~~~
+
+Required properties:
+
+~~~text
+non-production
+isolated
+synthetic-data only
+safe to restart
+safe to delete
+~~~
+
+Do not substitute SQLite, DuckDB, file-backed state, mocks, or documentation inference.
+
+Do not automatically provision a potentially billable external managed database, cloud environment, or CI runner.
+
+After a real PostgreSQL environment is authorized, resume this same bounded action and complete Stage 3 / Stage 6.
+
+Only after that technical evidence is sufficiently complete should the next governance action become:
+
+~~~text
+Foundation Decision-Owner Review Packet
+~~~
+
+Do not execute ADR acceptance automatically.
 
 ## Files To Read Next
 
 ~~~text
+validation/foundation/EVIDENCE.md
+validation/foundation/README.md
 docs/adr/foundation-acceptance-evidence-plan.md
 docs/adr/ADR-0001-modular-monolith.md
 docs/adr/ADR-0002-primary-language-runtime.md
-docs/adr/ADR-0003-monorepo-strategy.md
 docs/adr/ADR-0004-database-engine.md
 docs/adr/README.md
 docs/00-overview/assumptions.md
-docs/02-architecture/technology-stack.md
 docs/README.md
 .ai/current-state.md
 ~~~
