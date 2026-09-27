@@ -252,6 +252,7 @@ docs/adr/ADR-0020-observability-provider.md                      Proposed   D-PR
 docs/adr/ADR-0021-object-storage.md                                Proposed   D-ARCH-010
 docs/adr/ADR-0022-payment-provider.md                              Proposed   D-PROVIDER-001
 docs/adr/ADR-0023-messaging-provider.md                            Proposed   D-PROVIDER-002
+docs/adr/ADR-0024-product-analytics-provider.md                    Proposed   D-PROVIDER-005
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -300,11 +301,13 @@ docs/adr/ADR-0023-messaging-provider.md                            Proposed   D-
 
 `ADR-0023` defers production messaging-provider selection while canonical `D-PROVIDER-002` remains `P1 OPEN`. WhatsApp is a serious external channel candidate but is not canonically mandatory; Direct Meta, Twilio, and Gupshup remain comparison candidates only. The provider-neutral direction keeps `NotificationIntent`, service/marketing policy, preferences, business template keys, tenant sender/template configuration, stale-state suppression, business-stage dedupe, callback normalization, and provider-observed delivery truth GymPulse-owned. Launch channels, sender/WABA/phone ownership, and externally enabled service intents remain explicit decision-register gaps. No messaging account, WABA, sender, template, credential, SDK, route, job, message, or marketing campaign is created.
 
+`ADR-0024` defers any external product-analytics provider for the initial Phase 1 pilot while canonical `D-PROVIDER-005` remains `P2 OPEN`. Attendance, QR adoption, no-show recovery, renewals, verified revenue/refunds, add-on revenue, payment exceptions, and follow-up completion continue to derive from canonical GymPulse records. Future behavioral instrumentation is limited to concrete unanswered questions using precise provider-neutral event names, property allowlists, pseudonymous identity, trusted tenant context, and non-blocking delivery. Autocapture, session replay, analytics-owned feature flags/experiments, warehouse/CDP infrastructure, and broad track-everything collection are not Phase 1 baselines. PostHog, Mixpanel, and Amplitude remain future candidates only; no provider is selected.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-three ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-four ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -860,7 +863,55 @@ which supported service intents are externally enabled at pilot launch
 
 No Meta Business/WABA/sender, Twilio/Gupshup account, credential, template, SDK, callback route, notification table/job, test/production message, campaign, provider-dashboard user, CI secret, IaC, or deployment was created by Task 0031.
 
-Post-Task-0031 synchronization confirms the next bounded governance task as **Task 0032: Draft Product Analytics Provider ADR**, primary decision `D-PROVIDER-005`. Canonical `D-PROVIDER-005` remains `P2 OPEN`; the exact ADR filename/number must be confirmed from latest `main` before execution.
+### Product analytics provider / instrumentation proposal
+
+`ADR-0024` now defines the Proposed product-analytics posture under `D-PROVIDER-005` without introducing an external provider for the initial pilot.
+
+Current need finding:
+
+```text
+canonical Phase 1 KPI coverage
+-> strong
+
+behavioral funnel need
+-> plausible but not yet prioritized
+
+initial external analytics provider
+-> none
+```
+
+Canonical boundary:
+
+```text
+Analytics Event != Canonical Business Record
+Client Event != Payment / Attendance / Membership Truth
+Product Analytics != Audit Log
+Observability != Product Analytics
+```
+
+Future event posture is deliberately narrow:
+
+```text
+concrete pilot question
+-> minimal event(s)
+-> explicit property allowlist
+-> pseudonymous identity
+-> trusted tenant context
+-> non-authoritative analytics
+```
+
+Candidate behavioral events include precise observations such as `renewal.options_viewed`, `payment.checkout_ui_opened`, `owner.dashboard_viewed`, `addon.detail_viewed`, or `attendance.scan_ui_opened` only when a real pilot question justifies them. Canonical outcomes such as attendance success, RenewalOrder creation, verified payment, or recorded follow-up remain measured from system-of-record data rather than duplicate analytics events.
+
+```text
+autocapture = not approved
+session replay = not approved
+feature flags/experiments via analytics = not adopted
+warehouse/CDP = not required
+```
+
+PostHog, Mixpanel, and Amplitude were checked as credible future managed options only. `D-SEC-001`, `D-SEC-005`, and `D-SEC-006` remain open gates for jurisdiction/privacy, deletion/export, and retention. No analytics account/project/key, SDK, event, dashboard, funnel, replay, autocapture, feature flag, experiment, pipeline, CI secret, or production/test analytics traffic was created by Task 0032.
+
+Post-Task-0032 synchronization confirms the next bounded governance task as **Task 0033: Draft Redis / Cache Requirement ADR**, primary decision `D-ARCH-008`. Canonical `D-ARCH-008` remains `P2 OPEN`; the exact ADR filename/number must be confirmed from latest `main` before execution.
 
 ## Legacy Migration State
 
@@ -885,7 +936,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0023 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage, Razorpay, Cashfree, PhonePe Payment Gateway, PayU, Direct Meta WhatsApp Cloud API, Twilio WhatsApp, Gupshup, MSG91, Interakt, or AiSensy is accepted merely because current evaluation recommends or compares them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0024 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage, Razorpay, Cashfree, PhonePe Payment Gateway, PayU, Direct Meta WhatsApp Cloud API, Twilio WhatsApp, Gupshup, MSG91, Interakt, AiSensy, PostHog, Mixpanel, or Amplitude is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
