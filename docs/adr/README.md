@@ -93,6 +93,7 @@ ADR-0013-member-client-strategy.md
 ADR-0014-api-deployment-boundary.md
 ADR-0015-background-jobs-scheduler.md
 ADR-0016-hosting-deployment-platform.md
+ADR-0017-ci-cd-release-secrets.md
 ```
 
 Rules:
@@ -104,7 +105,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001` through `ADR-0016` now exist.
+`ADR-0001` through `ADR-0017` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -286,12 +287,13 @@ Their registration means ADRs can reference canonical IDs. It does not mean Type
 | `ADR-0014-api-deployment-boundary.md` | `D-ARCH-006` | Proposed | OPEN | Proposes co-hosted-first trusted HTTP/API deployment with thin framework adapters, stable ADR-0011 contracts, separate durable background execution, and an explicit future API-extraction seam. |
 | `ADR-0015-background-jobs-scheduler.md` | `D-ARCH-007` | Proposed | OPEN | Proposes a PostgreSQL-backed durable queue/scheduler behind a Durable Continuation port, separate worker runtime, same-transaction enqueue when possible, business-level idempotency, and transactional outbox only when crossing to an external task system; pg-boss is a leading candidate if PostgreSQL/Node are later accepted. |
 | `ADR-0016-hosting-deployment-platform.md` | `D-ARCH-009` | Proposed | OPEN | Proposes a conventional regional managed service/worker PaaS with separate request and worker services, one approved primary region, explicit residency/security gates, and provider portability; Render is a leading candidate only if validation passes. |
+| `ADR-0017-ci-cd-release-secrets.md` | `D-ARCH-019` | Proposed | OPEN | Proposes release-security capabilities before vendor binding: protected PR/required checks, traceable source/build/deploy identity, controlled environment promotion and migration, least-privilege/OIDC-preferred deployment identity, runtime-vs-migration secret separation, coordinated web/worker rollout, and rollback/forward-fix discipline; GitHub Actions is the leading candidate only. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first sixteen ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first seventeen ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
@@ -311,7 +313,7 @@ The order reflects current GymPulse dependency reasoning. Presence in this backl
 | 14 | API deployment boundary | `D-ARCH-006` | OPEN / ADR-0014 drafted | Proposes co-hosted-first request serving with explicit extraction seam, stable ADR-0011 transport, and separate worker responsibility. |
 | 15 | Background jobs/scheduler | `D-ARCH-007` | OPEN / ADR-0015 drafted | Proposes Postgres-backed durable jobs/scheduling with separate workers, transactional handoff, explicit retry/dead-letter behavior, and no Redis baseline. |
 | 16 | Hosting/deployment platform | `D-ARCH-009` | OPEN / ADR-0016 drafted | Proposes a conventional regional managed service/worker PaaS with separate runtime units and an explicit jurisdiction/region/provider-validation gate. |
-| 17 | CI/CD + production release/secrets tooling | `D-ARCH-019` | OPEN | Production binding depends on runtime/hosting while security gates remain explicit. |
+| 17 | CI/CD + production release/secrets tooling | `D-ARCH-019` | OPEN / ADR-0017 drafted | Proposes protected CI/release gates, provenance, environment promotion, secret boundaries, one controlled migration action, web/worker rollout coordination, and rollback/forward-fix while leaving the CI vendor unaccepted. |
 | 18 | Core testing toolchain | `D-ARCH-018` | PROPOSED | Must fit approved runtime/database/web choices and preserve real-DB/negative security/contract testing. |
 | 19 | Package manager | `D-ARCH-011` | ASSUMED | Low-cost choice; finalize with repository/tooling governance. |
 | 20 | Observability provider | `D-PROVIDER-006` | OPEN | Select after runtime/job/hosting topology is understood. |
@@ -367,7 +369,7 @@ D-ARCH-013     Member client strategy                 PROPOSED / ADR-0013 drafte
 D-ARCH-006     API deployment topology                OPEN / ADR-0014 drafted
 D-ARCH-007     Background jobs                        OPEN / ADR-0015 drafted
 D-ARCH-009     Hosting                                OPEN / ADR-0016 drafted
-D-ARCH-019     CI/CD + release/secrets tooling        OPEN
+D-ARCH-019     CI/CD + release/secrets tooling        OPEN / ADR-0017 drafted
 D-ARCH-018     Testing toolchain                      PROPOSED
 D-PROVIDER-006 Observability provider                 OPEN
 ```
@@ -384,11 +386,13 @@ D-PROVIDER-006 Observability provider                 OPEN
 
 `ADR-0016` proposes a conventional regional managed service/worker PaaS as the Phase 1 hosting category: one stateless public request-serving service plus a separate non-public-by-default worker, both located near canonical persistence and independently deployable/scalable. Render is the leading current candidate only if `D-SEC-001`, region/locality, database connectivity, runtime, worker, webhook, secret, migration, rollback, and load validation pass. Cloud Run and Fly.io remain serious region-flexible alternatives; Vercel plus a separate worker remains a credible web-led split. No provider, production region, runtime, database, job runner, or CI/CD system is accepted. Canonical `D-ARCH-009` remains `OPEN`.
 
+`ADR-0017` proposes the Phase 1 CI/CD, production-release, artifact-provenance, environment-promotion, migration-gate, and secrets architecture. GitHub Actions is the leading orchestration candidate only; the invariant is provider-neutral release security: protected PR/required checks, traceable source-to-deployment identity, least-privilege/OIDC-preferred deployment credentials where supported, production-secret isolation from PR/preview contexts, separate runtime and migration credentials where practical, one controlled production migration action, compatible web/worker rollout, post-deploy verification, and explicit rollback-versus-forward-fix handling. Canonical `D-ARCH-019` remains `OPEN`; no workflow, environment, secret, artifact, deployment, or provider acceptance exists.
+
 Payment and messaging provider ADRs should follow confirmed pilot methods/channels and provider-specific evidence rather than being forced into the foundation batch.
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0016` are complete at Draft/Proposed level.
+The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0017` are complete at Draft/Proposed level.
 
 The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-ARCH-003`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-002`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
 
@@ -402,22 +406,24 @@ The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-A
 
 `ADR-0016` does not create a cloud account/project, Render/Vercel/Fly/Cloud Run service, worker, environment, DNS/TLS record, Dockerfile, IaC, deployment manifest, database, queue, Redis, migration, CI workflow, production secret, or monitoring integration. Render, Vercel, Fly.io, Google Cloud, PostgreSQL, Node.js, Next.js, pg-boss, Supabase, Redis, and the production region remain unaccepted.
 
+`ADR-0017` does not create `.github/workflows`, branch protection/rulesets, GitHub environments, repository/environment secrets, OIDC trust, production credentials, release artifacts, attestations/SBOMs, migrations, deployments, or hosting resources. GitHub Actions remains a leading candidate only; `D-ARCH-019` remains `OPEN`.
+
 The actual next bounded governance task in the current dependency queue is:
 
 ```text
 Draft one Proposed ADR only:
-D-ARCH-019 - CI/CD + Production Release / Secrets Tooling
+D-ARCH-018 - Core Automated Testing Toolchain
 ```
 
 Likely target when that task explicitly begins:
 
 ```text
-docs/adr/ADR-0017-ci-cd-release-secrets.md
+docs/adr/ADR-0018-testing-toolchain.md
 ```
 
-That next ADR should define production build/test gates, controlled promotion, migration sequencing, environment/secret ownership, rollback/forward-fix, artifact/version provenance, branch/review protections, and deployment-provider integration without creating CI/CD workflows or production secrets.
+That next ADR should define the testing-toolchain baseline across deterministic domain/application tests, real-database integration, authorization and tenant-isolation negatives, API contracts, provider adapters, background workers/jobs, browser E2E, test data/isolation, and CI layering while keeping exact tools such as Vitest, Playwright, and Testcontainers unaccepted until separately evaluated.
 
-Do not create ADR-0017 or release infrastructure as part of Task 0024.
+Do not create ADR-0018 or execute Task 0026 as part of Task 0025 synchronization.
 
 ## 16. Related Documents
 
@@ -450,6 +456,7 @@ Do not create ADR-0017 or release infrastructure as part of Task 0024.
 - `ADR-0014-api-deployment-boundary.md`
 - `ADR-0015-background-jobs-scheduler.md`
 - `ADR-0016-hosting-deployment-platform.md`
+- `ADR-0017-ci-cd-release-secrets.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../07-api-contracts.md`
 - legacy migration source: `../12-security-audit.md`
