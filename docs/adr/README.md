@@ -101,6 +101,7 @@ ADR-0021-object-storage.md
 ADR-0022-payment-provider.md
 ADR-0023-messaging-provider.md
 ADR-0024-product-analytics-provider.md
+ADR-0025-redis-cache-requirement.md
 ```
 
 Rules:
@@ -112,7 +113,7 @@ Rules:
 5. A material replacement decision receives a new number.
 6. Do not reserve speculative numbers before an ADR is actually drafted.
 
-`ADR-0001` through `ADR-0024` now exist.
+`ADR-0001` through `ADR-0025` now exist.
 
 ## 5. When an ADR Is Required
 
@@ -302,12 +303,13 @@ Their registration means ADRs can reference canonical IDs. It does not mean Type
 | `ADR-0022-payment-provider.md` | `D-PROVIDER-001` | Proposed | OPEN | Keeps Razorpay and Cashfree as the bounded Phase 1 sandbox shortlist while defining provider-managed browser checkout, server-owned amount/currency/purpose, raw webhook verification, normalized canonical payment state, separate event dedupe/business-effect uniqueness, reconciliation, refund/settlement boundaries, and provider exit. Production selection remains blocked by merchant/settlement ownership and business/commercial validation. |
 | `ADR-0023-messaging-provider.md` | `D-PROVIDER-002` | Proposed | OPEN | Defers production messaging-provider selection because launch channels, sender/WABA ownership, consent/service policy, and validation remain unresolved; preserves Direct Meta, Twilio, and Gupshup as a bounded WhatsApp comparison set behind GymPulse-owned notification policy, tenant-safe template/sender mapping, stale-state suppression, business-stage dedupe, and provider-observed delivery truth. |
 | `ADR-0024-product-analytics-provider.md` | `D-PROVIDER-005` | Proposed | OPEN | Defers external product analytics for the initial Phase 1 pilot because core KPIs are derivable from canonical records; preserves a minimal provider-neutral behavioral-event vocabulary for concrete future questions, with pseudonymous identity, tenant-safe context, explicit property allowlists, and no autocapture/session replay baseline. PostHog, Mixpanel, and Amplitude remain future candidates only. |
+| `ADR-0025-redis-cache-requirement.md` | `D-ARCH-008` | Proposed | OPEN | Defers Redis/Valkey as a Phase 1 baseline because no shared low-latency ephemeral-state requirement is demonstrated; preserves indexed/bounded database reads, durable database-backed correctness/jobs, no distributed authorization cache baseline, separately governed sessions/rate limits, and evidence-triggered narrow future cache/coordination adoption. |
 
 No ADR is currently `Accepted`.
 
 ## 13. Ordered ADR Backlog
 
-The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first twenty-four ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
+The order reflects current GymPulse dependency reasoning. Presence in this backlog does not mean acceptance. The first twenty-five ADRs have now been drafted; later ADR numbers are assigned only when a file is actually created.
 
 | Order | Decision | Canonical ID | Current Status | Reason for Order |
 |---:|---|---|---|---|
@@ -335,7 +337,7 @@ The order reflects current GymPulse dependency reasoning. Presence in this backl
 | 22 | Payment provider | `D-PROVIDER-001` | OPEN / ADR-0022 drafted | Keeps Razorpay + Cashfree as a sandbox shortlist; production selection remains blocked by merchant/settlement ownership, pilot methods, business policy, sandbox correctness, commercial terms, and support evidence. |
 | 23 | Messaging provider | `D-PROVIDER-002` | OPEN / ADR-0023 drafted | Defers provider selection until launch channels, sender/WABA ownership, consent/service policy, callback security, pricing/support, and tenant-isolation evidence are resolved. |
 | 24 | Product analytics provider | `D-PROVIDER-005` | OPEN / ADR-0024 drafted | Defers an external provider for the initial pilot; canonical KPIs stay in GymPulse records and behavioral instrumentation is introduced only for a concrete question with privacy/identity/tenant/exit validation. |
-| 25 | Redis/cache requirement | `D-ARCH-008` | OPEN | Introduce only for a demonstrated cache/coordination need. |
+| 25 | Redis/cache requirement | `D-ARCH-008` | OPEN / ADR-0025 drafted | Defers Redis/Valkey for Phase 1; introduce shared ephemeral state only after a measured cache, distributed rate-limit, session, job, realtime, or coordination requirement survives database/platform alternatives. |
 | 26 | Member vs Membership state ownership | `D-DATA-007` | PROPOSED | Must resolve before canonical lifecycle schema/state-machine finalization; can proceed in parallel with platform ADRs. |
 
 ## 14. ADR Batch Readiness
@@ -417,11 +419,13 @@ D-PROVIDER-006 Observability provider                 OPEN / ADR-0020 drafted
 
 `ADR-0024` proposes **no external product-analytics provider for the initial Phase 1 pilot** while canonical `D-PROVIDER-005` remains `P2 OPEN`. Core pilot KPIs continue to come from canonical attendance, membership, follow-up, payment, renewal, and add-on records. Behavioral events are introduced only when a concrete pilot question cannot be answered adequately from canonical data/manual observation, using precise provider-neutral names, explicit property allowlists, pseudonymous identity, trusted tenant context, environment separation, and non-blocking delivery. Autocapture, session replay, analytics-owned feature flags/experiments, and warehouse/CDP infrastructure are not Phase 1 baselines. PostHog, Mixpanel, and Amplitude are credible future candidates only; none is selected or accepted.
 
+`ADR-0025` proposes **no Redis/Valkey requirement for the Phase 1 baseline** while canonical `D-ARCH-008` remains `P2 OPEN`. No current use case is classified Required now. Indexed/bounded canonical database queries and read models precede shared caching; ADR-0009 keeps distributed cross-request authorization caching out of the baseline; ADR-0007/session policy remains separately governed; `NFR-SECURITY-010` requires abuse controls but not Redis specifically; ADR-0015 continues to own durable jobs without assuming BullMQ/Redis; distributed locks and ephemeral dedupe cannot replace database transactions, constraints, or durable business idempotency; pub/sub/realtime has no current product requirement. A narrow shared cache/ephemeral store may be reconsidered only after measured evidence and explicit degraded-mode, tenant-isolation, security, operations, and cost validation.
+
 Payment and messaging provider ADRs should follow confirmed pilot methods/channels and provider-specific evidence rather than being forced into the foundation batch.
 
 ## 15. Current Governance Gate
 
-The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0024` are complete at Draft/Proposed level.
+The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0025` are complete at Draft/Proposed level.
 
 The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-ARCH-003`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-002`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
 
@@ -451,19 +455,21 @@ The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-A
 
 `ADR-0024` does not create a PostHog/Mixpanel/Amplitude/other analytics account or project, API/project/management key, browser/server SDK, analytics helper/port, event instrumentation, dashboard, funnel, cohort, retention report, heatmap, session replay, autocapture, feature flag, experiment, analytics database/warehouse/CDP/event pipeline, CI/environment secret, production/test analytics traffic, or deployment. Canonical operational metrics remain independent of product analytics; canonical `D-PROVIDER-005` remains `P2 OPEN`.
 
-Post-Task-0032 synchronization confirms the actual next bounded governance task as:
+`ADR-0025` does not create a Redis/Valkey instance, managed cache account, database/cluster, connection URL, credential/certificate, Redis client, cache adapter, rate limiter, session store, distributed lock, pub/sub/stream, BullMQ queue/worker, cache-key implementation, Docker/CI cache service, IaC, or deployment. It does not move ADR-0015 jobs to Redis or resolve D-ARCH-004/D-SEC-004 session policy. Redis and Valkey remain unaccepted; canonical `D-ARCH-008` remains `P2 OPEN`.
+
+Post-Task-0033 synchronization confirms the actual next bounded governance task as:
 
 ```text
-Task 0033: Draft Redis / Cache Requirement ADR
-Primary decision: D-ARCH-008
+Task 0034: Resolve / Draft Member vs Membership State Ownership ADR
+Primary decision: D-DATA-007
 Initial ADR status: Proposed
-Canonical status: P2 OPEN unless explicit approval changes it
+Canonical status: PROPOSED / unresolved unless explicit approval changes it
 Target ADR filename/number: confirm from fresh latest-main audit before execution
 ```
 
-That task should first determine whether Redis/cache/ephemeral coordination is required at all for Phase 1, then evaluate only demonstrated caching, rate-limiting, distributed coordination, session, or queue needs without duplicating canonical database/job semantics or adding infrastructure by default.
+That task should resolve the current canonical overlap between Member-level administrative/relationship state and Membership entitlement lifecycle before final schema/state-machine constraints are treated as implementation-ready.
 
-Do not draft the Redis/cache ADR, provision Redis/Valkey or another cache, install a client, create credentials, change session/job architecture, or silently accept infrastructure as part of Task 0032.
+Do not draft the state-ownership ADR, change FR-MEMBER-004 or canonical status, finalize schema/migrations, or silently accept the existing proposed ownership as part of Task 0033.
 
 ## 16. Related Documents
 
@@ -504,6 +510,7 @@ Do not draft the Redis/cache ADR, provision Redis/Valkey or another cache, insta
 - `ADR-0022-payment-provider.md`
 - `ADR-0023-messaging-provider.md`
 - `ADR-0024-product-analytics-provider.md`
+- `ADR-0025-redis-cache-requirement.md`
 - legacy migration source: `../05-system-architecture.md`
 - legacy migration source: `../07-api-contracts.md`
 - legacy migration source: `../12-security-audit.md`
