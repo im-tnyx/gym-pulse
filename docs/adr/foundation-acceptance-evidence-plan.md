@@ -806,7 +806,7 @@ Any durable production scaffold must follow accepted ADRs.
 
 ## 23. Current Result
 
-The first isolated validation pass has now been executed and committed under:
+The existing validation harness remains under:
 
 ~~~text
 validation/foundation/
@@ -818,46 +818,85 @@ Evidence report:
 validation/foundation/EVIDENCE.md
 ~~~
 
-Observed validation environment:
+A fresh **Real PostgreSQL Foundation Validation** attempt was made on 2026-09-27.
+
+Observed execution environment:
 
 ~~~text
 Node.js v22.16.0
 TypeScript compiler 5.8.3
-PostgreSQL tools unavailable
-Docker / Podman unavailable
+
+PostgreSQL server version: NOT AVAILABLE
+PostgreSQL client version: NOT AVAILABLE
+pg_dump / pg_restore version: NOT AVAILABLE
+temporary PostgreSQL driver: NOT USED
+container image/tag/digest: NOT USED
+
+PostgreSQL server/client executables: unavailable
+Docker / Podman / nerdctl: unavailable
+local TCP listener/socket on 5432: none
+PostgreSQL server/client packages: none
+libpq libraries: 17.10 only
+apt PostgreSQL candidate: none
+DNS/package-repository access: unavailable
 ~~~
 
-These versions are evidence only.
-
-Current evidence status:
+Existing non-PostgreSQL evidence remains preserved:
 
 ~~~text
 Stage 0 evidence charter                      PASS
 Stage 1 boundary / artifact proof             PARTIAL PASS
 Stage 2 protected application-use-case proof  PARTIAL PASS
-Stage 3 real PostgreSQL correctness slice     NOT RUN
 Stage 4 raw webhook boundary proof            PASS
 Stage 5 worker retry / separate-process proof PASS
-Stage 6 backup/restore/connection proof        NOT RUN
 Stage 7 evidence matrix                        PASS
-human decision-owner approval                 EXTERNAL / REQUIRED
 ~~~
 
-Key successful proofs include:
+The PostgreSQL-specific action result is:
 
-- strict client/request/worker TypeScript builds;
-- clean source dependency graph;
-- deliberate forbidden client -> server import detection;
-- deliberate dependency-cycle detection;
-- tenant/branch/capability negative authorization;
-- malformed input rejection;
-- request/worker reuse of one application command;
-- replay-safe result across separate Node processes using validation-only durable state;
-- gym-timezone date-boundary behavior;
-- exact raw-byte HMAC webhook verification and tamper rejection;
-- provider-event replay dedupe.
+~~~text
+Real PostgreSQL Foundation Validation = BLOCKED
 
-Important limitation:
+Stage 3 real PostgreSQL correctness slice     NOT RUN
+Stage 6 backup/restore/connection proof        NOT RUN
+~~~
+
+The detailed PostgreSQL matrix explicitly records `NOT RUN` for:
+
+~~~text
+real PostgreSQL instance/version
+migration from zero
+forward migration
+concurrent attendance uniqueness
+provider-event dedupe
+exactly-once business effect
+single-active no-show invariant
+transaction rollback
+tenant-scoped SQL isolation
+representative relational aggregate/history query
+database error translation
+backup
+restore into separate database
+restored invariant verification
+application-style connection
+concurrent connections
+disconnect/unavailable behavior
+database restart
+reconnect/recovery
+post-restart replay safety
+~~~
+
+No substitute database was used.
+
+No PostgreSQL validation schema was created.
+
+No final Member/Membership state model was encoded.
+
+No external managed database/cloud resource was provisioned.
+
+No production infrastructure was created.
+
+Preserve:
 
 ~~~text
 file-backed validation state
@@ -873,39 +912,43 @@ ADR-0002 = Proposed
 ADR-0003 = Proposed
 ADR-0004 = Proposed
 
-canonical statuses = unchanged
+D-ARCH-005 = PROPOSED
+D-ARCH-016 = PROPOSED
+D-ARCH-001 = PROPOSED
+D-ARCH-002 = PROPOSED
+
 decision owners = Open
-production infrastructure = none
+production implementation gate = closed
 ~~~
 
 ## 24. Next Bounded Action
 
-Complete the missing **real PostgreSQL validation** for ADR-0004 and the shared transaction/concurrency evidence required by ADR-0001/ADR-0002.
-
-Required next evidence:
+Because no approved real PostgreSQL environment is currently available, the next bounded prerequisite is:
 
 ~~~text
-real PostgreSQL instance
-concurrent attendance uniqueness
-provider-event dedupe under DB uniqueness
-exactly-once business effect
-single-active no-show invariant
-transaction rollback
-tenant-scoped SQL isolation
-representative relational aggregate/history query
-database error translation
-backup + restore
-connection / restart recovery
+obtain / authorize an isolated real PostgreSQL validation environment
 ~~~
 
-The current execution environment cannot perform these items because PostgreSQL client/server tools and container runtime are unavailable.
+The environment must be:
 
-Do not substitute SQLite, file storage, mocks, or inferred documentation for real PostgreSQL behavior.
+~~~text
+non-production
+isolated
+synthetic-data only
+safe to restart
+safe to delete
+~~~
 
-After PostgreSQL evidence is collected, prepare the decision-owner review packet.
+Once such an environment exists, resume this same bounded validation action and execute the remaining Stage 3 / Stage 6 evidence.
 
-Do not invent a new ADR.
+Do not substitute SQLite, DuckDB, file-backed state, mocks, or documentation inference.
 
-Do not mark any ADR Accepted from technical evidence alone.
+Do not automatically provision AWS RDS, Supabase, Neon, Render PostgreSQL, Railway, Cloud SQL, Azure Database for PostgreSQL, Aiven, DigitalOcean, or another external managed database.
 
-Acceptance remains a later explicit human governance action.
+Only after the real PostgreSQL technical evidence is sufficiently complete should the next governance action become:
+
+~~~text
+Foundation Decision-Owner Review Packet
+~~~
+
+Technical evidence alone must not mark any ADR Accepted or any canonical decision DECIDED.
