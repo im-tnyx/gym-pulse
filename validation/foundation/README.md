@@ -31,6 +31,90 @@ The harness intentionally uses no third-party runtime dependencies. `package.jso
 
 Real PostgreSQL evidence remains required by `docs/adr/foundation-acceptance-evidence-plan.md`.
 
+## Real PostgreSQL Validation Attempt — 2026-09-27
+
+Overall result:
+
+```text
+Real PostgreSQL Foundation Validation = BLOCKED
+```
+
+Environment gate:
+
+```text
+PostgreSQL server: unavailable
+psql: unavailable
+pg_dump / pg_restore: unavailable
+Docker: unavailable
+Podman: unavailable
+nerdctl: unavailable
+local 5432 listener/socket: none
+PostgreSQL server/client packages: none
+libpq libraries only: 17.10
+apt PostgreSQL candidate: none
+DNS resolution to Debian package host: unavailable
+```
+
+No PostgreSQL server version can be recorded because no real server is available.
+
+No temporary PostgreSQL driver was installed.
+
+No container image was used.
+
+No validation database/schema, credentials, backup, restore database, or PostgreSQL-specific state was created.
+
+No external managed database or potentially billable cloud/CI resource was provisioned.
+
+The PostgreSQL-specific Stage 3 and Stage 6 evidence rows remain `NOT RUN`; see `EVIDENCE.md`.
+
+Next technical prerequisite:
+
+```text
+obtain/authorize an isolated real PostgreSQL validation environment
+```
+
+Allowed environment remains:
+
+```text
+non-production
+isolated
+synthetic-data only
+safe to restart
+safe to delete
+```
+
+Do not substitute SQLite, DuckDB, JSON/file state, an in-memory map, mocks, or documentation inference.
+
+Preserve:
+
+```text
+validation harness
+!=
+production scaffold
+
+file-backed durability
+!=
+PostgreSQL evidence
+```
+
+### Environment-gate reproduction
+
+```sh
+command -v psql postgres pg_ctl initdb pg_dump pg_restore createdb dropdb docker podman nerdctl
+ls -ld /usr/lib/postgresql /var/lib/postgresql /var/run/postgresql
+dpkg -l | awk '/^ii/ && $2 ~ /^postgresql|^postgresql-client|^libpq/ {print $2,$3}'
+ss -ltn | grep -E '(:5432\\b)'
+find /tmp /var/run -maxdepth 3 -type s -name '.s.PGSQL.5432'
+apt-cache policy postgresql postgresql-client
+getent hosts deb.debian.org
+```
+
+### Cleanup
+
+No PostgreSQL resources were created, so there is no database/container/volume/backup/credential cleanup from this blocked attempt.
+
+Compiled TypeScript output and validation-only file state remain disposable under the existing harness rules.
+
 ## Reproduce in a compatible environment
 
 ```text
