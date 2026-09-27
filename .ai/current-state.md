@@ -3182,19 +3182,56 @@ The existing numbered ADR backlog is complete through order 26.
 
 Do not invent Task 0035.
 
-A fresh synchronized governance audit is required to choose the next bounded action from repository evidence.
-
-Candidate categories only:
+Fresh post-Task-0034 synchronization identifies the next bounded governance action as:
 
 ~~~text
-decision review / acceptance preparation
-canonical requirement synchronization after approval
-business/security blocker resolution
-data-model/schema phase
-another governance phase
+Architecture Decision Review / Acceptance Readiness
 ~~~
 
-The actual next action must be recorded after re-reading synchronized governance files.
+No new task number is assigned by Task 0034.
+
+Purpose:
+
+~~~text
+review existing Proposed/Open ADRs
+-> confirm decision owners
+-> confirm evidence gaps
+-> classify ready-for-approval vs blocked vs remain Proposed
+-> obtain explicit authorized approval where appropriate
+-> only then synchronize canonical decisions/requirements
+~~~
+
+Start with the existing first foundation batch:
+
+~~~text
+ADR-0001  Phase 1 architecture style
+ADR-0002  Primary language/runtime
+ADR-0003  Repository/workspace strategy
+ADR-0004  Canonical database engine
+~~~
+
+Then follow the repository's existing dependency/security/runtime/provider batch ordering rather than drafting speculative new ADRs.
+
+For ADR-0026 / D-DATA-007, acceptance review must explicitly cover:
+
+~~~text
+Member administrative-state semantics
+Membership entitlement ownership
+proposed FR-MEMBER-004 replacement
+Blocked behavior
+Archived / relationship-end behavior
+renewal-after-expiry behavior
+import mapping
+reporting terminology
+attendance/no-show predicates
+authorization interaction
+historical migration strategy
+decision-owner approval
+~~~
+
+Do not begin canonical FR synchronization or Member/Membership schema work until explicit approval exists.
+
+Task 0034 does not execute this review batch.
 
 ## Files To Read Next
 
