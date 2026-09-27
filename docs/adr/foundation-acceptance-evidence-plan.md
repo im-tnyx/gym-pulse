@@ -806,44 +806,106 @@ Any durable production scaffold must follow accepted ADRs.
 
 ## 23. Current Result
 
+The first isolated validation pass has now been executed and committed under:
+
 ~~~text
-Foundation readiness review:
-complete
+validation/foundation/
+~~~
 
-Foundation acceptance evidence plan:
-defined
+Evidence report:
 
-ADR-0001:
-Proposed
+~~~text
+validation/foundation/EVIDENCE.md
+~~~
 
-ADR-0002:
-Proposed
+Observed validation environment:
 
-ADR-0003:
-Proposed
+~~~text
+Node.js v22.16.0
+TypeScript compiler 5.8.3
+PostgreSQL tools unavailable
+Docker / Podman unavailable
+~~~
 
-ADR-0004:
-Proposed
+These versions are evidence only.
 
-canonical statuses:
-unchanged
+Current evidence status:
 
-decision owners:
-Open
+~~~text
+Stage 0 evidence charter                      PASS
+Stage 1 boundary / artifact proof             PARTIAL PASS
+Stage 2 protected application-use-case proof  PARTIAL PASS
+Stage 3 real PostgreSQL correctness slice     NOT RUN
+Stage 4 raw webhook boundary proof            PASS
+Stage 5 worker retry / separate-process proof PASS
+Stage 6 backup/restore/connection proof        NOT RUN
+Stage 7 evidence matrix                        PASS
+human decision-owner approval                 EXTERNAL / REQUIRED
+~~~
 
-technical validation:
-not executed yet
+Key successful proofs include:
 
-production infrastructure:
-none
+- strict client/request/worker TypeScript builds;
+- clean source dependency graph;
+- deliberate forbidden client -> server import detection;
+- deliberate dependency-cycle detection;
+- tenant/branch/capability negative authorization;
+- malformed input rejection;
+- request/worker reuse of one application command;
+- replay-safe result across separate Node processes using validation-only durable state;
+- gym-timezone date-boundary behavior;
+- exact raw-byte HMAC webhook verification and tamper rejection;
+- provider-event replay dedupe.
+
+Important limitation:
+
+~~~text
+file-backed validation state
+!=
+PostgreSQL evidence
+~~~
+
+Therefore:
+
+~~~text
+ADR-0001 = Proposed
+ADR-0002 = Proposed
+ADR-0003 = Proposed
+ADR-0004 = Proposed
+
+canonical statuses = unchanged
+decision owners = Open
+production infrastructure = none
 ~~~
 
 ## 24. Next Bounded Action
 
-Execute the shared **Foundation Validation Harness** in an isolated non-production form and produce the evidence matrix.
+Complete the missing **real PostgreSQL validation** for ADR-0004 and the shared transaction/concurrency evidence required by ADR-0001/ADR-0002.
+
+Required next evidence:
+
+~~~text
+real PostgreSQL instance
+concurrent attendance uniqueness
+provider-event dedupe under DB uniqueness
+exactly-once business effect
+single-active no-show invariant
+transaction rollback
+tenant-scoped SQL isolation
+representative relational aggregate/history query
+database error translation
+backup + restore
+connection / restart recovery
+~~~
+
+The current execution environment cannot perform these items because PostgreSQL client/server tools and container runtime are unavailable.
+
+Do not substitute SQLite, file storage, mocks, or inferred documentation for real PostgreSQL behavior.
+
+After PostgreSQL evidence is collected, prepare the decision-owner review packet.
 
 Do not invent a new ADR.
 
-Do not mark any ADR Accepted during harness execution.
+Do not mark any ADR Accepted from technical evidence alone.
 
 Acceptance remains a later explicit human governance action.
