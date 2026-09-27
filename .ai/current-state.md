@@ -43,6 +43,7 @@ ADR-0016  D-ARCH-009  Hosting / deployment platform               Proposed
 ADR-0017  D-ARCH-019  CI/CD / production release / secrets        Proposed
 ADR-0018  D-ARCH-018  Core automated testing toolchain              Proposed
 ADR-0019  D-ARCH-011  Package manager                                Proposed
+ADR-0020  D-PROVIDER-006 Observability provider                          Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -1191,20 +1192,93 @@ Turborepo configuration
 
 `D-ARCH-001`, `D-ARCH-016`, `D-ARCH-019`, `D-ARCH-018`, `D-ARCH-012`, `D-ARCH-013`, and `D-ARCH-009` remain independently governed.
 
-## Last Completed Task
 
-`0027-draft-package-manager-adr`
+## Current Observability Provider Proposal
+
+`ADR-0020` now exists as `Proposed`; canonical `D-PROVIDER-006` remains `P1 OPEN`.
+
+Task 0028 compared Grafana Cloud, Sentry, Datadog, Better Stack, and hosting-native telemetry using current official documentation.
+
+Current proposed direction:
 
 ```text
-ADR-0019 Status: Proposed
-D-ARCH-011 canonical status: P1 ASSUMED
-pnpm: leading proposal only
-npm: conservative fallback
-Yarn/Bun: evaluated alternatives
-No package-manager implementation
+Grafana Cloud
+  -> leading managed provider proposal
+
+GymPulse-owned telemetry semantics
+  -> structured privacy-safe logs
+  -> stable correlation context
+
+OpenTelemetry
+  -> leading server traces + metrics portability path
+
+focused operational alerts
++
+optional privacy-reviewed Faro frontend telemetry
++
+no unrestricted session replay baseline
 ```
 
-The package-manager direction is not accepted or implemented merely because ADR-0019 exists.
+OpenTelemetry JavaScript maturity recorded by Task 0028:
+
+```text
+Traces   Stable
+Metrics  Stable
+Logs     Development
+Browser  Experimental
+```
+
+Therefore GymPulse does not force OTel JS logs/browser instrumentation merely for uniformity.
+
+Key boundaries:
+
+```text
+Observability != Audit Log
+Observability != Product Analytics
+Metric != Canonical Business Truth
+OpenTelemetry != Observability Backend
+Correlation ID != Tenant Authority
+Telemetry Export Failure != Business Operation Failure
+```
+
+Current Grafana Cloud India stack availability is evidence for regional optionality only. `D-SEC-001` remains `P0 OPEN`; no production telemetry region is approved.
+
+Task 0028 created no:
+
+```text
+Grafana Cloud stack/account
+Sentry / Datadog / Better Stack project
+observability SDK dependency
+OpenTelemetry package
+Grafana Faro package
+Grafana Alloy / Collector process
+ingestion/API credential
+dashboard
+alert rule
+SLO
+session replay
+log drain
+telemetry pipeline
+production telemetry
+CI workflow
+```
+
+No observability provider is Accepted or provisioned.
+
+## Last Completed Task
+
+`0028-draft-observability-provider-adr`
+
+```text
+ADR-0020 Status: Proposed
+D-PROVIDER-006 canonical status: P1 OPEN
+Grafana Cloud: leading proposal only
+OpenTelemetry server traces/metrics: proposed portable direction
+Browser telemetry: optional/privacy-gated
+No observability implementation
+```
+
+The observability direction is not accepted or implemented merely because ADR-0020 exists.
 
 ## Current Task
 
@@ -1212,54 +1286,57 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0027 synchronization of the ADR index, canonical register, documentation index, and current state confirms the next bounded governance task as:
+Post-Task-0028 synchronization of the ADR index, canonical register, documentation index, and current state confirms the next bounded governance task as:
 
 ```text
-Task 0028: Draft Observability Provider ADR
+Task 0029: Draft Object Storage ADR
 ```
 
 Primary canonical decision:
 
 ```text
-D-PROVIDER-006
+D-ARCH-010
 ```
 
 Target:
 
 ```text
-docs/adr/ADR-0020-observability-provider.md
+docs/adr/ADR-0021-object-storage.md
 ```
 
-Initial ADR status should be `Proposed`. Canonical `D-PROVIDER-006` remains `P1 OPEN` unless explicit review/approval changes it.
+Initial ADR status should be `Proposed`. Canonical `D-ARCH-010` remains `P1 OPEN` unless explicit review/approval changes it.
 
-The next task should evaluate the observability capability/provider boundary for:
+The next task should first verify whether Phase 1 has a concrete object-storage requirement. If required, evaluate:
 
 ```text
-structured logs
-correlation/request/job IDs
-error monitoring
-payment/webhook/job diagnostics
-privacy/PII/secret scrubbing
-OpenTelemetry compatibility
-runtime + worker instrumentation
-hosting integration
-alerting/operability
-retention
+private-by-default object access
+tenant/resource authorization
+receipt/export/protected-file use cases
+object key + metadata boundaries
+upload/download validation
+content type / size limits
+malware/file-safety controls where uploads exist
+encryption
+signed/authorized retrieval
+retention + deletion
+backup/durability assumptions
+region/data residency
 cost
-data residency/jurisdiction
+hosting independence
 provider portability
 ```
 
-Do not provision a provider, add an SDK, create telemetry credentials, or silently accept an observability vendor during the ADR-only task.
+Do not provision a bucket/provider, create storage credentials, upload production data, or silently accept a storage vendor during the ADR-only task.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0027-draft-package-manager-adr.md
+.ai/task/0028-draft-observability-provider-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
+docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
@@ -1268,11 +1345,11 @@ docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
+docs/adr/ADR-0006-managed-backend-responsibilities.md
+docs/adr/ADR-0014-api-deployment-boundary.md
 docs/adr/ADR-0016-hosting-deployment-platform.md
 docs/adr/ADR-0017-ci-cd-release-secrets.md
-docs/adr/ADR-0018-testing-toolchain.md
-docs/adr/ADR-0019-package-manager.md
+docs/adr/ADR-0020-observability-provider.md
 legacy migration source: docs/12-security-audit.md
-legacy migration source: docs/15-engineering-workflow.md
 legacy migration source: docs/16-open-decisions.md
 ```
