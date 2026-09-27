@@ -1053,7 +1053,9 @@ All four remain Proposed. Common hard blockers are an unidentified authorized de
 
 No ADR was Accepted or Rejected, no canonical status changed, and no implementation/scaffold gate was opened by this review.
 
-The next bounded governance action is **Foundation Acceptance Evidence Planning**: convert the missing evidence for ADR-0001 through ADR-0004 into a minimal isolated validation plan and identify the human decision-owner/approval step. This planning phase must not create production infrastructure or silently accept downstream frameworks, package managers, database tooling, hosting, CI, or providers.
+The **Foundation Acceptance Evidence Plan** now exists at `docs/adr/foundation-acceptance-evidence-plan.md`. It converts the missing evidence for ADR-0001 through ADR-0004 into one minimal shared isolated validation program and preserves the later human decision-owner/approval step. The plan does not create production infrastructure or silently accept downstream frameworks, package managers, database tooling, hosting, CI, or providers.
+
+The next bounded action is to execute that isolated Foundation Validation Harness and produce its evidence matrix; no ADR may be marked Accepted merely because a validation test passes.
 
 `ADR-0026` still requires later explicit review of Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived effects, import/reporting semantics, attendance/no-show/authorization interaction, and historical migration approach before `D-DATA-007` can become Decided.
 
