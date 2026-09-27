@@ -40,6 +40,7 @@ ADR-0013  D-ARCH-013  Member client framework / delivery strategy Proposed
 ADR-0014  D-ARCH-006  API deployment boundary                    Proposed
 ADR-0015  D-ARCH-007  Background jobs / scheduler                Proposed
 ADR-0016  D-ARCH-009  Hosting / deployment platform               Proposed
+ADR-0017  D-ARCH-019  CI/CD / production release / secrets        Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -774,73 +775,207 @@ GymPulse still owns:
 - reconciliation state,
 - business-health signals.
 
-## Task 0024 Implementation Status
 
-Task `0024-draft-hosting-deployment-platform-adr` completed documentation/governance work only.
+## Current CI/CD / Release / Secrets Proposal
 
-Created:
+`ADR-0017` now exists as `Proposed`; canonical `D-ARCH-019` remains `P1 OPEN`.
+
+Task 0025 proposes a release-security capability model first, with GitHub Actions as the leading orchestration candidate only.
+
+### Release trust model
 
 ```text
-docs/adr/ADR-0016-hosting-deployment-platform.md
-.ai/task/0024-draft-hosting-deployment-platform-adr.md
+source revision
+-> required CI gates
+-> traceable build/artifact identity
+-> controlled environment promotion
+-> one controlled production migration action
+-> compatible web/worker deployment
+-> post-deploy smoke/observation
+-> rollback where safe / forward-fix where rollback is unsafe
 ```
 
-Updated:
+The CI system is a policy/orchestration layer. The eventual hosting provider remains a replaceable deployment executor rather than the authority for source review, business correctness, or canonical release policy.
+
+### PR / required-check posture
+
+Protected production source flow should require the approved set of checks before promotion.
+
+Untrusted pull-request execution must not receive production deployment, migration, database, Auth, payment, messaging, or other production credentials.
+
+Exact branch protection/ruleset configuration remains implementation work and may depend on repository-plan capabilities.
+
+### Artifact / provenance posture
+
+A production deployment should be traceable to:
+
+```text
+source commit SHA
++
+CI/release run
++
+build/artifact or deployment identifier
++
+target environment
++
+deployed service/runtime unit
++
+actor/approval where available
+```
+
+Build/test commands and release identity conventions must remain documented outside a single CI vendor.
+
+### Secrets / deployment identity posture
+
+```text
+untrusted PR/preview
+!=
+production trust
+```
+
+Preferred controls:
+
+- least-privilege CI token permissions;
+- production/environment-scoped secrets;
+- OIDC/federated short-lived deployment identity where the selected host supports it;
+- narrow static deployment credentials only where federation is unavailable;
+- no runtime application secrets copied into CI unless a release step genuinely requires them;
+- separate runtime and migration credentials where practical;
+- no secrets in source, logs, caches, or artifacts.
+
+GitHub Environments, repository/environment secrets, OIDC trust, deployment tokens, and hosting credentials are not configured by Task 0025.
+
+### Database migration posture
+
+```text
+production migration
+=
+one controlled release action
+```
+
+Never:
+
+```text
+every web/worker replica startup
+-> migration race
+```
+
+Preferred where practical:
+
+```text
+Runtime DB Role != Migration DB Role
+```
+
+Migration failure blocks unsafe rollout. Expand/contract schema evolution remains the baseline for rolling compatibility.
+
+### Web / worker rollout posture
+
+Release architecture must tolerate bounded version overlap such as:
+
+```text
+old web + new worker
+new web + old worker
+old job payload + new worker
+new code + old expanded schema
+old code + expanded schema
+```
+
+Worker deployment continues to respect ADR-0015 drain/lease/retry/idempotency semantics.
+
+No universal web-before-worker ordering was invented.
+
+### Recovery posture
+
+Rollback and forward-fix are different controls.
+
+Rollback may be safe for compatible application/worker code or configuration.
+
+A destructive migration or irreversible business-data transformation may require forward-fix rather than reversal.
+
+```text
+database backup restore
+!=
+routine deployment rollback
+```
+
+Backup restore remains disaster-recovery capability, not the default production release rollback mechanism.
+
+### Post-deploy posture
+
+After deployment, later implementation should verify safe signals such as:
+
+- liveness/readiness;
+- public web/API reachability;
+- DB connectivity;
+- worker health;
+- webhook/callback error state;
+- migration errors;
+- authentication failures;
+- error/latency anomalies;
+- release-version correlation.
+
+Sensitive financial/attendance flows should be validated primarily in sandbox/non-production rather than through destructive production synthetic transactions.
+
+## Task 0025 Implementation Status
+
+Task `0025-draft-ci-cd-release-secrets-adr` completed documentation/governance work only. Task 0025 governance synchronization is now complete.
+
+Created during Task 0025:
+
+```text
+docs/adr/ADR-0017-ci-cd-release-secrets.md
+.ai/task/0025-draft-ci-cd-release-secrets-adr.md
+```
+
+Updated for completed governance synchronization:
 
 ```text
 docs/adr/README.md
 docs/README.md
 .ai/current-state.md
+.ai/task/0025-draft-ci-cd-release-secrets-adr.md
 ```
 
-Explicitly not created/selected:
+Explicitly not created/configured/accepted:
 
 ```text
-No cloud project/account
-No Render service/project
-No Vercel project
-No Fly.io app
-No Google Cloud resource
-No AWS/Azure resource
-No Kubernetes cluster
-No Dockerfile
-No Terraform/Pulumi/CloudFormation
-No deployment manifest
-No production/staging environment
-No DNS/TLS configuration
-No database
-No Redis
-No queue
-No worker deployment
-No migration
-No CI/CD workflow
-No production secret
-No monitoring integration
-No hosting provider accepted
-No production region accepted
-No PostgreSQL/Node/Next.js/pg-boss/Supabase accepted
-No D-ARCH-009 promotion to DECIDED
+No .github/workflows
+No CI provider configured
+No GitHub Actions workflow
+No branch protection/ruleset configured
+No GitHub environment
+No repository/environment secret
+No OIDC trust
+No deployment token
+No production credential
+No release artifact
+No SBOM
+No attestation
+No migration executed
+No deployment executed
+No hosting resource
+No test infrastructure
+No application code
+No GitHub Actions acceptance
+No hosting provider acceptance
+No D-ARCH-019 promotion to PROPOSED or DECIDED
+No ADR-0017 promotion to Accepted
 No previous ADR promotion to Accepted
 ```
 
 ## Last Completed Task
 
-`0024-draft-hosting-deployment-platform-adr`
+`0025-draft-ci-cd-release-secrets-adr`
 
 ```text
-ADR-0016 Status: Proposed
-D-ARCH-009 canonical status: OPEN
-D-SEC-001 canonical status: OPEN
-D-ARCH-006 canonical status: OPEN
-D-ARCH-007 canonical status: OPEN
-D-ARCH-014 canonical status: OPEN
+ADR-0017 Status: Proposed
 D-ARCH-019 canonical status: OPEN
-D-ARCH-002 canonical status: PROPOSED
-D-ARCH-012 canonical status: PROPOSED
-D-ARCH-016 canonical status: PROPOSED
+GitHub Actions: leading candidate only
+No CI/CD implementation
+Governance synchronization: complete
 ```
 
-The hosting/provider direction is not accepted or implemented merely because ADR-0016 exists.
+The CI/CD/release/secrets direction is not accepted or implemented merely because ADR-0017 exists.
 
 ## Current Task
 
@@ -848,59 +983,67 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0024 synchronization of the ADR dependency queue identifies the next bounded item as:
+Post-Task-0025 synchronization of the actual ADR dependency queue identifies the next undrafted bounded item as:
 
 ```text
-Task 0025: Draft CI/CD + Production Release / Secrets ADR
+Task 0026: Draft Core Automated Testing Toolchain ADR
 ```
 
 Primary canonical decision:
 
 ```text
-D-ARCH-019
+D-ARCH-018
 ```
 
 Likely target when explicitly started:
 
 ```text
-docs/adr/ADR-0017-ci-cd-release-secrets.md
+docs/adr/ADR-0018-testing-toolchain.md
 ```
 
-Initial ADR status should be `Proposed`. Canonical `D-ARCH-019` remains `OPEN` unless explicit review/approval changes it.
+Canonical `D-ARCH-018` remains `P1 PROPOSED` until explicit review/approval changes it.
 
-The next task should define production build/test gates, controlled promotion, artifact/version provenance, environment/secrets ownership, migration sequencing, release smoke tests, rollback/forward-fix, branch/review protections, and selected-host integration while preserving provider portability.
+The future Task 0026 should evaluate:
 
-It must not create CI/CD workflows, production secrets, deployment environments, or accept prior ADRs.
+- deterministic unit/domain tests;
+- application/use-case tests;
+- real-database integration tests;
+- authorization negative/positive matrix tests;
+- tenant-isolation/RLS tests where applicable;
+- API contract tests;
+- provider-adapter tests;
+- worker/job retry/idempotency tests;
+- browser E2E;
+- test-data/environment isolation;
+- CI test layering.
 
-Do not execute Task 0025 until explicitly requested.
+Vitest, Playwright, Testcontainers, and any other exact testing tools remain unaccepted.
+
+Do not create ADR-0018 or execute Task 0026 as part of Task 0025 synchronization.
 
 ## Files To Read Next
 
 ```text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0024-draft-hosting-deployment-platform-adr.md
+.ai/task/0025-draft-ci-cd-release-secrets-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
 docs/02-architecture/architecture-principles.md
-docs/02-architecture/architecture-overview.md
-docs/02-architecture/container-architecture.md
-docs/02-architecture/component-architecture.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
 docs/adr/ADR-0002-primary-language-runtime.md
-docs/adr/ADR-0003-monorepo-strategy.md
 docs/adr/ADR-0004-database-engine.md
 docs/adr/ADR-0005-data-access-migration-strategy.md
-docs/adr/ADR-0006-managed-backend-responsibilities.md
 docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md
+docs/adr/ADR-0011-api-contract-architecture.md
 docs/adr/ADR-0012-owner-staff-web-framework.md
 docs/adr/ADR-0014-api-deployment-boundary.md
 docs/adr/ADR-0015-background-jobs-scheduler.md
 docs/adr/ADR-0016-hosting-deployment-platform.md
-legacy migration source: docs/12-security-audit.md
+docs/adr/ADR-0017-ci-cd-release-secrets.md
+legacy migration source: docs/13-testing-qa.md
 legacy migration source: docs/15-engineering-workflow.md
-legacy migration source: docs/16-open-decisions.md
 ```
