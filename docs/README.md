@@ -249,6 +249,7 @@ docs/adr/ADR-0017-ci-cd-release-secrets.md                  Proposed   D-ARCH-01
 docs/adr/ADR-0018-testing-toolchain.md                       Proposed   D-ARCH-018
 docs/adr/ADR-0019-package-manager.md                           Proposed   D-ARCH-011
 docs/adr/ADR-0020-observability-provider.md                      Proposed   D-PROVIDER-006
+docs/adr/ADR-0021-object-storage.md                                Proposed   D-ARCH-010
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -291,11 +292,13 @@ docs/adr/ADR-0020-observability-provider.md                      Proposed   D-PR
 
 `ADR-0020` proposes Grafana Cloud as the leading managed observability provider while canonical `D-PROVIDER-006` remains `P1 OPEN`. It preserves GymPulse-owned structured telemetry semantics, privacy-safe logs, request/job/provider correlation, OpenTelemetry-compatible server traces/metrics, focused alerting, and optional privacy-reviewed frontend telemetry. Observability remains diagnostic rather than canonical business/audit truth, and telemetry exporter failure must not block business operations. No provider account, region, SDK, credential, dashboard, alert, SLO, session replay, collector, or production telemetry is accepted or created.
 
+`ADR-0021` concludes that persistent object storage is not currently justified as a Phase 1 baseline and keeps canonical `D-ARCH-010` `P1 OPEN`. Receipt/payment truth remains canonical structured data; no current requirement mandates a persisted receipt PDF. Controlled import may use bounded temporary input, while exports and receipt representations prefer streaming/on-demand generation unless a future workflow proves persistence necessary. Any future storage must be private by default, provider-neutral at the application boundary, server-authorized, tenant/resource scoped, lifecycle-controlled, residency-gated, and independently migratable. AWS S3, Cloudflare R2, Google Cloud Storage, and Supabase Storage are research candidates only.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-one ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -691,7 +694,49 @@ OpenTelemetry JavaScript server traces and metrics are the proposed portability 
 
 No observability account/stack, SDK dependency, OpenTelemetry/Faro package, ingestion credential, dashboard, alert, SLO, session replay, log drain, Alloy/Collector process, telemetry pipeline, or production telemetry was created by Task 0028.
 
-Post-Task-0028 synchronization confirms the next bounded governance task as **Task 0029: Draft Object Storage ADR**, primary decision `D-ARCH-010`, target `docs/adr/ADR-0021-object-storage.md`. Canonical `D-ARCH-010` remains `P1 OPEN`; Task 0029 must first confirm the actual Phase 1 storage need and must not provision storage.
+### Object storage / protected file access proposal
+
+`ADR-0021` now defines the Proposed object-storage posture under `D-ARCH-010` without accepting or provisioning a provider.
+
+Current finding:
+
+```text
+no baseline persistent object storage
++
+canonical receipt/payment/export/import metadata in GymPulse persistence
++
+receipt/export representation generated or streamed on demand where sufficient
++
+controlled import may process bounded temporary files without indefinite raw retention
++
+future private ProtectedObjectStore only after a confirmed persisted-artifact requirement
+```
+
+If a future requirement triggers storage, preserve:
+
+```text
+private by default
++
+canonical provider-neutral ownership metadata
++
+opaque non-PII object keys
++
+server authorization before short-lived signed access
++
+explicit retention / deletion
++
+D-SEC-001 region/residency gate
++
+provider-exit / checksum / bulk-transfer validation
+```
+
+`Object Storage != Canonical Business Database`, `Signed URL != Authorization Decision`, and `Storage Policy != Complete Authorization System` remain explicit boundaries.
+
+A stable receipt business record is required where applicable, but current canonical requirements do not mandate persisted receipt PDFs. `export.create` and protected-export requirements establish authorization/audit constraints, not long-lived stored export files. Controlled member import is confirmed, but raw source-file persistence is not.
+
+No object-storage account/bucket, storage/IAM credential, SDK dependency, upload/download route, signed-URL implementation, receipt PDF, export job, database schema/migration, lifecycle/versioning/replication/CDN configuration, IaC, file upload, or CI workflow was created by Task 0029.
+
+Post-Task-0029 synchronization confirms the next bounded governance task as **Task 0030: Draft Payment Provider ADR**, primary decision `D-PROVIDER-001`. Canonical `D-PROVIDER-001` remains `P1 OPEN`; the exact ADR filename/number must be confirmed from latest `main` before Task 0030 executes.
 
 ## Legacy Migration State
 
@@ -716,7 +761,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0020 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, nor Grafana Faro is accepted merely because current evaluation recommends or compares them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0021 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
