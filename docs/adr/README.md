@@ -414,15 +414,19 @@ The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-A
 
 `ADR-0018` does not create test directories/files, Vitest/Jest/Playwright/Cypress configuration, Testcontainers/Docker setup, a test database, fixtures/factories, provider sandbox accounts, browser installs, coverage configuration, CI workflows, or native-E2E tooling. Vitest, Playwright, Testcontainers, Node's test runner, Jest, Cypress, PostgreSQL, Node.js, and all exact testing tools remain unaccepted; `D-ARCH-018` remains `PROPOSED`.
 
-The current dependency queue places the next undrafted bounded decision at:
+Post-Task-0026 synchronization confirms the actual next bounded governance task as:
 
 ```text
-D-ARCH-011 - Package Manager
+Task 0027: Draft Package Manager ADR
+Primary decision: D-ARCH-011
+Target: docs/adr/ADR-0019-package-manager.md
+Initial ADR status: Proposed
+Canonical status: ASSUMED unless explicit approval changes it
 ```
 
-A likely next task is Task 0027 / ADR-0019, but the exact filename/task wording must be confirmed after Task 0026 governance synchronization.
+That task should evaluate the package-manager/workspace-installation baseline for the proposed monorepo, including lockfile determinism, workspace support, dependency isolation, CI/cache behavior, security/supply-chain controls, Node/runtime compatibility, and migration/reversibility while keeping Turborepo, Node.js, CI provider, and application frameworks separately governed.
 
-Do not draft the package-manager ADR as part of Task 0026.
+Do not draft ADR-0019 or change the package manager as part of Task 0026.
 
 ## 16. Related Documents
 
