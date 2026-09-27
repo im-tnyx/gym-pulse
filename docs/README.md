@@ -254,6 +254,7 @@ docs/adr/ADR-0022-payment-provider.md                              Proposed   D-
 docs/adr/ADR-0023-messaging-provider.md                            Proposed   D-PROVIDER-002
 docs/adr/ADR-0024-product-analytics-provider.md                    Proposed   D-PROVIDER-005
 docs/adr/ADR-0025-redis-cache-requirement.md                      Proposed   D-ARCH-008
+docs/adr/ADR-0026-member-membership-state-ownership.md              Proposed   D-DATA-007
 ```
 
 `ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
@@ -306,11 +307,13 @@ docs/adr/ADR-0025-redis-cache-requirement.md                      Proposed   D-A
 
 `ADR-0025` defers Redis/Valkey as a Phase 1 baseline while canonical `D-ARCH-008` remains `P2 OPEN`. No cache/session/queue/lock/pubsub responsibility is currently classified Required now. Database query/index/read-model optimization comes before distributed read caching; authorization has no distributed cross-request cache baseline; authentication/session storage remains separately governed; abuse controls do not imply Redis; ADR-0015 durable jobs remain PostgreSQL-oriented and independent; Redis locks/dedupe cannot replace durable business correctness; and no realtime/pubsub requirement exists. Redis/Valkey may be reconsidered only for one measured shared-ephemeral need with explicit outage, eviction, tenant-isolation, security, operations, and cost evidence.
 
+`ADR-0026` proposes Membership as the owner of time-bounded commercial entitlement and separates Member administrative/relationship state from entitlement. Membership keeps `Pending / Active / Frozen / Expired / Cancelled`; the leading Member-state candidate is `Enabled / Blocked / Archived`, with `Enabled` explicitly not meaning an Active Membership. Membership expiry/freeze/cancellation no longer mirror into Member state in the proposal. `FR-MEMBER-004` remains unchanged because the ADR is Proposed; exact Blocked/Archived behavior, current-Membership selection, overlap rules, early-renewal timing, cancellation/refund, deletion/export, retention, and schema/migration mechanics remain unresolved.
+
 No decision ADR is currently `Accepted`.
 
 ## Current Architecture Governance Position
 
-The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-five ADR drafts are complete.
+The architecture foundation, C4 views, data flows, technology evaluation, technology decision normalization, and first twenty-six ADR drafts are complete.
 
 This does not make GymPulse implementation-ready. Relevant P0/P1 decisions remain Open/Proposed/Assumed until explicit review and approval evidence exists.
 
@@ -976,7 +979,62 @@ Revisit `D-ARCH-008` only after measured hot-query pressure survives index/read-
 
 No Redis/Valkey instance/account/credential, client dependency, cache adapter, rate limiter, session store, distributed lock, queue/worker migration, pub/sub, Docker/CI service, IaC, or deployment was created by Task 0033.
 
-Post-Task-0033 synchronization confirms the next bounded governance task as **Task 0034: Resolve / Draft Member vs Membership State Ownership ADR**, primary decision `D-DATA-007`. Canonical `D-DATA-007` remains `P1 PROPOSED / unresolved`; the exact ADR filename/number and task shape must be confirmed from latest `main` before execution.
+### Member / Membership state-ownership proposal
+
+`ADR-0026` now defines the Proposed state-ownership direction under `D-DATA-007`.
+
+Current proposal:
+
+```text
+Member
+-> stable tenant-scoped member relationship / operational record
+-> independent administrative/relationship state
+
+Membership
+-> time-bounded commercial entitlement
+-> Pending / Active / Frozen / Expired / Cancelled
+```
+
+Leading Member-state candidate:
+
+```text
+Enabled
+Blocked
+Archived
+```
+
+Key non-equivalences:
+
+```text
+Member Enabled != Membership Active
+Member Blocked != Membership Cancelled
+Member Archived != Membership Expired
+Membership Frozen != Member Paused
+Membership Expired != Member Expired
+FollowUpOutcome.Cancelled != Membership Cancelled
+```
+
+Entitlement-sensitive attendance, standard no-show eligibility, renewal windows, and verified renewal effects continue to derive from Membership plus their other independent checks.
+
+Authentication remains separate:
+
+```text
+AuthIdentity / Principal
+!=
+Member
+!=
+Membership
+```
+
+Import/reconciliation must classify source status meaning rather than copy one legacy status into both Member and Membership.
+
+Reporting/read models should distinguish Member administrative state from Membership state; ambiguous labels such as `Active Members` require explicit definitions.
+
+`FR-MEMBER-004` remains canonically unchanged. ADR-0026 records proposed replacement wording only and does not apply it.
+
+No Member/Membership schema, migration, enum/type, ORM model, constraint, index, trigger, RLS policy, API/DTO/domain implementation, import mapper, test, UI, or production-data change was created by Task 0034.
+
+Post-Task-0034 synchronization completes the existing numbered ADR queue through order 26. No Task 0035 is invented; the next bounded governance action is selected only after fresh synchronized repository review.
 
 ## Legacy Migration State
 
@@ -1001,7 +1059,7 @@ Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as alr
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 
-Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0025 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage, Razorpay, Cashfree, PhonePe Payment Gateway, PayU, Direct Meta WhatsApp Cloud API, Twilio WhatsApp, Gupshup, MSG91, Interakt, AiSensy, PostHog, Mixpanel, Amplitude, Redis, Valkey, Upstash, Redis Cloud, ElastiCache, Memorystore, BullMQ, or Redlock is accepted merely because current evaluation recommends or compares them.
+Legacy Next.js/Expo/Turborepo/API-deployment/job-runner/hosting/CI/testing recommendations remain evidence only. ADR-0012 through ADR-0026 are still `Proposed`, not Accepted. Neither Next.js, Expo/React Native, the co-hosted API topology, PostgreSQL-backed jobs, pg-boss, Render, Vercel, Fly.io, Cloud Run, GitHub Actions, Vitest, Playwright, Testcontainers, Jest, Cypress, pnpm, npm, Yarn, Bun, Turborepo, Grafana Cloud, Sentry, Datadog, Better Stack, OpenTelemetry, Grafana Faro, AWS S3, Cloudflare R2, Google Cloud Storage, nor Supabase Storage, Razorpay, Cashfree, PhonePe Payment Gateway, PayU, Direct Meta WhatsApp Cloud API, Twilio WhatsApp, Gupshup, MSG91, Interakt, AiSensy, PostHog, Mixpanel, Amplitude, Redis, Valkey, Upstash, Redis Cloud, ElastiCache, Memorystore, BullMQ, or Redlock is accepted merely because current evaluation recommends or compares them.
 
 Do not delete or deprecate legacy sources merely because structured architecture documents now exist.
 
