@@ -621,7 +621,7 @@ Vitest is the leading TypeScript test-runner candidate. If PostgreSQL is later a
 
 No test dependency, test config, test file, browser, Testcontainers/Docker setup, test database, provider sandbox account, coverage config, or CI workflow was created by Task 0026.
 
-The current dependency queue places the next undrafted bounded decision at `D-ARCH-011` Package Manager. Task 0026 governance synchronization will confirm the exact Task 0027 wording/ADR filename before it is started.
+Post-Task-0026 synchronization confirms the next bounded governance task as **Task 0027: Draft Package Manager ADR**, primary decision `D-ARCH-011`, target `docs/adr/ADR-0019-package-manager.md`. Canonical `D-ARCH-011` remains `ASSUMED`; the task must not silently accept pnpm, Turborepo, Node.js, CI tooling, or application frameworks.
 
 ## Legacy Migration State
 
