@@ -47,6 +47,7 @@ ADR-0020  D-PROVIDER-006 Observability provider                          Propose
 ADR-0021  D-ARCH-010  Object Storage / Protected File Access              Proposed
 ADR-0022  D-PROVIDER-001 Payment Provider / Integration Strategy           Proposed
 ADR-0023  D-PROVIDER-002 Messaging Provider / Notification Delivery Strategy Proposed
+ADR-0024  D-PROVIDER-005 Product Analytics Provider / Instrumentation Strategy       Proposed
 ```
 
 No authorized approval evidence exists for these ADRs. None is `Accepted`.
@@ -1942,21 +1943,421 @@ deployment
 
 No prior ADR is Accepted.
 
-## Last Completed Task
 
-0031-draft-messaging-provider-adr
+## Current Product Analytics Provider / Instrumentation Proposal
+
+ADR-0024 now exists as Proposed; canonical D-PROVIDER-005 remains P2 OPEN.
+
+Task 0032 first tested whether the initial Phase 1 pilot requires an external product-analytics provider.
+
+### External analytics need finding
 
 ~~~text
-ADR-0023 Status: Proposed
-D-PROVIDER-002 canonical status: P1 OPEN
-WhatsApp: leading external candidate only, not mandatory
-Direct Meta: comparison candidate only
-Twilio: comparison candidate only
-Gupshup: comparison candidate only
-Production messaging provider selected: no
-Sender/WABA ownership: unresolved
-Marketing enabled: no
-No messaging implementation
+Initial Phase 1 external product analytics provider
+-> not required
+~~~
+
+Core pilot outcome metrics are already derivable from canonical GymPulse records.
+
+Examples:
+
+~~~text
+Active Members
+Valid Check-ins
+QR-source adoption
+7-Day Active Members
+Open No-show Cases
+Returned Members
+Renewal Rate
+Verified Gross Collected
+Refunds / Reversals
+Payment Exceptions
+Add-on Revenue
+Follow-up Completion
+~~~
+
+Manual pilot observation remains acceptable for early Staff Workflow Independence and UX discovery where canonical data does not answer the question.
+
+### Canonical KPI boundary
+
+Preserve:
+
+~~~text
+Analytics Event != Canonical Business Record
+Client Event != Payment Truth
+Client Event != Attendance Truth
+Client Event != Membership Truth
+Analytics Funnel != Financial Ledger
+Analytics Conversion != Verified Business Outcome
+Product Analytics != Audit Log
+Observability != Product Analytics
+~~~
+
+Owner-facing operational KPI cards continue to use authorized canonical/read-model state.
+
+### Behavioral analytics needs
+
+Behavioral analytics may later answer:
+
+~~~text
+Did a Member open Member Home?
+Did a Member reach the QR scan UI?
+Did a Member view renewal options?
+Where was renewal abandoned before checkout?
+Did an Owner open the daily dashboard?
+Did a Member view add-on details?
+~~~
+
+These are plausible future questions, not initial-pilot provider requirements.
+
+### Candidate event posture
+
+Current candidate events were reviewed rather than copied blindly.
+
+~~~text
+member.home_viewed
+  -> useful behavioral event if prioritized
+
+attendance.scan_started
+  -> useful but prefer precise attendance.scan_ui_opened
+
+attendance.checkin_succeeded
+  -> do not use as canonical success;
+     Attendance record is authoritative
+
+attendance.checkin_failed
+  -> observability/UX question only if specifically needed
+
+renewal.options_viewed
+  -> useful behavioral event
+
+renewal.order_created
+  -> canonical RenewalOrder is stronger evidence
+
+payment.checkout_started
+  -> prefer payment.checkout_ui_opened for UI behavior
+
+addon.catalog_viewed
+  -> useful if browsing is a product question
+
+addon.detail_viewed
+  -> useful if view-to-purchase is prioritized
+
+owner.dashboard_viewed
+  -> useful behavioral event
+
+followup.recorded
+  -> canonical FollowUp record is stronger evidence
+~~~
+
+Legacy outcome-style analytics events are not copied into the future behavioral baseline.
+
+### Event taxonomy posture
+
+If analytics is later justified:
+
+~~~text
+Pilot/Product Question
+-> Metric/Funnel
+-> Minimal Event(s)
+-> Explicit Property Allowlist
+~~~
+
+Provider-neutral event documentation should include:
+
+~~~text
+event name
+event version
+question answered
+client/server source
+allowed properties
+privacy classification
+authority status = non-authoritative
+~~~
+
+Do not track everything now for hypothetical future analysis.
+
+### Client/server event boundary
+
+Client events may represent:
+
+~~~text
+surface viewed
+scan UI opened
+renewal options displayed
+checkout UI opened
+catalog/detail viewed
+~~~
+
+Browser events are untrusted and may be blocked, forged, duplicated, or lost.
+
+Canonical outcomes remain server/system-of-record state.
+
+Server analytics events should not duplicate canonical state unless a concrete non-authoritative funnel question requires the boundary.
+
+### Analytics identity posture
+
+Preferred future identity:
+
+~~~text
+opaque pseudonymous analytics subject
++
+opaque tenant/gym analytics identity where needed
++
+safe coarse actor type
+~~~
+
+Do not use raw phone, email, display name, or external provider subject as the default analytics identity.
+
+Preserve:
+
+~~~text
+Provider Identity != GymPulse Principal
+GymPulse Principal != Member
+Provider Session != GymPulse Login Session
+~~~
+
+Anonymous acquisition identity merging is not a Phase 1 requirement.
+
+Shared-device logout/account change requires provider identity reset validation before future adoption.
+
+### Tenant isolation posture
+
+~~~text
+Analytics tenant/gym property != Application Authorization
+Provider Group != GymPulse Tenant Authority
+~~~
+
+Browser-submitted tenant identifiers are not trusted analytics scope.
+
+Prefer trusted server-issued safe analytics context where practical.
+
+Cross-tenant product analytics access remains privileged internal access.
+
+Project-per-gym complexity is not introduced without evidence.
+
+### PII/privacy posture
+
+NFR-PRIVACY-004 remains first-class.
+
+General product analytics excludes by default:
+
+~~~text
+raw phone
+raw email
+OTP
+session/auth tokens
+provider secrets
+raw payment/provider payloads
+free-text staff/follow-up notes
+health/medical details
+message bodies
+unsafe URL/query values
+~~~
+
+Provider automatic IP, geo, device, browser, referrer, URL and persistent-identifier behavior requires explicit review before adoption.
+
+D-SEC-001 remains OPEN.
+
+### Autocapture posture
+
+~~~text
+Autocapture = not approved
+~~~
+
+Explicit stable event instrumentation is preferred over broad DOM/form/click capture.
+
+### Session replay posture
+
+~~~text
+Session Replay = not approved
+~~~
+
+Replay requires a separate explicit product need plus masking proof, sampling, retention/deletion, jurisdiction/privacy and security validation.
+
+Provider masking capability does not imply zero privacy risk.
+
+### Provider evaluation
+
+Current first-party research date: 2026-09-27.
+
+~~~text
+PostHog
+  -> credible future managed option
+  -> explicit events/funnels + autocapture/replay available
+  -> defer
+
+Mixpanel
+  -> credible future managed option
+  -> browser/server/API analytics + identity/privacy controls
+  -> current technical India data-residency option visible
+  -> defer
+
+Amplitude
+  -> credible future managed option
+  -> browser/server SDKs + groups/TTL/privacy APIs
+  -> defer
+~~~
+
+No provider is selected.
+
+Provider region availability is technical evidence only:
+
+~~~text
+provider region availability
+!=
+legal/privacy approval
+~~~
+
+### Environment model
+
+Any future provider must preserve:
+
+~~~text
+development
+preview
+staging/test
+production
+~~~
+
+separation or equivalent reliable filtering/isolation.
+
+Synthetic tests must not pollute production metrics.
+
+~~~text
+public/browser ingestion identifier
+!=
+private management/export/admin credential
+~~~
+
+### Retention / deletion dependencies
+
+Canonical gates remain:
+
+~~~text
+D-SEC-001 = OPEN
+D-SEC-005 = OPEN
+D-SEC-006 = OPEN
+~~~
+
+No analytics retention period is invented.
+
+Future provider acceptance requires deletion/export/retention and safe subject-mapping evidence.
+
+### Reliability posture
+
+~~~text
+Analytics Provider Failure
+!=
+GymPulse Business Failure
+~~~
+
+Analytics never blocks:
+
+~~~text
+check-in
+renewal
+payment
+staff follow-up
+member update
+Owner/Staff operations
+~~~
+
+No financial-grade exactly-once requirement exists for product analytics.
+
+No Redis/durable business queue is introduced solely for analytics.
+
+### Performance posture
+
+No initial analytics browser SDK means no new analytics-specific Member bundle/startup/network cost.
+
+A future browser SDK must prove acceptable bundle/startup/network/batching/CSP behavior on representative low-end Member devices.
+
+### Cost / operations posture
+
+Initial external analytics ingestion cost:
+
+~~~text
+0
+~~~
+
+Current provider free/pilot tiers are not a justification for collection.
+
+Future operations would include event-taxonomy review, privacy/property review, identity/reset behavior, environment isolation, access control, volume/cost monitoring, retention/deletion/export and provider incidents.
+
+### Provider-exit posture
+
+Keep GymPulse-owned:
+
+~~~text
+event names
+event versions
+question/metric mapping
+allowed properties
+privacy classification
+authority status
+identity mapping rules
+tenant-context rules
+~~~
+
+Provider replacement should primarily change adapter/SDK/transport/configuration.
+
+Raw-event export, deletion and migration behavior require validation before provider acceptance.
+
+### Proposed outcome
+
+~~~text
+Outcome A:
+Defer external product analytics for initial Phase 1 pilot.
+~~~
+
+D-PROVIDER-005 remains P2 OPEN so a later concrete behavioral need can reopen provider evaluation.
+
+Task 0032 created no:
+
+~~~text
+analytics provider account
+analytics project
+API/project/management key
+browser SDK
+server SDK
+event helper implementation
+ProductAnalytics port implementation
+event instrumentation
+dashboard
+funnel
+cohort
+retention report
+heatmap
+session replay
+autocapture
+feature flag
+experiment
+analytics database
+warehouse
+CDP
+event pipeline
+CI/environment secret
+production/test analytics traffic
+deployment
+~~~
+
+No prior ADR is Accepted.
+
+## Last Completed Task
+
+0032-draft-product-analytics-provider-adr
+
+~~~text
+ADR-0024 Status: Proposed
+D-PROVIDER-005 canonical status: P2 OPEN
+Initial Phase 1 external analytics provider: none
+PostHog: future candidate only
+Mixpanel: future candidate only
+Amplitude: future candidate only
+Autocapture: not approved
+Session replay: not approved
+No analytics implementation
 ~~~
 
 ## Current Task
@@ -1965,51 +2366,57 @@ None in progress.
 
 ## Next Task
 
-Post-Task-0031 synchronization confirms the next bounded governance task as:
+Post-Task-0032 synchronization confirms the next bounded governance task as:
 
 ~~~text
-Task 0032: Draft Product Analytics Provider ADR
-Primary decision: D-PROVIDER-005
+Task 0033: Draft Redis / Cache Requirement ADR
+Primary decision: D-ARCH-008
 Canonical status: P2 OPEN
 Target ADR filename/number: confirm from fresh latest-main audit before execution
 ~~~
 
-The next task should first decide whether an external product-analytics provider is justified at all, then evaluate only concrete approved instrumentation needs while preserving:
+The next task should first determine whether Redis/cache/ephemeral coordination is justified at all, then evaluate actual Phase 1 requirements for:
 
 ~~~text
-canonical business truth outside analytics events
-PII minimization
-purpose / consent separation
-tenant isolation
-provider-neutral event semantics
-safe browser/server instrumentation
-operational observability separation
-provider exit
+cache
+rate limiting
+distributed coordination
+sessions if applicable
+job/queue dependencies
+ephemeral locks
+dedupe assistance
+performance hotspots
 ~~~
 
-Do not create an analytics account/key/SDK, instrument events, create dashboards, send production analytics, or silently accept a provider during that ADR-only task.
+while preserving canonical database truth, business idempotency, ADR-0015 durable-job boundaries, provider portability, failure isolation, and the existing no-premature-infrastructure principle.
+
+Do not create a Redis/Valkey account/instance, credentials, client dependency, cache/session implementation, distributed lock, queue migration, IaC or deployment during that ADR-only task.
 
 ## Files To Read Next
 
 ~~~text
 .ai/README.md
 .ai/current-state.md
-.ai/task/0031-draft-messaging-provider-adr.md
+.ai/task/0032-draft-product-analytics-provider-adr.md
 docs/README.md
 docs/00-overview/assumptions.md
 docs/01-product/functional-requirements.md
 docs/01-product/non-functional-requirements.md
-docs/01-product/user-journeys.md
 docs/02-architecture/architecture-principles.md
 docs/02-architecture/architecture-overview.md
+docs/02-architecture/container-architecture.md
+docs/02-architecture/component-architecture.md
 docs/02-architecture/data-flow.md
 docs/02-architecture/technology-stack.md
 docs/adr/README.md
-docs/adr/ADR-0013-member-client-strategy.md
+docs/adr/ADR-0007-authentication-session-architecture.md
+docs/adr/ADR-0014-api-deployment-boundary.md
+docs/adr/ADR-0015-background-jobs-scheduler.md
+docs/adr/ADR-0016-hosting-deployment-platform.md
 docs/adr/ADR-0017-ci-cd-release-secrets.md
 docs/adr/ADR-0018-testing-toolchain.md
-docs/adr/ADR-0020-observability-provider.md
-docs/adr/ADR-0023-messaging-provider.md
+docs/adr/ADR-0024-product-analytics-provider.md
+legacy migration source: docs/05-system-architecture.md
 legacy migration source: docs/12-security-audit.md
 legacy migration source: docs/16-open-decisions.md
 ~~~
