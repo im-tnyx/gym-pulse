@@ -24,10 +24,10 @@ docs/adr/README.md
 ## Current ADR State
 
 ```text
-ADR-0001  D-ARCH-005  Phase 1 architecture style                 Proposed
-ADR-0002  D-ARCH-016  Primary language/runtime                   Proposed
-ADR-0003  D-ARCH-001  Repository/workspace strategy              Proposed
-ADR-0004  D-ARCH-002  Canonical database engine                  Proposed
+ADR-0001  D-ARCH-005  Phase 1 architecture style                 Accepted
+ADR-0002  D-ARCH-016  Primary language/runtime                   Accepted
+ADR-0003  D-ARCH-001  Repository/workspace strategy              Accepted
+ADR-0004  D-ARCH-002  Canonical database engine                  Accepted
 ADR-0005  D-ARCH-017  Data access/query/transaction/migrations   Proposed
 ADR-0006  D-ARCH-014  Managed backend/platform responsibilities  Proposed
 ADR-0007  D-ARCH-004  Authentication/session architecture        Proposed
@@ -52,18 +52,18 @@ ADR-0025  D-ARCH-008     Redis / Cache / Ephemeral Coordination Requirement     
 ADR-0026  D-DATA-007     Member / Membership State Ownership                          Proposed
 ```
 
-No authorized approval evidence exists for these ADRs. None is `Accepted`.
+Authorized approval evidence exists for ADR-0001 through ADR-0004 via GitHub Issue #1. Those four ADRs are `Accepted`; ADR-0005 through ADR-0026 remain independently Proposed unless their own records state otherwise.
 
 Canonical decision status remains controlled by `docs/00-overview/assumptions.md`, not ADR draft status.
 
 ## Key Canonical Decision State
 
 ```text
-D-ARCH-001  repository strategy                  P0 PROPOSED
-D-ARCH-002  database engine                      P0 PROPOSED
+D-ARCH-001  repository strategy                  P0 DECIDED
+D-ARCH-002  database engine                      P0 DECIDED
 D-ARCH-003  API contract architecture            P0 PROPOSED
 D-ARCH-004  authentication/session               P0 OPEN
-D-ARCH-005  architecture style                   P1 PROPOSED
+D-ARCH-005  architecture style                   P1 DECIDED
 D-ARCH-006  API deployment topology              P1 OPEN
 D-ARCH-007  background jobs                      P1 OPEN
 D-ARCH-008  Redis/cache requirement              P2 OPEN
@@ -74,7 +74,7 @@ D-ARCH-012  Owner/Staff web framework            P0 PROPOSED
 D-ARCH-013  member client strategy               P1 PROPOSED
 D-ARCH-014  managed backend responsibilities     P0 OPEN
 D-ARCH-015  authorization implementation         P0 PROPOSED
-D-ARCH-016  primary language/runtime             P0 PROPOSED
+D-ARCH-016  primary language/runtime             P0 DECIDED
 D-ARCH-017  data access/migrations               P1 PROPOSED
 D-ARCH-018  testing toolchain                    P1 PROPOSED
 D-ARCH-019  CI/CD + release/secrets tooling      P1 OPEN
@@ -3190,21 +3190,23 @@ ADR-0004  D-ARCH-002  Canonical database engine
 Current status:
 
 ~~~text
-ADR-0001 Proposed
-ADR-0002 Proposed
-ADR-0003 Proposed
-ADR-0004 Proposed
+ADR-0001 Accepted
+ADR-0002 Accepted
+ADR-0003 Accepted
+ADR-0004 Accepted
 
-D-ARCH-005 PROPOSED
-D-ARCH-016 PROPOSED
-D-ARCH-001 PROPOSED
-D-ARCH-002 PROPOSED
+D-ARCH-005 DECIDED
+D-ARCH-016 DECIDED
+D-ARCH-001 DECIDED
+D-ARCH-002 DECIDED
 
-Decision Owner = Open for ADR-0001..0004
-Explicit Approval = Missing
-No ADR Accepted
-No canonical foundation decision DECIDED
-No production implementation gate opened
+Authorized Decision Owner = santosh
+Review Date = 2026-09-29
+Approval Evidence = GitHub Issue #1
+https://github.com/im-tnyx/gym-pulse/issues/1
+
+Foundation architecture category gate = partially opened
+Overall production implementation gate = closed
 ~~~
 
 D-DATA-007 remains P1 PROPOSED / unresolved. FR-MEMBER-004 remains unchanged. Final Member/Membership production schema semantics remain unfinalized.
@@ -3421,59 +3423,47 @@ production connection topology
 managed HA / failover / PITR evidence
 ~~~
 
-### Remaining human governance gaps
+### Foundation human governance result
 
 ~~~text
-Decision Owner = Open
-Explicit Approval = Missing
+Decision Owner = santosh
+Review Date = 2026-09-29
+Explicit Approval = Recorded
+Approval Evidence = GitHub Issue #1
 ~~~
 
 ## Foundation Decision-Owner Review Packet
 
-The canonical review packet is now prepared at:
+The canonical review packet is synchronized at:
 
 ~~~text
 docs/adr/foundation-decision-owner-review-packet.md
 ~~~
 
-Preparation effect:
+Synchronization result:
 
 ~~~text
-Foundation Decision-Owner Review Packet = PREPARED
+Foundation Decision-Owner Review Packet = SYNCHRONIZED
 
-ADR-0001 = Proposed
-ADR-0002 = Proposed
-ADR-0003 = Proposed
-ADR-0004 = Proposed
+ADR-0001 = Accepted
+ADR-0002 = Accepted
+ADR-0003 = Accepted
+ADR-0004 = Accepted
 
-D-ARCH-005 = PROPOSED
-D-ARCH-016 = PROPOSED
-D-ARCH-001 = PROPOSED
-D-ARCH-002 = PROPOSED
+D-ARCH-005 = DECIDED
+D-ARCH-016 = DECIDED
+D-ARCH-001 = DECIDED
+D-ARCH-002 = DECIDED
 
-Decision Owner = Open
-Explicit Approval = Missing
-Production implementation gate = closed
+Decision Owner = santosh
+Review Date = 2026-09-29
+Approval Evidence = GitHub Issue #1
+
+Foundation architecture category gate = partially opened
+Overall production implementation gate = closed
 ~~~
 
-The packet contains:
-
-~~~text
-current proposal
-actual ADR alternatives / tradeoffs
-technical evidence
-evidence limitations
-categorized remaining gaps
-dependencies kept separate
-neutral decision forms
-future Accept / Reject / Remain Proposed follow-up rules
-~~~
-
-No decision checkbox is selected.
-
-No owner is invented.
-
-No approval evidence is fabricated.
+The packet preserves the original alternatives, evidence, limitations, scope boundaries, and the exact authorized rationale for each decision.
 
 The validation harness is retained as reusable technical evidence and remains non-production.
 
@@ -3483,47 +3473,43 @@ The existing numbered ADR backlog remains complete through order 26.
 
 Do not invent Task 0035.
 
-The next bounded action is:
+Fresh post-foundation audit shows the next dependency/security batch remains unresolved and has heterogeneous evidence gaps:
 
 ~~~text
-Authorized Foundation Decision Review
+ADR-0005 / D-ARCH-017  Data-access/query/migration strategy      Proposed / PROPOSED
+ADR-0006 / D-ARCH-014  Managed backend responsibilities          Proposed / OPEN
+ADR-0007 / D-ARCH-004  Authentication/session architecture       Proposed / OPEN
+ADR-0008 / D-SEC-002   Member authentication                     Proposed / OPEN
+ADR-0009 / D-ARCH-015  Authorization implementation              Proposed / PROPOSED
+ADR-0010 / D-SEC-008   Data-layer tenant isolation / RLS         Proposed / OPEN
 ~~~
 
-covering:
+Their missing evidence is not uniform: data-access tooling still needs representative tool/transaction/migration validation; managed-backend selection still needs provider/region/recovery/exit evidence; authentication/member-auth still need provider/session/jurisdiction/abuse/UX evidence; authorization still needs policy and negative-matrix proof; RLS still needs role/pooling/tenant-context validation.
+
+Therefore the next bounded governance action is:
 
 ~~~text
-ADR-0001
-ADR-0002
-ADR-0003
-ADR-0004
+Second Dependency/Security Acceptance-Readiness Review
 ~~~
 
-The authorized owner must explicitly choose separately for each ADR:
+covering ADR-0005 through ADR-0010.
 
-~~~text
-Accept
-Reject
-Remain Proposed
-~~~
-
-Do not execute or infer a governance choice automatically.
-
-Only after explicit authorized decision evidence exists may a separate synchronization action update an ADR status, matching canonical decision status, owner/date/reference, and the specific implementation gate that decision permits.
+That review must classify each ADR independently as decision-owner reviewable, evidence-blocked, or requiring a smaller bounded validation/governance action. It must not accept any ADR automatically and must not start production implementation.
 
 ## Files To Read Next
 
 ~~~text
-docs/adr/foundation-decision-owner-review-packet.md
-validation/foundation/EVIDENCE.md
-validation/foundation/README.md
-validation/foundation/postgres/README.md
-docs/adr/foundation-acceptance-evidence-plan.md
-docs/adr/ADR-0001-modular-monolith.md
-docs/adr/ADR-0002-primary-language-runtime.md
-docs/adr/ADR-0003-monorepo-strategy.md
-docs/adr/ADR-0004-database-engine.md
+docs/adr/ADR-0005-data-access-migration-strategy.md
+docs/adr/ADR-0006-managed-backend-responsibilities.md
+docs/adr/ADR-0007-authentication-session-architecture.md
+docs/adr/ADR-0008-member-authentication-method.md
+docs/adr/ADR-0009-authorization-implementation.md
+docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md
 docs/adr/README.md
 docs/00-overview/assumptions.md
 docs/README.md
+docs/02-architecture/technology-stack.md
+docs/adr/foundation-decision-owner-review-packet.md
+validation/foundation/EVIDENCE.md
 .ai/current-state.md
 ~~~
