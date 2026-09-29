@@ -2,11 +2,11 @@
 
 Status: validation-only / non-production.
 
-This directory exists only to gather technical acceptance evidence for ADR-0001 through ADR-0004. It is not the GymPulse production scaffold and does not accept Node.js, TypeScript, a package manager, a web framework, a job runner, a data-access tool, PostgreSQL provider, CI platform, or hosting provider.
-
-The harness intentionally uses no third-party runtime dependencies. `package.json` only marks the validation files as ESM; it is not a production package-manager decision.
+This directory exists only to gather technical acceptance evidence for ADR-0001 through ADR-0004. It is not the GymPulse production scaffold and does not accept Node.js, TypeScript, a package manager, a web framework, a job runner, a data-access tool, a PostgreSQL provider, a CI platform, or a hosting provider.
 
 ## What this harness proves now
+
+The original validation slice proves:
 
 - strict TypeScript compilation for separate client/request/worker validation artifacts;
 - client-safe/server-only import boundary checks;
@@ -20,102 +20,74 @@ The harness intentionally uses no third-party runtime dependencies. `package.jso
 - raw-byte HMAC webhook verification and tamper rejection;
 - provider-event replay dedupe in validation-only durable state.
 
-## What this harness does not prove
+The real PostgreSQL extension under `postgres/` additionally proves, for the bounded synthetic validation model:
 
-- PostgreSQL transactions, constraints, concurrency, backup/restore, pooling, or restart behavior;
-- production schema;
-- Member/Membership final state model;
-- production performance;
-- production hosting/region/jurisdiction;
-- decision-owner approval.
+- migration from an empty PostgreSQL database;
+- one forward-compatible validation migration with seeded-data preservation;
+- real overlapping-session attendance uniqueness;
+- real overlapping-session provider-event dedupe;
+- one transactional business-effect claim + target mutation under concurrency and replay;
+- one-active validation no-show uniqueness with historical resolved case + later active case;
+- transaction rollback verified from a fresh connection;
+- explicit tenant-scoped SQL negative isolation;
+- a bounded relational/latest/history query with `EXPLAIN ANALYZE`;
+- observed unique/FK/check SQLSTATE translation;
+- custom-format PostgreSQL backup;
+- restore into a separate database plus invariant rechecks;
+- application-style Node PostgreSQL connection and reconnect;
+- multiple simultaneous connections;
+- unavailable behavior during PostgreSQL stop;
+- restart/reconnect;
+- post-restart idempotent replay.
 
-Real PostgreSQL evidence remains required by `docs/adr/foundation-acceptance-evidence-plan.md`.
-
-## Real PostgreSQL Validation Attempt — 2026-09-27
+## Real PostgreSQL Validation — 2026-09-29
 
 Overall result:
 
 ```text
-Real PostgreSQL Foundation Validation = BLOCKED
+Real PostgreSQL Foundation Validation = PASS
+Stage 3 = PASS
+Stage 6 = PASS
+Cleanup = PASS
 ```
 
-Environment gate:
+Execution environment:
 
 ```text
-PostgreSQL server: unavailable
-psql: unavailable
-pg_dump / pg_restore: unavailable
-Docker: unavailable
-Podman: unavailable
-nerdctl: unavailable
-local 5432 listener/socket: none
-PostgreSQL server/client packages: none
-libpq libraries only: 17.10
-apt PostgreSQL candidate: none
-DNS resolution to Debian package host: unavailable
+GitHub Actions hosted Ubuntu 24.04.5 validation runner
+Docker 28.0.4
+
+PostgreSQL image:
+postgres:17-bookworm
+
+Image digest:
+postgres@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
+
+PostgreSQL server / psql / pg_dump / pg_restore:
+17.11 (Debian 17.11-1.pgdg12+2)
+
+Node validation runtime:
+v22.23.2
+
+Temporary validation-only client:
+pg 8.16.3
 ```
 
-No PostgreSQL server version can be recorded because no real server is available.
-
-No temporary PostgreSQL driver was installed.
-
-No container image was used.
-
-No validation database/schema, credentials, backup, restore database, or PostgreSQL-specific state was created.
-
-No external managed database or potentially billable cloud/CI resource was provisioned.
-
-The PostgreSQL-specific Stage 3 and Stage 6 evidence rows remain `NOT RUN`; see `EVIDENCE.md`.
-
-Next technical prerequisite:
+Execution references:
 
 ```text
-obtain/authorize an isolated real PostgreSQL validation environment
+workflow run: 36554395928
+validation head: e257e6ef5f3aa6eb26b159fb4374da06dbfd2d9d
+workflow job: 109359954215
+artifact id: 11025937126
+artifact digest: sha256:a4e4f54c3b94c6c16efd4cc259223b374712e758821862239a735978c8d01b2c
 ```
 
-Allowed environment remains:
+The workflow existed only on the temporary validation branch used to execute this bounded run. The reusable harness is committed under `validation/foundation/postgres/`.
 
-```text
-non-production
-isolated
-synthetic-data only
-safe to restart
-safe to delete
-```
+## Reproduce
 
-Do not substitute SQLite, DuckDB, JSON/file state, an in-memory map, mocks, or documentation inference.
-
-Preserve:
-
-```text
-validation harness
-!=
-production scaffold
-
-file-backed durability
-!=
-PostgreSQL evidence
-```
-
-### Environment-gate reproduction
-
-```sh
-command -v psql postgres pg_ctl initdb pg_dump pg_restore createdb dropdb docker podman nerdctl
-ls -ld /usr/lib/postgresql /var/lib/postgresql /var/run/postgresql
-dpkg -l | awk '/^ii/ && $2 ~ /^postgresql|^postgresql-client|^libpq/ {print $2,$3}'
-ss -ltn | grep -E '(:5432\\b)'
-find /tmp /var/run -maxdepth 3 -type s -name '.s.PGSQL.5432'
-apt-cache policy postgresql postgresql-client
-getent hosts deb.debian.org
-```
-
-### Cleanup
-
-No PostgreSQL resources were created, so there is no database/container/volume/backup/credential cleanup from this blocked attempt.
-
-Compiled TypeScript output and validation-only file state remain disposable under the existing harness rules.
-
-## Reproduce in a compatible environment
+Existing non-PostgreSQL validation:
 
 ```text
 tsc -p tsconfig.client.json
@@ -128,4 +100,91 @@ node scripts/request-once.mjs <temporary-state-file>
 node scripts/worker-replay.mjs <same-temporary-state-file>
 ```
 
-Compiled output and state files are disposable and are not committed.
+Real PostgreSQL validation on an already-authorized Docker runner:
+
+```bash
+bash validation/foundation/postgres/scripts/run-validation.sh
+```
+
+The PostgreSQL runner creates uniquely named validation-only resources, binds PostgreSQL to localhost/private access, generates synthetic credentials at runtime, uses synthetic data only, backs up/restores only the validation databases, and removes the container, volume, dump, and temporary Node client on exit.
+
+## What this harness does not prove
+
+- final production schema;
+- final Member/Membership state model;
+- production RLS policy;
+- production runtime/migration/admin database-role design;
+- production ORM/query-builder/migration-tool selection;
+- production PostgreSQL provider;
+- production PostgreSQL version pin;
+- production connection-pool sizing;
+- production performance/capacity;
+- managed HA or multi-AZ behavior;
+- provider failover;
+- regional disaster recovery;
+- PITR;
+- production SLA;
+- launch region/jurisdiction;
+- RPO/RTO or backup retention;
+- decision-owner approval.
+
+Optional disproportionate commit-window network fault injection remains `NOT RUN`; durable post-restart replay was proven through the business-effect identity instead.
+
+## Safety / Decision Boundaries
+
+```text
+Validation Harness
+!=
+Production Scaffold
+
+File-backed durability
+!=
+PostgreSQL evidence
+
+Validation PostgreSQL
+!=
+Production PostgreSQL Provider
+
+Temporary PostgreSQL Driver
+!=
+D-ARCH-017 Acceptance
+
+Docker Validation Container
+!=
+Production Container Architecture
+
+Explicit Tenant Query
+!=
+RLS Acceptance
+
+Validation Schema
+!=
+Production Schema
+
+Passing Technical Evidence
+!=
+ADR Acceptance
+```
+
+No production/member/payment/provider data or production credentials were used.
+
+No external managed database was provisioned.
+
+## Current Governance State
+
+```text
+ADR-0001 = Proposed
+ADR-0002 = Proposed
+ADR-0003 = Proposed
+ADR-0004 = Proposed
+
+D-ARCH-005 = PROPOSED
+D-ARCH-016 = PROPOSED
+D-ARCH-001 = PROPOSED
+D-ARCH-002 = PROPOSED
+
+Decision Owner = Open
+Explicit Approval = Missing
+```
+
+The PostgreSQL technical blocker is resolved for this bounded foundation evidence plan. The next bounded governance action is the **Foundation Decision-Owner Review Packet**; that review must not automatically accept any ADR.
