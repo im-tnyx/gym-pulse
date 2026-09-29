@@ -2,17 +2,18 @@
 
 ## Status
 
-`Proposed`
+`Accepted`
 
 ## Decision Metadata
 
 - ADR: `ADR-0004`
 - Primary Decision ID: `D-ARCH-002`
 - Related Decision IDs: `D-ARCH-005`, `D-ARCH-001`, `D-ARCH-016`, `D-ARCH-014`, `D-ARCH-017`, `D-SEC-008`, `D-ARCH-007`, `D-ARCH-008`, `D-ARCH-009`, `D-ARCH-018`, `D-DATA-001`, `D-DATA-002`, `D-DATA-003`, `D-DATA-004`, `D-DATA-005`, `D-DATA-006`, `D-DATA-007`, `D-SEC-001`, `D-SEC-005`, `D-SEC-006`
-- Decision Owner: `Open`
+- Decision Owner: `santosh`
 - Technical Owner: `Architecture / Data Architecture`
 - Date Proposed: `2026-09-02`
-- Date Accepted: `Not accepted`
+- Date Accepted: `2026-09-29`
+- Approval Evidence / Reference: GitHub Issue #1 — https://github.com/im-tnyx/gym-pulse/issues/1
 - Supersedes: `None`
 - Superseded By: `None`
 
@@ -1033,21 +1034,21 @@ Passing Technical Evidence
 ADR Acceptance
 ~~~
 
-The required bounded PostgreSQL technical evidence is now sufficient for database-engine decision-owner review.
+The required bounded PostgreSQL technical evidence was sufficient for database-engine decision-owner review.
 
-This ADR remains `Proposed` because:
+Authorized Decision Owner `santosh` accepted PostgreSQL as the canonical transactional database-engine category on `2026-09-29`, with durable approval evidence in GitHub Issue #1.
 
-- no authorized decision owner is identified;
-- no explicit approval record exists;
+Post-acceptance production-readiness and dependent-decision gaps remain:
+
 - production launch jurisdiction and database region remain unresolved;
 - RPO/RTO and backup-retention objectives remain unresolved;
 - managed PostgreSQL provider, production admin/support access, and production connection topology remain separately unresolved;
 - local restart/backup evidence does not establish production HA/PITR/SLA;
-- `D-DATA-007` still blocks final Member/Membership schema semantics while not blocking engine review;
+- `D-DATA-007` still blocks final Member/Membership schema semantics;
 - `D-ARCH-017` remains separately governed and no production query/migration tool is accepted;
 - `D-SEC-008` remains separately governed and explicit tenant-query proof is not RLS acceptance.
 
-The next bounded governance action is the **Foundation Decision-Owner Review Packet**. Technical evidence alone cannot change this ADR to `Accepted` or promote `D-ARCH-002` to `DECIDED`.
+Therefore this ADR is `Accepted` and `D-ARCH-002` is synchronized as `DECIDED`. This acceptance does not select a managed provider, exact PostgreSQL production version, data-access/ORM tool, RLS design, job runner, hosting platform, production region, recovery topology, or final schema.
 
 ## 17. Related Documents
 

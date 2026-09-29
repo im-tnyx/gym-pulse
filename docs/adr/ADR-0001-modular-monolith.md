@@ -2,17 +2,18 @@
 
 ## Status
 
-`Proposed`
+`Accepted`
 
 ## Decision Metadata
 
 - ADR: `ADR-0001`
 - Primary Decision ID: `D-ARCH-005`
 - Related Decision IDs: `D-ARCH-001`, `D-ARCH-003`, `D-ARCH-006`, `D-ARCH-007`, `D-ARCH-014`, `D-ARCH-015`, `D-ARCH-016`, `D-ARCH-017`, `D-ARCH-019`, `D-SEC-008`, `D-DATA-007`
-- Decision Owner: `Open`
+- Decision Owner: `santosh`
 - Technical Owner: `Architecture`
 - Date Proposed: `2026-08-20`
-- Date Accepted: `Not accepted`
+- Date Accepted: `2026-09-29`
+- Approval Evidence / Reference: GitHub Issue #1 — https://github.com/im-tnyx/gym-pulse/issues/1
 - Supersedes: `None`
 - Superseded By: `None`
 
@@ -537,7 +538,7 @@ This ADR does not require these questions to be resolved before review, but they
 - Canonical testability requirements require deterministic domain tests outside full UI execution (`NFR-TESTABILITY-001`).
 - Current component architecture already models domains/components as source-code/application boundaries and explicitly says they are not mandatory processes or microservices.
 - Current data flows repeatedly depend on local transactional correctness, explicit idempotency layers, and provider-boundary reconciliation.
-- Current technology evaluation rates the modular-monolith direction as high-confidence but explicitly leaves `D-ARCH-005` `PROPOSED` pending ADR/decision-owner approval.
+- The technology evaluation originally rated the modular-monolith direction as high-confidence while leaving `D-ARCH-005` `PROPOSED` pending ADR/decision-owner approval; that governance condition is now satisfied by GitHub Issue #1.
 
 ### Acceptance-readiness evidence update — 2026-09-29
 
@@ -566,15 +567,15 @@ This supports the proposed local-transaction/idempotency architecture without fi
 
 This is supporting evidence, not production implementation and not approval.
 
-Remaining acceptance gaps include:
+Post-acceptance implementation/dependency gaps remain:
 
-- authorized decision owner is not identified in canonical evidence;
-- no explicit approval record exists;
 - the narrow harness does not prove broader production-scale multi-domain direct-write prevention;
 - the validation-only provider-event/business-effect path does not replace future production payment/provider integration evidence;
 - production module-aware observability remains separately governed.
 
-Therefore this ADR remains `Proposed`.
+Authorized Decision Owner `santosh` accepted this architecture-style decision on `2026-09-29`, with durable approval evidence in GitHub Issue #1.
+
+Therefore this ADR is `Accepted` and `D-ARCH-005` is synchronized as `DECIDED`.
 
 ## 17. Related Documents
 

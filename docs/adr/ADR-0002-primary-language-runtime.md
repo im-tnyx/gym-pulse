@@ -2,17 +2,18 @@
 
 ## Status
 
-`Proposed`
+`Accepted`
 
 ## Decision Metadata
 
 - ADR: `ADR-0002`
 - Primary Decision ID: `D-ARCH-016`
 - Related Decision IDs: `D-ARCH-005`, `D-ARCH-001`, `D-ARCH-003`, `D-ARCH-006`, `D-ARCH-007`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-017`, `D-ARCH-018`, `D-ARCH-019`
-- Decision Owner: `Open`
+- Decision Owner: `santosh`
 - Technical Owner: `Architecture`
 - Date Proposed: `2026-08-20`
-- Date Accepted: `Not accepted`
+- Date Accepted: `2026-09-29`
+- Approval Evidence / Reference: GitHub Issue #1 — https://github.com/im-tnyx/gym-pulse/issues/1
 - Supersedes: `None`
 - Superseded By: `None`
 
@@ -476,7 +477,7 @@ These remain separate decisions or evidence gaps:
 
 ### Current evidence supporting the proposal
 
-- `docs/02-architecture/technology-stack.md` evaluated TypeScript + supported Node.js LTS as the high-confidence current language/runtime direction while explicitly withholding acceptance.
+- `docs/02-architecture/technology-stack.md` evaluated TypeScript + supported Node.js LTS as the high-confidence language/runtime direction; acceptance is now recorded separately through the authorized governance decision in GitHub Issue #1.
 - The technology evaluation checked current official TypeScript strict-mode/project-reference documentation and Node.js release/LTS documentation on `2026-08-20` for capability evidence.
 - `NFR-MAINTAINABILITY-002` explicitly states that primary TypeScript application boundaries should use shared or generated typed contracts plus runtime validation.
 - `NFR-MAINTAINABILITY-001` requires shared domain rules rather than independent duplication across member, owner/staff, and background execution paths.
@@ -512,15 +513,15 @@ The 2026-09-29 real PostgreSQL run adds a transaction-heavy server-path proof us
 
 These versions are validation evidence only. They do not pin a production Node.js release or accept `pg`, an ORM/query builder, a pool strategy, hosting topology, or CI platform.
 
-Remaining acceptance gaps include:
+Post-acceptance implementation/dependency gaps remain:
 
-- authorized decision owner is not identified;
-- no explicit approval record exists;
 - the validation harness is not the final repository/workspace topology;
 - production provider/framework integration remains unproven;
 - no production benchmark/deployment constraint or canonical team-capability evidence has been recorded that materially changes the tradeoff.
 
-Therefore this ADR remains `Proposed`.
+Authorized Decision Owner `santosh` accepted the strict-TypeScript / supported-Node.js-LTS category on `2026-09-29`, with durable approval evidence in GitHub Issue #1.
+
+Therefore this ADR is `Accepted` and `D-ARCH-016` is synchronized as `DECIDED`. Exact Node.js, TypeScript, database-client, framework, hosting, test, and CI/CD versions/tools remain separately governed.
 
 ## 17. Related Documents
 

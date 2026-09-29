@@ -2,17 +2,18 @@
 
 ## Status
 
-`Proposed`
+`Accepted`
 
 ## Decision Metadata
 
 - ADR: `ADR-0003`
 - Primary Decision ID: `D-ARCH-001`
 - Related Decision IDs: `D-ARCH-005`, `D-ARCH-016`, `D-ARCH-003`, `D-ARCH-006`, `D-ARCH-007`, `D-ARCH-011`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-017`, `D-ARCH-018`, `D-ARCH-019`, `D-ARCH-002`, `D-ARCH-015`, `D-SEC-008`
-- Decision Owner: `Open`
+- Decision Owner: `santosh`
 - Technical Owner: `Architecture`
 - Date Proposed: `2026-08-30`
-- Date Accepted: `Not accepted`
+- Date Accepted: `2026-09-29`
+- Approval Evidence / Reference: GitHub Issue #1 — https://github.com/im-tnyx/gym-pulse/issues/1
 - Supersedes: `None`
 - Superseded By: `None`
 
@@ -679,7 +680,7 @@ Atomic source changes are not permission for runtime coupling. Stable applicatio
 
 ### Current evidence supporting the proposal
 
-- The canonical decision register marks `D-ARCH-001` as `P0 PROPOSED` with a monorepo recommendation and no accepted repository tool.
+- The canonical decision register originally marked `D-ARCH-001` as `P0 PROPOSED` with a monorepo recommendation and no accepted repository tool; the repository-strategy category is now accepted while concrete repository tooling remains separate.
 - `NFR-MAINTAINABILITY-001` requires core business rules not to be duplicated across member, owner/staff, and background execution paths.
 - `NFR-MAINTAINABILITY-002` supports shared/generated typed contracts with runtime validation at trust boundaries.
 - `NFR-MAINTAINABILITY-004` requires auditable migration discipline, and `NFR-MAINTAINABILITY-005` requires documentation synchronization with material behavior/architecture changes.
@@ -702,17 +703,17 @@ The validation-only harness at `../../validation/foundation/` now provides parti
 
 This is not yet a production monorepo/workspace scaffold. The harness intentionally avoids accepting a package manager, workspace orchestrator, CI platform, or final app/package topology.
 
-Remaining acceptance gaps include:
+Post-acceptance implementation/tooling gaps remain:
 
-- authorized decision owner is not identified;
-- no explicit approval record exists;
 - no actual workspace/package graph using the eventual workspace mechanism has been validated;
 - no production-scale architecture dependency rule has been integrated into CI;
 - no measured repository/CI baseline exists because application scaffolding has not begun;
 - no team/release/security constraint has been recorded that requires multiple repositories;
-- final application/package placement still depends on separately governed runtime/framework/topology decisions.
+- final application/package placement still depends on separately governed framework/topology decisions.
 
-Therefore this ADR remains `Proposed` and `D-ARCH-001` remains `PROPOSED`.
+Authorized Decision Owner `santosh` accepted the explicit-monorepo strategy on `2026-09-29`, with durable approval evidence in GitHub Issue #1. The partial-but-reviewable evidence limitation remains documented and does not imply acceptance of pnpm, Turborepo, Nx, GitHub Actions, a final package graph, or a final directory layout.
+
+Therefore this ADR is `Accepted` and `D-ARCH-001` is synchronized as `DECIDED`.
 
 ## 17. Related Documents
 
