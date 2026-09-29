@@ -1107,13 +1107,21 @@ Remaining human gates are an authorized decision owner and explicit approval/rej
 
 Remaining external/security gates include production launch jurisdiction/region, managed PostgreSQL provider, RPO/RTO, backup retention, production admin/support access, and production connection topology.
 
+The canonical **Foundation Decision-Owner Review Packet** is now prepared at:
+
+```text
+docs/adr/foundation-decision-owner-review-packet.md
+```
+
+ADR-0001 through ADR-0004 remain Proposed. Decision Owner remains Open and explicit approval is still missing.
+
 The next bounded governance action is:
 
 ```text
-Foundation Decision-Owner Review Packet
+Authorized Foundation Decision Review
 ```
 
-for ADR-0001 through ADR-0004. It must not auto-accept any ADR.
+The authorized owner must decide each ADR independently as `Accept`, `Reject`, or `Remain Proposed`. No decision is preselected by the packet.
 
 ## Legacy Migration State
 
