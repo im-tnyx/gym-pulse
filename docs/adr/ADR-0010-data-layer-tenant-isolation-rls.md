@@ -87,9 +87,7 @@ bulk operation scope error
 
 `D-SEC-003` remains `PROPOSED` and states that tenant isolation must be enforced server-side and reinforced at the data layer where practical.
 
-`D-ARCH-002` remains `PROPOSED`. PostgreSQL is the current database recommendation, not an accepted dependency. Therefore PostgreSQL-specific conclusions in this ADR are conditional:
-
-> If `D-ARCH-002` is accepted with PostgreSQL, PostgreSQL Row-Level Security is the primary database-native tenant-isolation mechanism evaluated by this ADR.
+`D-ARCH-002` is `DECIDED` via accepted ADR-0004, so PostgreSQL is the canonical transactional database engine. PostgreSQL Row-Level Security is therefore the primary database-native tenant-isolation mechanism evaluated by this ADR; whether GymPulse adopts RLS remains independently governed by `D-SEC-008`.
 
 `D-ARCH-017` remains `PROPOSED`; no ORM/query-builder/migration product is accepted here. `D-ARCH-014` remains `OPEN`; PostgreSQL RLS does not imply Supabase or another managed platform. Direct browser/mobile canonical database access remains unapproved.
 
@@ -167,7 +165,7 @@ Especially relevant architecture principles are:
 2. `D-SEC-003` remains `PROPOSED`; this ADR does not silently decide it.
 3. `D-ARCH-015` remains `PROPOSED`; `ADR-0009` is also only Proposed. Application authorization remains mandatory regardless of database defenses.
 4. `D-ARCH-004` and `D-SEC-002` remain `OPEN`; authentication/session and Member verification are separate decisions.
-5. `D-ARCH-002` remains `PROPOSED`; PostgreSQL is not accepted by this ADR.
+5. `D-ARCH-002` is `DECIDED`; PostgreSQL is accepted by ADR-0004, not by this ADR. `D-SEC-008` remains independently open.
 6. `D-ARCH-017` remains `PROPOSED`; no Drizzle, Kysely, Prisma, or other persistence tool is selected or installed.
 7. `D-ARCH-014` remains `OPEN`; RLS does not select Supabase or another managed backend/provider.
 8. `D-ARCH-006`, `D-ARCH-007`, and `D-ARCH-009` remain `OPEN`; RLS/context design must not silently select API topology, job technology, or hosting.
@@ -501,7 +499,7 @@ The complexity is justified only if GymPulse proves the actual runtime role is s
 
 ## 8. Proposed Decision
 
-**Propose mandatory GymPulse application authorization plus explicit tenant-scoped persistence queries, reinforced by selective database-level tenant isolation; if PostgreSQL is accepted under `D-ARCH-002`, use selective PostgreSQL RLS on materially tenant-owned canonical tables as the leading data-layer defense-in-depth mechanism.**
+**Propose mandatory GymPulse application authorization plus explicit tenant-scoped persistence queries, reinforced by selective database-level tenant isolation; with PostgreSQL accepted under `D-ARCH-002`, selective PostgreSQL RLS on materially tenant-owned canonical tables is the leading data-layer defense-in-depth mechanism. `D-SEC-008` itself remains OPEN.**
 
 This remains a proposal. `D-SEC-008` stays `OPEN` until explicit review/approval evidence changes the canonical register.
 
@@ -1257,7 +1255,7 @@ Latest `main` establishes:
 - `D-SEC-008` is `OPEN` and asks for data-layer tenant isolation/RLS strategy and its relationship to application authorization.
 - `D-SEC-003` is `PROPOSED`: tenant isolation is server-side and should be reinforced at the data layer where practical.
 - `D-ARCH-015` is `PROPOSED`; `ADR-0009` proposes a GymPulse-owned capability + trusted scope/resource authorization module.
-- `D-ARCH-002` is `PROPOSED`; PostgreSQL is a recommendation only.
+- `D-ARCH-002` is `DECIDED`; PostgreSQL is the accepted canonical database engine.
 - `D-ARCH-017` is `PROPOSED`; no persistence/query/migration tool is accepted.
 - `D-ARCH-014` is `OPEN`; no managed backend/provider is accepted.
 - direct browser/mobile canonical database mutation is not an approved baseline.
@@ -1265,7 +1263,7 @@ Latest `main` establishes:
 - `D-DATA-004` remains `PROPOSED` and `D-DATA-007` remains unresolved.
 - no ADR is currently `Accepted` and no approval evidence for `D-SEC-008` was found before drafting ADR-0010.
 
-Legacy `docs/06-database-schema.md`, `docs/12-security-audit.md`, and `docs/16-open-decisions.md` were used only as migration/evidence sources. Where the legacy schema describes PostgreSQL as already canonical, the current structured decision register overrides that wording: `D-ARCH-002` remains `PROPOSED`.
+Legacy `docs/06-database-schema.md`, `docs/12-security-audit.md`, and `docs/16-open-decisions.md` were used only as migration/evidence sources. Where the legacy schema describes PostgreSQL as canonical, the current structured decision register now agrees on the engine category: `D-ARCH-002 = DECIDED` via ADR-0004. Final schema and RLS choices remain separate.
 
 ### 19.2 Current official PostgreSQL research
 

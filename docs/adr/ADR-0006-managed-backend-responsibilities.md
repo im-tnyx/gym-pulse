@@ -182,7 +182,7 @@ Especially relevant principles are:
 3. Provider-specific SDKs and APIs remain behind infrastructure adapters or explicit integration boundaries.
 4. Application authorization remains `principal + tenant/resource scope + named capability -> allow/deny` even when a provider supplies authentication, JWTs, or RLS tooling.
 5. Direct client database mutation is not a baseline architecture. A future proposal for direct client access would require explicit security architecture and would materially increase the importance of `D-SEC-008`.
-6. `D-ARCH-002` remains `PROPOSED`; this ADR does not accept PostgreSQL or an exact database version.
+6. `D-ARCH-002` is `DECIDED`; PostgreSQL is accepted as the canonical transactional database engine. This ADR does not accept a managed PostgreSQL provider or exact production version.
 7. `D-ARCH-017` remains `PROPOSED`; this ADR does not accept Drizzle or another query/migration tool.
 8. `D-ARCH-004`, `D-SEC-002`, and `D-SEC-004` remain `OPEN`; this ADR does not select staff/member authentication or session policy.
 9. `D-SEC-008` remains `OPEN`; RLS compatibility may be evaluated but production RLS policy is not selected here.
@@ -201,7 +201,7 @@ Especially relevant principles are:
 
 | Capability | Needed Phase 1? | Managed service appropriate? | GymPulse owns semantics? | Separate canonical decision | Recommended posture |
 |---|---|---|---|---|---|
-| Canonical database hosting | Yes, once engine is approved | Yes | Yes: schema/business transactions/invariants | `D-ARCH-002` | **Strong managed-service candidate** if the proposed relational engine direction is accepted; provider remains unselected |
+| Canonical database hosting | Yes; engine category is approved | Yes | Yes: schema/business transactions/invariants | `D-ARCH-002` | **Strong managed-service candidate** for accepted PostgreSQL; provider remains unselected |
 | Authentication service | Yes | Yes | Yes: principal mapping and authorization remain GymPulse-owned | `D-ARCH-004` | **Candidate only**, to be decided by auth ADR |
 | Session management | Yes | Yes | Yes: required revocation/lifetime policy remains GymPulse-governed | `D-ARCH-004`, `D-SEC-004` | **Candidate only**, pending explicit session design |
 | Member OTP/passwordless | Verified identity is required; method Open | Yes | Yes: member identity mapping/self scope remain GymPulse-owned | `D-SEC-002` | **Deferred to member-auth decision** |
@@ -334,7 +334,7 @@ Supabase is evaluated as a representative candidate, not selected as a provider.
 
 | Supabase capability | GymPulse posture |
 |---|---|
-| PostgreSQL hosting | **Strong candidate** if `D-ARCH-002` is later accepted with PostgreSQL; standard Postgres connectivity and SQL remain important exit boundaries |
+| PostgreSQL hosting | **Strong candidate** now that `D-ARCH-002` is DECIDED with PostgreSQL; standard Postgres connectivity and SQL remain important exit boundaries |
 | Auth | **Candidate only** pending `D-ARCH-004`, `D-SEC-002`, `D-SEC-004`; provider identity must map to a GymPulse principal |
 | Storage | **Conditional candidate** pending actual `D-ARCH-010` requirement; private access and tenant ownership remain GymPulse policy |
 | RLS support | **Compatible defense-in-depth capability**, not authorization-system selection; `D-SEC-008` stays Open |
@@ -397,7 +397,7 @@ This is a responsibility-model proposal, not a vendor acceptance.
 ### 7.1 What the proposal means
 
 1. Prefer managed services over self-operating commodity infrastructure where they reduce Phase 1 operational risk without weakening security/correctness or creating unjustified lock-in.
-2. If `D-ARCH-002` is later accepted with PostgreSQL, prefer **managed PostgreSQL hosting** rather than self-managing the database for Phase 1, subject to provider/region/recovery/connection validation.
+2. Because `D-ARCH-002` is accepted with PostgreSQL, prefer **managed PostgreSQL hosting** rather than self-managing the database for Phase 1, subject to the still-open provider/region/recovery/connection decisions.
 3. Treat an integrated platform such as Supabase as a **strong candidate** because it can consolidate eligible infrastructure responsibilities, but do not enable capabilities merely because they are bundled.
 4. Authentication remains a separate architecture/security decision. A managed-platform Auth component is an eligible candidate, not an outcome of this ADR.
 5. Storage remains conditional and must not be provisioned until a requirement justifies it.
@@ -852,7 +852,7 @@ This ADR remains `Proposed` and `D-ARCH-014` remains `OPEN` because:
 
 - no authorized decision owner/approval evidence exists,
 - launch jurisdiction and residency obligations remain unresolved,
-- PostgreSQL remains Proposed rather than accepted,
+- PostgreSQL is accepted as the canonical database engine, while the managed provider remains open,
 - no managed provider has passed a connection/pooling/recovery/region/exit spike,
 - authentication/session/member-auth decisions remain Open,
 - no RLS role/bypass model is approved,

@@ -77,7 +77,7 @@ At the same time, GymPulse should not hide the database behind generic `Reposito
 
 `D-ARCH-017` is the canonical decision ID for this topic. Earlier wording in `technology-stack.md` that called this a `Decision Register Gap` is historical; Task 0008 normalized the decision register and `docs/00-overview/assumptions.md` is authoritative.
 
-`ADR-0004` proposes PostgreSQL under `D-ARCH-002`, but PostgreSQL is not accepted. Therefore this ADR evaluates the candidates against the current PostgreSQL direction conditionally and remains revisitable if the database-engine decision changes before acceptance.
+`ADR-0004` is Accepted and `D-ARCH-002 = DECIDED`; PostgreSQL is the canonical transactional database engine. This ADR therefore evaluates data-access/migration candidates against accepted PostgreSQL while remaining separately governed under `D-ARCH-017`.
 
 This ADR answers:
 
@@ -183,9 +183,9 @@ The decision is especially constrained by:
 ## 3. Constraints and Assumptions
 
 1. `D-ARCH-017` is `P1 PROPOSED`; no data-access/query/migration tool is accepted.
-2. `D-ARCH-002` remains `P0 PROPOSED`; PostgreSQL is a recommendation, not an accepted dependency.
-3. If `D-ARCH-002` changes before acceptance, this ADR must be re-evaluated against the selected engine.
-4. `D-ARCH-016` remains `PROPOSED`; TypeScript/Node.js is a proposed direction, not an accepted prerequisite.
+2. `D-ARCH-002` is `P0 DECIDED`; PostgreSQL is the accepted canonical transactional database engine.
+3. A future superseding database-engine ADR would require this persistence-tooling proposal to be re-evaluated.
+4. `D-ARCH-016` is `DECIDED`; strict TypeScript with a supported Node.js LTS runtime is an accepted foundation category, while exact versions remain separate.
 5. Application command handlers own correctness-sensitive local transaction boundaries.
 6. Domain modules own business rules/state transitions and must not be defined by generated database models.
 7. Persistence adapters are server-only infrastructure.
@@ -207,7 +207,7 @@ The decision is especially constrained by:
 
 ### Option A: Drizzle-oriented TypeScript persistence
 
-Use Drizzle ORM as the primary typed SQL/query layer and Drizzle Kit as the integrated migration companion if the TypeScript/PostgreSQL directions are later accepted.
+Evaluate Drizzle ORM as the primary typed SQL/query layer and Drizzle Kit as the integrated migration companion against the now-accepted TypeScript/Node.js and PostgreSQL foundation categories.
 
 Expected characteristics:
 
@@ -403,7 +403,7 @@ This is especially important for no-show scans, renewal scans, payment reconcili
 
 ## 6. Proposed Decision
 
-**Propose Option A: a Drizzle-oriented TypeScript persistence strategy with explicit transaction ownership, SQL-transparent queries, and generated-then-reviewed committed SQL migrations, provided the proposed TypeScript/Node.js and PostgreSQL directions are later accepted.**
+**Propose Option A: a Drizzle-oriented TypeScript persistence strategy with explicit transaction ownership, SQL-transparent queries, and generated-then-reviewed committed SQL migrations. The foundation TypeScript/Node.js and PostgreSQL categories are now accepted; this ADR and `D-ARCH-017` remain Proposed until separately authorized.**
 
 The proposal is architectural, not permission to install or scaffold Drizzle.
 
@@ -904,7 +904,7 @@ Primary references:
 
 #### PostgreSQL capability context
 
-Because `D-ARCH-002` remains Proposed, PostgreSQL-specific claims are only conditional architecture evidence. Official PostgreSQL documentation confirms the material primitives that the persistence layer must not obscure, including constraints, partial indexes, transaction isolation, and RLS capability.
+Because `D-ARCH-002` is now DECIDED via ADR-0004, PostgreSQL-specific claims can be treated as engine-specific architecture evidence while data-access tooling remains separately Proposed. Official PostgreSQL documentation confirms the material primitives that the persistence layer must not obscure, including constraints, partial indexes, transaction isolation, and RLS capability.
 
 Primary references:
 
@@ -919,7 +919,7 @@ This ADR remains `Proposed` because:
 
 - the decision owner is not identified,
 - no explicit approval exists,
-- PostgreSQL and TypeScript/Node.js remain Proposed dependencies,
+- PostgreSQL and the TypeScript/Node.js foundation categories are accepted dependencies; exact versions and the data-access tool remain separately governed,
 - no representative Drizzle/Kysely/Prisma/SQL-first spike has been executed,
 - no cross-module transaction spike exists,
 - no real concurrency/conflict test exists,

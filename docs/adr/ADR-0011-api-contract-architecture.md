@@ -148,8 +148,8 @@ Relevant principles include `ARCH-PRIN-001` through `ARCH-PRIN-016`, especially 
 ## 3. Constraints and Assumptions
 
 1. `D-ARCH-003` remains `P0 PROPOSED`; this ADR is Proposed and does not make it `DECIDED`.
-2. `D-ARCH-016` remains `PROPOSED`; strict TypeScript/Node.js is a recommendation, not an accepted prerequisite.
-3. `D-ARCH-001` remains `PROPOSED`; a monorepo and shared contract package are not accepted by this ADR.
+2. `D-ARCH-016` is `DECIDED`; strict TypeScript with a supported Node.js LTS runtime is an accepted foundation category, while exact versions remain separate.
+3. `D-ARCH-001` is `DECIDED`; an explicit monorepo is accepted, but the exact shared-contract package/folder design remains implementation work and is not decided by this ADR.
 4. `D-ARCH-004` remains `OPEN`; no authentication/session provider or exact browser/native credential transport is selected.
 5. `D-SEC-002` remains `OPEN`; Member verification method remains separately governed even though ADR-0008 is Proposed.
 6. `D-ARCH-015` remains `PROPOSED`; ADR-0009 remains Proposed and application authorization stays mandatory.
@@ -158,7 +158,7 @@ Relevant principles include `ARCH-PRIN-001` through `ARCH-PRIN-016`, especially 
 9. `D-ARCH-006` remains `OPEN`; contract semantics must work in co-hosted and independently deployed API mappings.
 10. `D-ARCH-007` remains `OPEN`; background-job technology is not part of the public API contract.
 11. `D-ARCH-014` remains `OPEN`; no managed backend or provider Data API is selected.
-12. `D-ARCH-002` and `D-ARCH-017` remain `PROPOSED`; public contracts must not be generated directly from database rows/ORM models or depend on PostgreSQL/Drizzle/Kysely/Prisma semantics.
+12. `D-ARCH-002` is `DECIDED` with PostgreSQL; `D-ARCH-017` remains `PROPOSED`. Public contracts must not be generated directly from database rows/ORM models or depend on Drizzle/Kysely/Prisma semantics.
 13. `D-ARCH-018` remains `PROPOSED`; this ADR defines required contract/security tests but selects no test tool.
 14. `D-ARCH-010` remains `OPEN`; file transport categories are considered without selecting object storage.
 15. `D-DATA-001..003` remain separately governed Proposed data decisions; this ADR preserves their current direction without accepting them.
@@ -313,7 +313,7 @@ Strengths:
 
 Tradeoffs for GymPulse:
 
-- the strongest benefits depend on TypeScript on both sides while `D-ARCH-016` remains unaccepted,
+- the strongest benefits align with the accepted TypeScript runtime category, while wire contracts must remain language-neutral,
 - future non-TypeScript clients/integrations require additional interoperability/documentation strategy,
 - provider webhooks remain separate HTTP contracts,
 - the canonical contract becomes closer to the server code/type system,
@@ -439,7 +439,7 @@ The proposal is governed by these rules:
 3. Reads should be resource/query-oriented; business-sensitive mutations may use explicit command/action routes rather than generic CRUD.
 4. The external DTO is explicitly mapped to an application command/query. No persistence/domain/provider object becomes public automatically.
 5. Runtime schemas are the implementation-level source of truth for external request/response shape where practical.
-6. If the TypeScript direction is later accepted, static TypeScript types should be derived from or mechanically synchronized with runtime schemas rather than maintained independently.
+6. With the TypeScript direction accepted under ADR-0002, static TypeScript types should be derived from or mechanically synchronized with runtime schemas rather than maintained independently.
 7. OpenAPI may be mechanically exported/generated where useful; it is not required to be the primary manually maintained source of truth.
 8. API semantics remain framework- and deployment-independent.
 9. Provider callbacks are a separate contract class with provider authenticity verification before canonical mutation.
@@ -1298,7 +1298,7 @@ Latest `main` at drafting time establishes:
 - `D-ARCH-004` and `D-SEC-002` remain `OPEN`; authentication/session and Member verification remain separately governed.
 - `D-ARCH-015` remains `PROPOSED`; ADR-0009 proposes application capability/scope/resource authorization but is not Accepted.
 - `D-SEC-008` remains `OPEN`; ADR-0010 proposes data-layer tenant isolation/RLS defense in depth but is not Accepted.
-- `D-ARCH-012`, `D-ARCH-013`, and `D-ARCH-016` remain Proposed rather than accepted framework/language/client decisions.
+- `D-ARCH-016` is DECIDED for the TypeScript/Node.js category; `D-ARCH-012` and `D-ARCH-013` remain Proposed framework/client decisions.
 - the component architecture already requires a Transport/Entry Adapter, Contract/Boundary Validator, provider callback entry, request/correlation context, authentication/principal resolution, trusted resource/scope resolution, capability authorization, and thin application command/query handlers.
 - the data-flow architecture already separates request idempotency, provider-event deduplication, job deduplication, and business-effect uniqueness.
 - no current ADR is Accepted and no approval evidence for `D-ARCH-003` was found before drafting ADR-0011.
