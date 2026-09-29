@@ -77,7 +77,7 @@ Decision drivers:
 7. keep browser E2E focused on high-value journeys;
 8. make time and failure deterministic;
 9. support parallelism without shared mutable test state;
-10. fit the proposed TypeScript/Node/monorepo direction without silently accepting it;
+10. fit the accepted TypeScript/Node/monorepo foundation direction without expanding its scope;
 11. integrate with ADR-0017 release gates without duplicating release governance;
 12. avoid production credentials/PII in tests and artifacts;
 13. preserve portability across hosting/provider choices.
@@ -85,8 +85,8 @@ Decision drivers:
 ## 3. Constraints and Assumptions
 
 1. `D-ARCH-018` remains `P1 PROPOSED`.
-2. `D-ARCH-016` remains `PROPOSED`; TypeScript/Node is not accepted by this ADR.
-3. `D-ARCH-002` remains `PROPOSED`; PostgreSQL is not accepted by this ADR.
+2. `D-ARCH-016` is `DECIDED`; TypeScript/Node is accepted by ADR-0002, not by this ADR, and exact runtime versions remain separate.
+3. `D-ARCH-002` is `DECIDED`; PostgreSQL is accepted by ADR-0004, not by this ADR.
 4. `D-ARCH-017` remains `PROPOSED`; no ORM/query/migration tool is accepted.
 5. `D-ARCH-015` remains `PROPOSED`; authorization implementation details remain separately governed.
 6. `D-SEC-008` remains `OPEN`; RLS testing is conditional on later RLS acceptance.
@@ -577,7 +577,7 @@ RLS is not accepted by this ADR.
 
 ## 11. Database Integration Testing
 
-If `D-ARCH-002` is accepted with PostgreSQL, critical persistence evidence must use real PostgreSQL.
+Because `D-ARCH-002` is accepted with PostgreSQL, critical persistence evidence must use real PostgreSQL.
 
 Do not use SQLite, a mock ORM, or in-memory persistence as proof for:
 
@@ -1134,8 +1134,8 @@ Revisit the toolchain if:
 
 ## 27. Open Questions
 
-1. Will `D-ARCH-016` be accepted with TypeScript/Node?
-2. Will `D-ARCH-002` be accepted with PostgreSQL?
+1. Which exact supported Node.js production version will implement accepted `D-ARCH-016`?
+2. What real-PostgreSQL orchestration/tooling best implements accepted `D-ARCH-002` without deciding the testing tool prematurely?
 3. Which CI runner/runtime will `D-ARCH-019` accept?
 4. Is a compatible container runtime available on the eventual CI runner?
 5. What DB isolation mode gives the best speed/fidelity once schema volume is known?
@@ -1163,7 +1163,7 @@ Fresh latest-`main` audit verified:
 - no testing tool had explicit acceptance evidence.
 - no current ADR was `Accepted`.
 - ADR-0017 was `Proposed` and `D-ARCH-019` remained `OPEN`.
-- Vitest, Playwright, Testcontainers, PostgreSQL, Node.js, and exact testing tools remained unaccepted.
+- PostgreSQL and the TypeScript/Node.js category are now accepted foundation decisions; Vitest, Playwright, Testcontainers, exact Node.js version, and exact testing tools remain unaccepted.
 - no structured documents currently existed under `docs/09-security/`, `docs/11-observability/`, `docs/12-testing/`, `docs/13-engineering/`, or `docs/14-operations/`; legacy testing/security/engineering documents therefore remained migration evidence only.
 
 Legacy `docs/13-testing-qa.md` already emphasized below-UI business-rule tests, tenant isolation as a tested feature, payment/attendance retries, duplicate scheduled automation, integration tests for DB constraints/tenant filters/API authorization, contract/provider tests, E2E journeys, isolated CI DB, fake/sandbox providers, and controllable time. The structured NFRs and ADRs remain authoritative.

@@ -62,8 +62,8 @@ Repository/CI evidence additionally requires:
 
 1. `D-ARCH-011` remains `P1 ASSUMED`.
 2. `ADR-0019` is `Proposed`, not `Accepted`.
-3. `D-ARCH-001` remains `PROPOSED`; this ADR does not accept the monorepo.
-4. `D-ARCH-016` remains `PROPOSED`; this ADR does not accept Node.js or TypeScript.
+3. `D-ARCH-001` is `DECIDED`; the explicit monorepo strategy is accepted by ADR-0003, not by this ADR.
+4. `D-ARCH-016` is `DECIDED`; strict TypeScript + supported Node.js LTS is accepted by ADR-0002, while exact runtime version remains separate.
 5. `D-ARCH-019` remains `OPEN`; this ADR does not accept GitHub Actions or another CI provider.
 6. `D-ARCH-018` remains `PROPOSED`; this ADR does not install or accept test tooling.
 7. `D-ARCH-012` and `D-ARCH-013` remain `PROPOSED`.
@@ -211,7 +211,7 @@ package-manager version pinning
 cache as performance optimization only
 ```
 
-For a future accepted monorepo implementation:
+For the accepted monorepo strategy when implementation is later authorized:
 
 1. use one root `pnpm-lock.yaml`;
 2. define workspaces centrally with `pnpm-workspace.yaml`;
@@ -228,7 +228,7 @@ This is a proposal, not acceptance. `pnpm` must not be installed or configured s
 
 ## 8. Workspace and Dependency Model
 
-If `D-ARCH-001` is accepted compatibly, the package manager supports application/package boundaries such as Owner/Staff Web, Member Web, trusted API/runtime adapters, Background Worker, migrations/admin tooling, domain/application packages, contracts, and bounded test support.
+Because `D-ARCH-001` is accepted, the selected package manager must support application/package boundaries such as Owner/Staff Web, Member Web, trusted API/runtime adapters, Background Worker, migrations/admin tooling, domain/application packages, contracts, and bounded test support.
 
 Workspace dependency edges must be explicit.
 
@@ -325,7 +325,7 @@ No GitHub Actions workflow or other CI configuration is created by this ADR.
 
 ### Package manager != Node acceptance
 
-The current direction assumes a TypeScript/Node-compatible ecosystem for fit analysis only. `D-ARCH-016` remains `PROPOSED`.
+The current direction targets the accepted TypeScript/Node-compatible ecosystem under `D-ARCH-016`; the exact Node.js version remains separately selected.
 
 ### Package manager != Turborepo
 

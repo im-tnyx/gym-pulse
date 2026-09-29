@@ -136,11 +136,11 @@ The release architecture should optimize for:
 2. `D-ARCH-009` remains `OPEN`; ADR-0016 is Proposed and does not accept Render or another host.
 3. `D-ARCH-006` remains `OPEN`; ADR-0014 is Proposed.
 4. `D-ARCH-007` remains `OPEN`; ADR-0015 is Proposed.
-5. `D-ARCH-001` remains `PROPOSED`; monorepo CI behavior is conditional.
+5. `D-ARCH-001` is `DECIDED`; the monorepo strategy is accepted, while exact CI/workspace tooling remains separate.
 6. `D-ARCH-011` remains `ASSUMED`; no package manager is accepted.
-7. `D-ARCH-016` remains `PROPOSED`; no Node.js version/runtime is accepted.
+7. `D-ARCH-016` is `DECIDED`; strict TypeScript + supported Node.js LTS is accepted, but no exact Node.js production version is pinned.
 8. `D-ARCH-018` remains `PROPOSED`; exact test tools are separate.
-9. `D-ARCH-002` remains `PROPOSED`; PostgreSQL is not accepted.
+9. `D-ARCH-002` is `DECIDED`; PostgreSQL is accepted as the engine category, while provider/version/recovery choices remain separate.
 10. `D-ARCH-017` remains `PROPOSED`; no migration/query tool is accepted.
 11. `D-ARCH-014` and `D-ARCH-004` remain `OPEN`.
 12. `D-ARCH-015` remains `PROPOSED`.
@@ -267,7 +267,7 @@ Separate artifacts may belong to one release context and one source revision.
 
 ### 5.4 Runtime/dependency reproducibility
 
-After `D-ARCH-011` and `D-ARCH-016` are accepted:
+After `D-ARCH-011` is accepted and an exact supported Node.js production version is selected within the already accepted `D-ARCH-016` category:
 
 - CI uses an explicitly declared supported runtime version;
 - dependency installation uses the package manager's frozen/lockfile-respecting mode;
@@ -1281,7 +1281,7 @@ Revisit the release architecture if:
 8. Is a persistent staging environment needed?
 9. What exact test tools are accepted under `D-ARCH-018`?
 10. What package manager is accepted under `D-ARCH-011`?
-11. What runtime version is accepted under `D-ARCH-016`?
+11. Which exact supported Node.js production version is selected within accepted `D-ARCH-016`?
 12. What database/migration tool is accepted?
 13. What production DB network path can the migration runner use?
 14. What security scanner categories/features are available under the chosen GitHub plan?
