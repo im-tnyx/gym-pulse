@@ -357,23 +357,24 @@ D-ARCH-002  Canonical database engine                ADR-0004 drafted, Proposed
 
 These define the initial implementation envelope but remain unaccepted.
 
-#### Foundation acceptance-readiness review — 2026-09-27
+#### Foundation acceptance-readiness review — updated 2026-09-29
 
-Fresh review used each ADR's own acceptance/validation sections plus the canonical decision register. The first shared validation pass has now also been executed through `validation/foundation/`.
+Fresh review uses each ADR's own acceptance/validation sections plus the canonical decision register and the completed shared validation evidence under `validation/foundation/`.
 
 This review does not approve or reject any ADR.
 
 | ADR | Canonical status | Reviewable now | Acceptance readiness | Current evidence / remaining blockers |
 |---|---|---|---|---|
-| `ADR-0001` / `D-ARCH-005` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Partial PASS evidence now covers strict boundary checks, request/worker reuse, tenant/branch/capability negatives, replay-safe result, gym-time boundary, and narrow correlation. Still missing authorized decision owner, explicit approval, real DB concurrency/transaction evidence, broader multi-domain direct-write enforcement, and full provider-effect/production diagnostics evidence. |
-| `ADR-0002` / `D-ARCH-016` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Partial PASS evidence now covers strict TypeScript, runtime validation, protected command, raw-byte webhook verification, client/server import isolation, separate-process replay, gym-time behavior, and correlation. Still missing authorized decision owner, explicit approval, real PostgreSQL transaction-heavy evidence, final repository topology validation, and production provider/framework evidence. No canonical team/deployment/performance evidence currently overturns the TypeScript/Node.js recommendation. |
-| `ADR-0003` / `D-ARCH-001` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Partial PASS evidence now covers separate client/request/worker builds, forbidden-import detection, cycle detection, shared contract, and request/worker reuse. Still missing authorized decision owner, explicit approval, an actual eventual workspace/package graph, CI-integrated architecture rules, and measured repository/CI baseline. |
-| `ADR-0004` / `D-ARCH-002` | PROPOSED | Yes | **Remain Proposed — PostgreSQL action BLOCKED** | Fresh Real PostgreSQL Foundation Validation was environment-gated and `NOT RUN`: no PostgreSQL server/client tools, no local 5432 server/socket, no Docker/Podman/nerdctl, no apt PostgreSQL candidate, and no DNS/package-repository access. No substitute DB or cloud resource was used. Concurrency/idempotency, rollback, tenant-scoped SQL, relational query, migration, backup/restore, and connection/restart evidence remain missing. Authorized decision owner and external regional/recovery evidence also remain missing. `D-DATA-007` blocks final Member/Membership schema semantics but not database-engine review itself. |
+| `ADR-0001` / `D-ARCH-005` | PROPOSED | Yes | **Remain Proposed — decision-owner reviewable** | Boundary/reuse/authorization/time/correlation evidence remains PASS, and real PostgreSQL now proves 12-way attendance uniqueness, transactional exactly-once effect behavior, rollback, and post-restart replay. Still missing authorized decision owner, explicit approval, broader production-scale cross-domain direct-write enforcement, and production provider/observability evidence. |
+| `ADR-0002` / `D-ARCH-016` | PROPOSED | Yes | **Remain Proposed — decision-owner reviewable** | Strict TypeScript/runtime/trust-boundary evidence remains PASS. Real PostgreSQL now proves a Node transaction-heavy path, six simultaneous client connections, disconnect/reconnect behavior, real SQLSTATE observation, and restart recovery. Still missing authorized decision owner, explicit approval, final repository topology, production provider/framework evidence, and any materially contrary performance/team/deployment evidence. |
+| `ADR-0003` / `D-ARCH-001` | PROPOSED | Yes | **Remain Proposed — not acceptance-ready** | Existing partial evidence covers separate client/request/worker builds, forbidden-import detection, cycle detection, shared contract, and request/worker reuse. PostgreSQL validation does not add material monorepo/workspace evidence. Still missing authorized decision owner, explicit approval, an eventual workspace/package graph, CI-integrated architecture rules, and measured repository/CI baseline. |
+| `ADR-0004` / `D-ARCH-002` | PROPOSED | Yes | **Remain Proposed — technical evidence complete for decision-owner review** | Real PostgreSQL 17.11 validation passes migration-from-zero, forward migration, concurrency/idempotency, rollback, tenant-scoped SQL, relational query, SQLSTATE translation, backup/restore, application connection, disposable restart/reconnect, and post-restart replay. Remaining gates are authorized decision owner/approval plus production region/jurisdiction, RPO/RTO, backup retention, managed provider, admin/support access, production topology, and separately governed RLS/data-access/schema choices. |
 
 Executed validation evidence is recorded in:
 
 ```text
 validation/foundation/EVIDENCE.md
+validation/foundation/postgres/
 ```
 
 Current cross-batch findings:
@@ -382,19 +383,22 @@ Current cross-batch findings:
 all four ADRs have Decision Owner = Open
 all four lack explicit approval evidence
 
-ADR-0001..0003 now have partial technical supporting evidence
-ADR-0004 still lacks its core real-PostgreSQL evidence
+Real PostgreSQL Stage 3 = PASS
+Real PostgreSQL Stage 6 = PASS
+PostgreSQL validation cleanup = PASS
+
+ADR-0001 technical evidence advanced
+ADR-0002 technical evidence advanced
+ADR-0003 evidence unchanged by PostgreSQL work
+ADR-0004 bounded technical database-engine evidence complete
 
 no canonical status changes are justified
 no implementation/scaffold gate is opened
 ```
 
-The foundation batch is therefore still suitable for **continued validation + later decision-owner review**, not acceptance yet.
+Acceptance-readiness must not be confused with implementation completion.
 
-Acceptance-readiness must not be confused with implementation completion. Passing spike tests are supporting evidence only.
-
-The shared validation program is defined in `foundation-acceptance-evidence-plan.md`. Its next required step is real PostgreSQL validation; file-backed validation state must not be cited as PostgreSQL evidence.
-
+The PostgreSQL environment blocker is resolved. The next bounded governance action is the **Foundation Decision-Owner Review Packet** for ADR-0001 through ADR-0004. That packet must not pre-write acceptance or promote canonical decisions automatically.
 
 ### Second dependency/security batch
 
