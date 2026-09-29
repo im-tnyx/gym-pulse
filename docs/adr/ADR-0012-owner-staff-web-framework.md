@@ -188,7 +188,7 @@ This decision is especially constrained by:
 ## 3. Constraints and Assumptions
 
 1. `D-ARCH-012` remains `P0 PROPOSED`; this ADR is Proposed and does not make it `DECIDED`.
-2. `D-ARCH-016` remains `PROPOSED`; strict TypeScript + supported Node.js LTS is a recommendation, not an accepted prerequisite. This ADR must not independently mark it accepted.
+2. `D-ARCH-016` is `DECIDED`; strict TypeScript + supported Node.js LTS is an accepted foundation category. This ADR still does not pin an exact runtime version.
 3. `D-ARCH-003` remains `PROPOSED`; `ADR-0011` is only Proposed. The framework must preserve its versioned JSON HTTP contract and runtime trust-boundary validation architecture.
 4. `D-ARCH-004` remains `OPEN`; no authentication provider or final session implementation is selected.
 5. `D-SEC-004` remains `OPEN`; exact session lifetime, device policy, inactivity, remember-me, and revocation SLA are not selected.
@@ -201,7 +201,7 @@ This decision is especially constrained by:
 12. `D-ARCH-018` remains `PROPOSED`; this ADR defines required web/security test categories but selects no final test runner or browser test product.
 13. `D-ARCH-019` remains `OPEN`; no production release platform or secret-management product is selected.
 14. `D-PROVIDER-006` remains `OPEN`; observability capability is required but no provider is selected.
-15. `D-ARCH-001` remains `PROPOSED`; the framework must not rely on a monorepo being accepted, even though a monorepo remains the leading repository direction.
+15. `D-ARCH-001` is `DECIDED`; the repository strategy is an explicit monorepo. This ADR does not decide the final package graph, package manager, or workspace orchestrator.
 16. The Owner/Staff application is not permitted to mutate canonical persistence directly from browser code.
 17. Server-rendered code is not automatically an authorization boundary merely because it executes on a server. Protected reads/mutations still pass current Principal/scope/capability/resource checks.
 18. UI visibility, route guards, layouts, redirects, framework middleware/proxy, and client role flags are UX/navigation controls only. They do not replace operation-level authorization.
@@ -323,7 +323,7 @@ This ADR does not decide that the canonical API must be hosted inside Next.js.
 
 ### Option A: Next.js App Router + React
 
-Use the current supported Next.js line with the App Router and React as the Owner/Staff web framework. If `D-ARCH-016` is later accepted compatibly, implement the application in strict TypeScript.
+Use the current supported Next.js line with the App Router and React as the Owner/Staff web framework. The accepted implementation-language category is strict TypeScript under `D-ARCH-016`; exact framework/runtime versions remain separately selected.
 
 Strengths:
 
@@ -439,7 +439,7 @@ The evaluation does not claim Next.js is universally better. It provides the bes
 
 ## 7. Proposed Decision
 
-**Propose Next.js App Router with React as the Owner/Staff web application framework. Use strict TypeScript for the implementation if `D-ARCH-016` is accepted compatibly. Keep all domain/application/security semantics framework-independent and preserve `ADR-0011` as the canonical independently consumable client/server contract.**
+**Propose Next.js App Router with React as the Owner/Staff web application framework. Use the accepted strict-TypeScript language category from `D-ARCH-016`, while keeping exact runtime/framework versions separately governed. Keep all domain/application/security semantics framework-independent and preserve `ADR-0011` as the canonical independently consumable client/server contract.**
 
 The proposal is governed by these rules:
 

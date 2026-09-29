@@ -165,8 +165,8 @@ The hosting model should provide:
 3. `D-ARCH-007` remains `OPEN`; ADR-0015 is Proposed.
 4. `D-ARCH-012` remains `PROPOSED`; Next.js is not accepted.
 5. `D-ARCH-013` remains `PROPOSED`; browser-first Member delivery is not accepted.
-6. `D-ARCH-016` remains `PROPOSED`; TypeScript/Node.js is not accepted.
-7. `D-ARCH-002` remains `PROPOSED`; PostgreSQL is not accepted.
+6. `D-ARCH-016` is `DECIDED`; strict TypeScript + supported Node.js LTS is accepted, while exact runtime version remains separate.
+7. `D-ARCH-002` is `DECIDED`; PostgreSQL is the accepted canonical database engine, while provider/region/recovery topology remain separate.
 8. `D-ARCH-017` remains `PROPOSED`; no persistence tool is accepted.
 9. `D-ARCH-014` remains `OPEN`; hosting does not select DB/Auth/Storage/RLS responsibilities.
 10. `D-ARCH-004` remains `OPEN`; no Auth/session provider is selected.
@@ -1153,9 +1153,9 @@ Revisit hosting when evidence shows:
 
 - What launch jurisdiction/privacy obligations will `D-SEC-001` establish?
 - Which production region is acceptable?
-- Will PostgreSQL be accepted?
+- Which managed PostgreSQL provider/region/recovery/connection topology satisfies the accepted engine decision?
 - Which managed DB provider/region will be used?
-- Will Node.js/Next.js be accepted?
+- Which exact supported Node.js production version is selected, and will the separately governed Next.js proposal be accepted?
 - Will pg-boss/Postgres-backed durable jobs be accepted?
 - What private DB connectivity exists between serious hosting/DB candidates?
 - What pooling model is required?
@@ -1185,7 +1185,7 @@ Fresh repository audit verified:
 - `D-ARCH-014 = OPEN`.
 - `D-ARCH-006 = OPEN`; ADR-0014 remains Proposed.
 - `D-ARCH-007 = OPEN`; ADR-0015 remains Proposed.
-- PostgreSQL, Node.js, Next.js, and pg-boss remain unaccepted.
+- PostgreSQL and the TypeScript/Node.js category are accepted foundation decisions; Next.js and pg-boss remain unaccepted.
 - canonical architecture requires stateless request evolution, separate durable background work, environment/secret separation, and no process-local canonical truth.
 
 ### 25.2 Current official provider research

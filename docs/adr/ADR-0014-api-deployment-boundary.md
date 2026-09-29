@@ -217,9 +217,9 @@ Additional drivers:
 ## 3. Constraints and Assumptions
 
 1. `D-ARCH-006` remains `P1 OPEN`; this ADR is `Proposed`.
-2. `D-ARCH-005` remains `PROPOSED`; modular monolith is not silently accepted here.
-3. `D-ARCH-016` remains `PROPOSED`; TypeScript/Node.js is a recommendation, not an accepted runtime.
-4. `D-ARCH-001` remains `PROPOSED`; monorepo source topology does not force deployment topology.
+2. `D-ARCH-005` is `DECIDED`; Phase 1 modular monolith is the accepted architecture style.
+3. `D-ARCH-016` is `DECIDED`; strict TypeScript + supported Node.js LTS is the accepted runtime category, while exact version remains separate.
+4. `D-ARCH-001` is `DECIDED`; monorepo source topology is accepted and still does not force deployment topology.
 5. `D-ARCH-003` remains `PROPOSED`; ADR-0011 contract semantics remain independent from deployment.
 6. `D-ARCH-004` remains `OPEN`; exact authentication/session architecture/provider is unresolved.
 7. `D-SEC-004` remains `OPEN`; cookie/session lifetimes and device policy are not decided here.
@@ -490,7 +490,7 @@ Option B remains the strongest alternative if real security, scaling, release-ca
 
 **Propose Option C: co-host the trusted HTTP/API transport with the Owner/Staff server runtime for Phase 1, while enforcing an explicit extraction seam so the API can later become an independently deployed runtime without rewriting application/domain behavior.**
 
-The proposal is conditional on compatible future acceptance of the relevant runtime/web framework decisions. It does not accept Next.js, TypeScript/Node.js, hosting, or any provider.
+The accepted TypeScript/Node.js foundation category satisfies the runtime dependency; the proposal still depends on separately governed web-framework/deployment/hosting choices. It does not accept Next.js, hosting, or any provider.
 
 Conceptually:
 
@@ -1246,7 +1246,7 @@ The least reversible risks are not the number of processes themselves; they are:
 Still separately governed:
 
 - whether `D-ARCH-012` Next.js direction is accepted,
-- whether `D-ARCH-016` TypeScript/Node direction is accepted,
+- exact Node.js production version/runtime constraints under accepted `D-ARCH-016`,
 - exact authentication/session provider and cookie/session policy,
 - exact physical hosting/provider under `D-ARCH-009`,
 - exact public domain/origin/routing layout,

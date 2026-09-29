@@ -153,8 +153,8 @@ The job/scheduler strategy must provide:
 ## 3. Constraints and Assumptions
 
 1. `D-ARCH-007` remains `P1 OPEN`; this ADR is `Proposed`.
-2. `D-ARCH-002` remains `PROPOSED`; PostgreSQL is the current engine recommendation, not an accepted dependency.
-3. `D-ARCH-016` remains `PROPOSED`; TypeScript/Node.js is not accepted.
+2. `D-ARCH-002` is `DECIDED`; PostgreSQL is the accepted canonical transactional database engine.
+3. `D-ARCH-016` is `DECIDED`; strict TypeScript + supported Node.js LTS is the accepted runtime category, while exact version remains separate.
 4. `D-ARCH-017` remains `PROPOSED`; no ORM/query/migration tool is accepted.
 5. `D-ARCH-014` remains `OPEN`; no managed backend/platform is selected.
 6. `D-ARCH-006` remains `OPEN`; ADR-0014 proposes a separate Background Execution Runtime but does not accept a physical topology.
@@ -414,7 +414,7 @@ Option C is the strongest external managed alternative if long-running workflow/
 
 ## 7. Proposed Decision
 
-**Propose a PostgreSQL-backed durable job queue/scheduler behind a GymPulse Durable Continuation port, executed by a separate Background Worker Runtime. If PostgreSQL and a compatible Node.js runtime are later accepted, pg-boss is the leading current implementation candidate for Phase 1.**
+**Propose a PostgreSQL-backed durable job queue/scheduler behind a GymPulse Durable Continuation port, executed by a separate Background Worker Runtime. PostgreSQL and the Node.js runtime category are now accepted foundation decisions, so pg-boss remains the leading current implementation candidate for Phase 1; `D-ARCH-007` itself remains OPEN and pg-boss is not accepted by this fact.**
 
 This proposal does **not** accept PostgreSQL, Node.js, pg-boss, Supabase Queues/Cron, Trigger.dev, BullMQ, Redis, or any hosting platform.
 
@@ -1099,8 +1099,8 @@ The main lock-in risks are:
 
 Separately governed or still unresolved:
 
-- whether PostgreSQL is accepted under `D-ARCH-002`,
-- whether Node.js is accepted under `D-ARCH-016`,
+- accepted PostgreSQL engine constraints under `D-ARCH-002`,
+- exact supported Node.js production version/runtime constraints under `D-ARCH-016`,
 - final data-access/migration tooling under `D-ARCH-017`,
 - exact queue/job library,
 - whether integrated Supabase Queues/Cron is later selected,
