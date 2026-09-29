@@ -806,10 +806,16 @@ Any durable production scaffold must follow accepted ADRs.
 
 ## 23. Current Result
 
-The existing validation harness remains under:
+The shared validation harness remains under:
 
 ~~~text
 validation/foundation/
+~~~
+
+The real PostgreSQL extension is under:
+
+~~~text
+validation/foundation/postgres/
 ~~~
 
 Evidence report:
@@ -818,28 +824,46 @@ Evidence report:
 validation/foundation/EVIDENCE.md
 ~~~
 
-A fresh **Real PostgreSQL Foundation Validation** attempt was made on 2026-09-27.
+A successful **Real PostgreSQL Foundation Validation** run completed on 2026-09-29 against an authorized disposable GitHub Actions Docker runner.
 
-Observed execution environment:
+Observed validation environment:
 
 ~~~text
-Node.js v22.16.0
-TypeScript compiler 5.8.3
+GitHub Actions hosted Ubuntu 24.04.5 runner
+runner version 2.337.0
+Docker 28.0.4
 
-PostgreSQL server version: NOT AVAILABLE
-PostgreSQL client version: NOT AVAILABLE
-pg_dump / pg_restore version: NOT AVAILABLE
-temporary PostgreSQL driver: NOT USED
-container image/tag/digest: NOT USED
+PostgreSQL image:
+postgres:17-bookworm
 
-PostgreSQL server/client executables: unavailable
-Docker / Podman / nerdctl: unavailable
-local TCP listener/socket on 5432: none
-PostgreSQL server/client packages: none
-libpq libraries: 17.10 only
-apt PostgreSQL candidate: none
-DNS/package-repository access: unavailable
+image digest:
+postgres@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
+
+PostgreSQL server / psql / pg_dump / pg_restore:
+17.11 (Debian 17.11-1.pgdg12+2)
+
+Node validation runtime:
+v22.23.2
+
+temporary validation-only PostgreSQL client:
+pg 8.16.3
+
+workflow run:
+36554395928
+
+workflow job:
+109359954215
+
+validation head:
+e257e6ef5f3aa6eb26b159fb4374da06dbfd2d9d
+
+evidence artifact:
+foundation-postgres-evidence
+artifact id 11025937126
+artifact sha256 a4e4f54c3b94c6c16efd4cc259223b374712e758821862239a735978c8d01b2c
 ~~~
+
+These versions and the temporary workflow are validation evidence only. They do not accept a production runtime, PostgreSQL version, PostgreSQL provider, data-access library, container architecture, or CI/CD platform.
 
 Existing non-PostgreSQL evidence remains preserved:
 
@@ -855,53 +879,101 @@ Stage 7 evidence matrix                        PASS
 The PostgreSQL-specific action result is:
 
 ~~~text
-Real PostgreSQL Foundation Validation = BLOCKED
-
-Stage 3 real PostgreSQL correctness slice     NOT RUN
-Stage 6 backup/restore/connection proof        NOT RUN
+Real PostgreSQL Foundation Validation         PASS
+Stage 3 real PostgreSQL correctness slice     PASS
+Stage 6 backup/restore/connection proof       PASS
+cleanup                                      PASS
 ~~~
 
-The detailed PostgreSQL matrix explicitly records `NOT RUN` for:
+Observed Stage 3 results:
 
 ~~~text
-real PostgreSQL instance/version
-migration from zero
-forward migration
-concurrent attendance uniqueness
-provider-event dedupe
-exactly-once business effect
-single-active no-show invariant
-transaction rollback
-tenant-scoped SQL isolation
-representative relational aggregate/history query
-database error translation
-backup
-restore into separate database
-restored invariant verification
-application-style connection
-concurrent connections
-disconnect/unavailable behavior
-database restart
-reconnect/recovery
-post-restart replay safety
+migration from zero                          PASS
+forward migration                            PASS
+concurrent attendance uniqueness             PASS
+provider-event dedupe                        PASS
+exactly-once business effect                 PASS
+single-active no-show invariant              PASS
+transaction rollback                         PASS
+tenant-scoped SQL isolation                  PASS
+representative relational/history query      PASS
+database error translation                   PASS
 ~~~
 
-No substitute database was used.
+Concurrency used genuinely overlapping PostgreSQL sessions. Attendance, provider-event, business-effect, and no-show races each used 12 attempts. Attendance created one effective row; provider-event dedupe created one durable claim; the business-effect path produced one durable effect claim and one target mutation; the no-show race produced one active case.
 
-No PostgreSQL validation schema was created.
+Observed PostgreSQL error evidence:
 
-No final Member/Membership state model was encoded.
-
-No external managed database/cloud resource was provisioned.
-
-No production infrastructure was created.
+~~~text
+23505 unique violation      -> already_applied
+23503 foreign-key violation -> invalid_reference
+23514 check violation       -> invalid_value
+~~~
 
 Preserve:
 
 ~~~text
-file-backed validation state
+SQLSTATE
 !=
-PostgreSQL evidence
+Application API Error Contract
+~~~
+
+Observed Stage 6 results:
+
+~~~text
+custom-format pg_dump                       PASS
+restore into separate database              PASS
+restored invariant verification             PASS
+application-style connection                PASS
+concurrent connections                      PASS
+database unavailable behavior               PASS
+disposable PostgreSQL restart               PASS
+reconnect                                   PASS
+post-restart replay safety                  PASS
+~~~
+
+The restart proof demonstrates only local disposable-database restart/recovery semantics. It does not prove managed HA, multi-AZ behavior, provider failover, regional disaster recovery, PITR, or a production SLA.
+
+The optional disproportionate ambiguous commit-window network fault-injection scenario remains:
+
+~~~text
+NOT RUN
+~~~
+
+It is not required to fabricate evidence because durable post-restart replay was directly proven through the validation business-effect identity.
+
+No substitute database was used.
+
+No production data, production credentials, external managed PostgreSQL resource, or production infrastructure was used.
+
+The validation SQL remains temporary/non-canonical and does not encode final Member/Membership lifecycle semantics or production RLS.
+
+Preserve:
+
+~~~text
+Validation Harness
+!=
+Production Scaffold
+
+Validation PostgreSQL
+!=
+Production PostgreSQL Provider
+
+Temporary PostgreSQL Driver
+!=
+D-ARCH-017 Acceptance
+
+Explicit Tenant Query
+!=
+RLS Acceptance
+
+Validation Schema
+!=
+Production Schema
+
+Passing Technical Evidence
+!=
+ADR Acceptance
 ~~~
 
 Therefore:
@@ -917,38 +989,51 @@ D-ARCH-016 = PROPOSED
 D-ARCH-001 = PROPOSED
 D-ARCH-002 = PROPOSED
 
-decision owners = Open
+Decision Owner = Open
+Explicit Approval = Missing
 production implementation gate = closed
 ~~~
 
 ## 24. Next Bounded Action
 
-Because no approved real PostgreSQL environment is currently available, the next bounded prerequisite is:
-
-~~~text
-obtain / authorize an isolated real PostgreSQL validation environment
-~~~
-
-The environment must be:
-
-~~~text
-non-production
-isolated
-synthetic-data only
-safe to restart
-safe to delete
-~~~
-
-Once such an environment exists, resume this same bounded validation action and execute the remaining Stage 3 / Stage 6 evidence.
-
-Do not substitute SQLite, DuckDB, file-backed state, mocks, or documentation inference.
-
-Do not automatically provision AWS RDS, Supabase, Neon, Render PostgreSQL, Railway, Cloud SQL, Azure Database for PostgreSQL, Aiven, DigitalOcean, or another external managed database.
-
-Only after the real PostgreSQL technical evidence is sufficiently complete should the next governance action become:
+The required Stage 3 and Stage 6 PostgreSQL evidence is now sufficiently complete for the next governance action to become:
 
 ~~~text
 Foundation Decision-Owner Review Packet
 ~~~
 
-Technical evidence alone must not mark any ADR Accepted or any canonical decision DECIDED.
+covering:
+
+~~~text
+ADR-0001
+ADR-0002
+ADR-0003
+ADR-0004
+~~~
+
+The packet may summarize the technical evidence, remaining external/security/business gaps, and the explicit decision required from an authorized owner.
+
+It MUST NOT pre-write an acceptance outcome.
+
+Technical evidence alone MUST NOT:
+
+~~~text
+mark an ADR Accepted
+promote a canonical decision to DECIDED
+select a production PostgreSQL provider
+select D-ARCH-017 tooling
+accept GitHub Actions
+accept Docker for production
+finalize RLS
+finalize Member/Membership schema
+open the production implementation gate
+~~~
+
+Remaining external/security evidence includes production region/jurisdiction, managed PostgreSQL provider, RPO/RTO, backup retention, production admin/support access, and production connection topology.
+
+Remaining human governance evidence includes:
+
+~~~text
+authorized decision owner
+explicit approval / rejection / remain-Proposed record
+~~~
