@@ -150,7 +150,7 @@ Architectural implication:
 
 Phase 1 should use explicit logical modules and stable boundaries without assuming one deployable service per business domain.
 
-`D-ARCH-005` remains `PROPOSED`; this overview follows the modular-monolith direction without accepting it through prose.
+`D-ARCH-005` is `DECIDED` via accepted `ADR-0001`; this overview now treats the Phase 1 modular-monolith direction as canonical while preserving separately governed deployment/service-extraction decisions.
 
 ## 4. High-Level Logical Architecture
 
@@ -591,7 +591,7 @@ The architecture requires a canonical persistence capability that supports:
 - tenant-aware access patterns,
 - auditable schema evolution.
 
-`D-ARCH-002` currently proposes PostgreSQL, but this overview does not accept a database engine.
+`D-ARCH-002` is `DECIDED` via accepted `ADR-0004`; PostgreSQL is the canonical transactional database engine. Managed provider, exact version, data-access tooling, RLS, recovery topology, and final schema remain separately governed.
 
 The detailed schema in legacy `../06-database-schema.md` remains migration input and must not be treated as final canonical schema.
 

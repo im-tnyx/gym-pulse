@@ -97,17 +97,17 @@ Primary architecture principles include `ARCH-PRIN-001` through `ARCH-PRIN-016`,
 
 | Area | Canonical Decision ID | Current Status | Recommended Direction | Confidence | Blocking Inputs | ADR Required | Implementation Allowed? |
 |---|---|---|---|---|---|---|---|
-| Primary language/runtime | Decision Register Gap | None | TypeScript with a supported Node.js LTS runtime; strict mode | High | Canonical decision ID/approval | Recommended after gap registration | No; spike only |
-| Architecture style | `D-ARCH-005` | PROPOSED | Modular monolith with explicit domain/component boundaries | High | Decision owner/ADR | Yes | No; architecture proposal only |
-| Repository/workspace | `D-ARCH-001` | PROPOSED | Monorepo with explicit app/package boundaries | High | ADR and package-boundary review | Yes | No; spike only |
-| Workspace orchestrator | `D-ARCH-001` | PROPOSED | Turborepo as leading candidate, not a requirement | Medium | Repository decision and CI spike | Covered by repository ADR unless separately material | No; spike only |
+| Primary language/runtime | `D-ARCH-016` | DECIDED | Strict TypeScript with a supported Node.js LTS runtime; exact production version remains separate | High | Downstream framework/deployment/tooling decisions | `ADR-0002` Accepted | Foundation category decided; overall production scaffold still gated |
+| Architecture style | `D-ARCH-005` | DECIDED | Modular monolith with explicit domain/component boundaries | High | Production boundary enforcement remains implementation work | `ADR-0001` Accepted | Foundation category decided; overall production scaffold still gated |
+| Repository/workspace | `D-ARCH-001` | DECIDED | Explicit monorepo with deliberate app/package boundaries and independently buildable artifacts | High | Concrete package graph/tooling/CI remain separate | `ADR-0003` Accepted | Foundation category decided; overall production scaffold still gated |
+| Workspace orchestrator | `D-ARCH-001` | DECIDED (monorepo only) | Turborepo remains a leading candidate, not an accepted requirement | Medium | Measured task-graph/cache/CI need | Separate tooling decision if material | No; candidate only |
 | Package manager | `D-ARCH-011` | ASSUMED | pnpm workspaces | High | Approval with repository tooling | Yes if treated as material; otherwise related decision evidence | No; spike only |
 | Owner/Staff web | `D-ARCH-012` | PROPOSED | Next.js + TypeScript | High | Framework ADR/approval; API topology | Yes | No; spike only |
 | Member client | `D-ARCH-013` | PROPOSED | Phase 1 responsive web/PWA first; Expo/React Native when native requirements justify it | Medium-High | Target-device QR test, notification/offline requirements, adoption evidence | Yes | No; prototype only |
 | API contract style | `D-ARCH-003` | PROPOSED | JSON HTTP, typed/runtime-validated contracts, stable error model; OpenAPI export where useful | High | Contract ADR/approval | Yes | No; spike only |
 | API deployment topology | `D-ARCH-006` | OPEN | Keep co-hosted web/server and separate API both viable; prefer simplest topology that passes webhook/job/runtime constraints | Medium | Web framework, jobs, hosting, auth, load profile | Yes | No |
-| Canonical database | `D-ARCH-002` | PROPOSED | PostgreSQL | High | ADR/approval, managed-hosting relationship | Yes | No; DB spike only |
-| Data access/migrations | Decision Register Gap | None | SQL-aware typed layer; Drizzle or Kysely lead candidates, Prisma credible alternative | Medium | PostgreSQL decision, migration/RLS/constraint spike | Recommended if material | No; spike only |
+| Canonical database | `D-ARCH-002` | DECIDED | PostgreSQL | High | Provider/region/recovery/connection topology remain separate | `ADR-0004` Accepted | Engine category decided; production database deployment still gated |
+| Data access/migrations | `D-ARCH-017` | PROPOSED | SQL-aware typed layer; Drizzle or Kysely lead candidates, Prisma credible alternative | Medium | Tooling acceptance, migration/RLS/constraint evidence | `ADR-0005` drafted | No; proposal only |
 | Managed backend responsibilities | `D-ARCH-014` | OPEN | Evaluate capabilities independently; Supabase is a strong candidate for managed Postgres and optional Auth/Storage, not an application-architecture replacement | Medium | DB/auth/storage/RLS/jobs decisions, jurisdiction | Yes | No |
 | Authentication/session | `D-ARCH-004` | OPEN | Managed authentication with server-side principal resolution and explicit session revocation/expiry | Medium | Staff/member UX, provider, session policy | Yes | No; sandbox only |
 | Member authentication | `D-SEC-002` | OPEN | Phone OTP/passwordless is a leading pilot candidate, but not selected | Medium | Pilot member UX, abuse/cost/recovery requirements | Yes | No; sandbox only |
@@ -257,7 +257,7 @@ Monorepo, with Turborepo as the leading orchestration candidate.
 
 ### Recommended Direction
 
-Adopt an explicit monorepo if `D-ARCH-001` is accepted. Start with package-manager workspaces; add Turborepo when task graph, caching, affected-package CI, or multi-app developer workflow provides measurable value.
+Use the explicit monorepo strategy accepted under `ADR-0003` / `D-ARCH-001 = DECIDED`. Package-manager choice remains separate; add a task orchestrator such as Turborepo only when task graph, caching, affected-package CI, or multi-app developer workflow provides measurable value.
 
 Conceptual boundaries remain:
 
@@ -734,7 +734,7 @@ MySQL/MariaDB, distributed SQL products, document/NoSQL-first databases.
 
 ### Recommended Direction
 
-Use PostgreSQL as canonical persistence if `D-ARCH-002` is accepted.
+Use PostgreSQL as canonical persistence; `ADR-0004` is Accepted and `D-ARCH-002 = DECIDED`.
 
 ### Why
 
@@ -2231,14 +2231,14 @@ Compliance requiring self-hosted runners or a selected hosting platform providin
 Technology decisions are not independent. Recommended dependency order:
 
 ```text
-Phase 1 architecture style (D-ARCH-005)
-  -> primary language/runtime (Decision Register Gap)
-  -> repository/workspace (D-ARCH-001)
+Phase 1 architecture style (D-ARCH-005 — DECIDED)
+  -> primary language/runtime (D-ARCH-016 — DECIDED)
+  -> repository/workspace (D-ARCH-001 — DECIDED)
       -> package manager (D-ARCH-011)
       -> Owner/Staff web framework (D-ARCH-012)
       -> Member client strategy (D-ARCH-013)
-  -> canonical database (D-ARCH-002)
-      -> data access/migrations (Decision Register Gap)
+  -> canonical database (D-ARCH-002 — DECIDED)
+      -> data access/migrations (D-ARCH-017 — PROPOSED)
       -> managed backend responsibilities (D-ARCH-014)
       -> tenant isolation/RLS (D-SEC-008)
   -> authentication/session (D-ARCH-004, D-SEC-002, D-SEC-004)
@@ -2248,7 +2248,7 @@ Phase 1 architecture style (D-ARCH-005)
   -> background jobs (D-ARCH-007)
       -> Redis/cache/broker only if justified (D-ARCH-008)
   -> hosting/deployment (D-ARCH-009)
-      -> CI/CD/secrets tooling (Decision Register Gap)
+      -> CI/CD/secrets tooling (D-ARCH-019 — OPEN)
       -> observability provider (D-PROVIDER-006)
   -> payment provider (D-PROVIDER-001)
   -> messaging provider (D-PROVIDER-002)
@@ -2369,8 +2369,10 @@ Technology evaluation is complete, but GymPulse is **not implementation-ready fo
 
 High-impact blockers include:
 
-- `D-ARCH-001` repository strategy is Proposed,
-- `D-ARCH-002` database engine is Proposed,
+- `D-ARCH-001` repository strategy is DECIDED — explicit monorepo,
+- `D-ARCH-002` database engine is DECIDED — PostgreSQL,
+- `D-ARCH-005` architecture style is DECIDED — modular monolith,
+- `D-ARCH-016` language/runtime category is DECIDED — strict TypeScript + supported Node.js LTS,
 - `D-ARCH-003` API contract architecture is Proposed,
 - `D-ARCH-004` authentication/session is Open,
 - `D-ARCH-006` API deployment topology is Open,

@@ -612,7 +612,7 @@ The pilot needs correctness, speed of change, and operational simplicity more th
 
 ### Exceptions / ADR requirement
 
-This principle is `Proposed` pending formal architecture-style decision `D-ARCH-005`. Service extraction requires an Accepted ADR with measured or security/ownership justification.
+The Phase 1 modular-monolith principle is grounded by accepted `ADR-0001` / `D-ARCH-005 = DECIDED`. Service extraction still requires a separate Accepted ADR with measured scale, security, ownership, or operational justification.
 
 ## ARCH-PRIN-018: No Premature Infrastructure
 
