@@ -539,9 +539,11 @@ This ADR does not require these questions to be resolved before review, but they
 - Current data flows repeatedly depend on local transactional correctness, explicit idempotency layers, and provider-boundary reconciliation.
 - Current technology evaluation rates the modular-monolith direction as high-confidence but explicitly leaves `D-ARCH-005` `PROPOSED` pending ADR/decision-owner approval.
 
-### Acceptance-readiness evidence update — 2026-09-27
+### Acceptance-readiness evidence update — 2026-09-29
 
-The validation-only harness at `../../validation/foundation/` now provides partial non-production evidence for this ADR:
+The validation-only harness at `../../validation/foundation/` now provides bounded non-production evidence for this ADR.
+
+Existing evidence remains:
 
 - strict source-boundary checking reports no violations in the validation source;
 - a deliberate client-to-server forbidden import is detected;
@@ -549,9 +551,18 @@ The validation-only harness at `../../validation/foundation/` now provides parti
 - request and worker adapters reuse the same application `checkIn` behavior;
 - cross-tenant, cross-branch, and capability negative paths pass;
 - malformed external input is rejected before application/domain execution;
-- request replay and worker replay return one effective attendance result using validation-only durable state;
 - gym-local date behavior is tested across a UTC -> `Asia/Kolkata` date boundary;
 - correlation identifiers survive request/worker adapter paths.
+
+The 2026-09-29 real PostgreSQL extension adds direct persistence evidence:
+
+- 12 genuinely overlapping attendance attempts produce exactly one effective validation attendance row;
+- 12 overlapping business-effect attempts produce one durable effect claim and one target mutation;
+- replay of the same business-effect key produces no additional mutation;
+- a forced multi-write transaction failure rolls back all intermediate state, verified from a fresh connection;
+- PostgreSQL stop/start preserves committed synthetic state and replay remains idempotent.
+
+This supports the proposed local-transaction/idempotency architecture without finalizing the production Attendance, Payment, Membership, no-show, or persistence schema.
 
 This is supporting evidence, not production implementation and not approval.
 
@@ -559,9 +570,8 @@ Remaining acceptance gaps include:
 
 - authorized decision owner is not identified in canonical evidence;
 - no explicit approval record exists;
-- real database concurrency/transaction evidence is still missing;
-- the narrow harness does not yet prove broader multi-domain direct-write prevention in a production-scale module graph;
-- provider-event/business-effect evidence is validation-only and does not yet prove the full payment-domain effect path;
+- the narrow harness does not prove broader production-scale multi-domain direct-write prevention;
+- the validation-only provider-event/business-effect path does not replace future production payment/provider integration evidence;
 - production module-aware observability remains separately governed.
 
 Therefore this ADR remains `Proposed`.
