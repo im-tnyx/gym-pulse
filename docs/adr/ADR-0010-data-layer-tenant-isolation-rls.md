@@ -1261,7 +1261,7 @@ Latest `main` establishes:
 - direct browser/mobile canonical database mutation is not an approved baseline.
 - container/component/data-flow architecture requires explicit tenant context on interactive and background paths.
 - `D-DATA-004` remains `PROPOSED` and `D-DATA-007` remains unresolved.
-- no ADR is currently `Accepted` and no approval evidence for `D-SEC-008` was found before drafting ADR-0010.
+- foundation ADR-0001 through ADR-0004 are now Accepted; no approval evidence for `D-SEC-008` itself exists, so ADR-0010 remains Proposed and `D-SEC-008` remains OPEN.
 
 Legacy `docs/06-database-schema.md`, `docs/12-security-audit.md`, and `docs/16-open-decisions.md` were used only as migration/evidence sources. Where the legacy schema describes PostgreSQL as canonical, the current structured decision register now agrees on the engine category: `D-ARCH-002 = DECIDED` via ADR-0004. Final schema and RLS choices remain separate.
 

@@ -361,7 +361,7 @@ These four foundation architecture categories are now authorized and synchronize
 
 Fresh review uses each ADR's own acceptance/validation sections plus the canonical decision register and the completed shared validation evidence under `validation/foundation/`.
 
-This review does not approve or reject any ADR.
+The acceptance-readiness review itself did not approve or reject ADRs; the later authorized review recorded in GitHub Issue #1 accepted ADR-0001 through ADR-0004.
 
 | ADR | Canonical status | Reviewable now | Acceptance readiness | Current evidence / remaining blockers |
 |---|---|---|---|---|
@@ -552,33 +552,34 @@ validation/foundation/
 validation/foundation/postgres/
 ```
 
-The canonical governance review artifact is now prepared:
+The canonical governance review artifact is synchronized:
 
 ```text
 docs/adr/foundation-decision-owner-review-packet.md
 ```
 
-Current governance state remains:
+Current foundation governance state:
 
 ```text
-ADR-0001 = Proposed
-ADR-0002 = Proposed
-ADR-0003 = Proposed
-ADR-0004 = Proposed
+ADR-0001 = Accepted
+ADR-0002 = Accepted
+ADR-0003 = Accepted
+ADR-0004 = Accepted
 
-D-ARCH-005 = PROPOSED
-D-ARCH-016 = PROPOSED
-D-ARCH-001 = PROPOSED
-D-ARCH-002 = PROPOSED
+D-ARCH-005 = DECIDED
+D-ARCH-016 = DECIDED
+D-ARCH-001 = DECIDED
+D-ARCH-002 = DECIDED
 
-Decision Owner = Open
-Explicit Approval = Missing
-Production implementation gate = closed
+Decision Owner = santosh
+Review Date = 2026-09-29
+Approval Evidence = GitHub Issue #1
+
+Foundation architecture category gate = partially opened
+Overall production implementation gate = closed
 ```
 
-The next bounded action is **Authorized Foundation Decision Review**. The authorized owner must choose independently for each ADR: `Accept`, `Reject`, or `Remain Proposed`. The prepared packet does not preselect any choice.
-
-No ADR may move to `Accepted` and no canonical decision may move to `DECIDED` without explicit authorized approval.
+The next bounded action is **Second Dependency/Security Acceptance-Readiness Review** covering ADR-0005 through ADR-0010. That review must assess each decision's current evidence and blockers independently; it does not pre-accept any of them.
 
 For `ADR-0026` specifically, later acceptance review must cover the proposed Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived policy, import/reporting terminology, attendance/no-show/authorization interaction, and historical migration strategy.
 
