@@ -3178,7 +3178,7 @@ None in progress.
 
 ## Foundation Acceptance-Readiness Review
 
-Fresh review completed for the first foundation batch:
+The first foundation batch remains:
 
 ~~~text
 ADR-0001  D-ARCH-005  Phase 1 architecture style
@@ -3187,130 +3187,7 @@ ADR-0003  D-ARCH-001  Repository/workspace strategy
 ADR-0004  D-ARCH-002  Canonical database engine
 ~~~
 
-Result:
-
-~~~text
-ADR-0001  reviewable, not acceptance-ready, remain Proposed
-ADR-0002  reviewable, not acceptance-ready, remain Proposed
-ADR-0003  reviewable, not acceptance-ready, remain Proposed
-ADR-0004  reviewable, not acceptance-ready, remain Proposed
-~~~
-
-Common hard blockers:
-
-~~~text
-Decision Owner = Open
-explicit approval evidence = absent
-required bounded non-production validation = incomplete
-~~~
-
-ADR-specific evidence gaps:
-
-### ADR-0001
-
-Needs executable evidence for:
-
-~~~text
-module-boundary enforcement
-shared request/worker use-case reuse
-cross-domain direct-write prevention
-attendance/payment idempotency examples
-authorization negative tests
-gym-time tests
-module-aware diagnostics
-~~~
-
-### ADR-0002
-
-Needs representative evidence for:
-
-~~~text
-strict TypeScript compile
-runtime validation at trust boundaries
-protected application command
-real transaction-heavy path
-raw-body webhook verification
-worker retry/restart behavior
-gym-time clock handling
-request -> continuation -> worker correlation
-client-safe -> server-only import prohibition
-~~~
-
-No canonical team/deployment/performance evidence currently overturns the TypeScript/Node.js recommendation.
-
-### ADR-0003
-
-Needs workspace/repository evidence for:
-
-~~~text
-dependency graph
-client-safe/server-only import isolation
-architecture dependency rule
-independent build artifacts
-shared validated contract
-request + worker reuse
-cycle detection
-affected build/test behavior
-one traceable code/test/docs/migration-placeholder change
-~~~
-
-Application scaffolding has not begun, so no measured repository/CI baseline exists.
-
-### ADR-0004
-
-Needs real PostgreSQL / operational evidence for:
-
-~~~text
-concurrent attendance uniqueness
-provider-event dedupe
-exactly-once payment effect
-single-active no-show invariant
-transaction rollback
-tenant-scoped query isolation
-representative aggregate/history query
-migration-from-zero / forward-compatible migration planning
-backup + restore rehearsal
-connection pooling / restart behavior
-regional/hosting constraint review
-~~~
-
-D-DATA-007 still blocks final Member/Membership schema semantics.
-
-ADR-0004 itself explicitly says D-DATA-007 does not block reviewing the database-engine choice independently.
-
-No ADR was Accepted or Rejected.
-
-No canonical decision status changed.
-
-No implementation/scaffold gate opened.
-
-## Next Governance Action
-
-The existing numbered ADR backlog remains complete through order 26.
-
-Do not invent Task 0035.
-
-The bounded action just attempted was:
-
-~~~text
-Real PostgreSQL Foundation Validation
-~~~
-
-## Real PostgreSQL Foundation Validation Result
-
-Overall:
-
-~~~text
-BLOCKED
-~~~
-
-Fresh repository audit started from:
-
-~~~text
-245a38f6e9874b45ce3131f6cbe14a7fe0072e2e
-~~~
-
-and confirmed:
+Current status:
 
 ~~~text
 ADR-0001 Proposed
@@ -3324,125 +3201,224 @@ D-ARCH-001 PROPOSED
 D-ARCH-002 PROPOSED
 
 Decision Owner = Open for ADR-0001..0004
+Explicit Approval = Missing
 No ADR Accepted
 No canonical foundation decision DECIDED
+No production implementation gate opened
 ~~~
 
-Existing validation evidence remains preserved under:
+D-DATA-007 remains P1 PROPOSED / unresolved. FR-MEMBER-004 remains unchanged. Final Member/Membership production schema semantics remain unfinalized.
+
+## Real PostgreSQL Foundation Validation Result
+
+Overall:
 
 ~~~text
-validation/foundation/
-validation/foundation/EVIDENCE.md
+PASS
 ~~~
 
-Existing non-PostgreSQL PASS evidence remains unchanged.
+Fresh repository audit for this action started from:
+
+~~~text
+67bfaafbd45d8be7a26dabe82d0261bf84a7d0c3
+~~~
+
+The authorized execution path used a temporary branch-only GitHub Actions workflow and a disposable local Docker PostgreSQL instance. No workflow was accepted as production CI by this evidence action.
+
+Execution references:
+
+~~~text
+validation branch:
+validation/postgres-foundation-20260929
+
+validation head:
+e257e6ef5f3aa6eb26b159fb4374da06dbfd2d9d
+
+workflow run:
+36554395928
+
+workflow job:
+109359954215
+
+artifact:
+foundation-postgres-evidence / 11025937126
+
+artifact sha256:
+a4e4f54c3b94c6c16efd4cc259223b374712e758821862239a735978c8d01b2c
+~~~
 
 ### Environment used
 
 ~~~text
-environment:
-current isolated ChatGPT execution sandbox
+GitHub Actions hosted Ubuntu 24.04.5
+runner 2.337.0
+Docker 28.0.4
 
-Node.js:
-v22.16.0
+PostgreSQL image:
+postgres:17-bookworm
 
-TypeScript compiler:
-5.8.3
+image digest:
+postgres@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
 
-PostgreSQL server version:
-NOT AVAILABLE
+PostgreSQL server / psql / pg_dump / pg_restore:
+17.11 (Debian 17.11-1.pgdg12+2)
 
-PostgreSQL client version:
-NOT AVAILABLE
+Node validation runtime:
+v22.23.2
 
-pg_dump / pg_restore version:
-NOT AVAILABLE
-
-temporary PostgreSQL driver:
-NOT USED
-
-container image/tag/digest:
-NOT USED
+temporary validation-only PostgreSQL client:
+pg 8.16.3
 ~~~
 
-Environment gate verified:
-
-~~~text
-PostgreSQL server/client executables: unavailable
-Docker / Podman / nerdctl: unavailable
-local TCP listener on 5432: none
-local PostgreSQL socket on 5432: none
-installed PostgreSQL server/client packages: none
-installed libpq: 17.10 libraries only
-apt PostgreSQL candidate: none
-DNS/package-repository access: unavailable
-~~~
+These versions are validation evidence only.
 
 ### Stage 3 result
 
 ~~~text
-real PostgreSQL correctness slice = NOT RUN
+real PostgreSQL correctness slice = PASS
 
-migration from zero = NOT RUN
-forward migration = NOT RUN
-concurrent attendance uniqueness = NOT RUN
-provider-event dedupe under DB uniqueness = NOT RUN
-exactly-once business effect = NOT RUN
-single-active no-show invariant = NOT RUN
-transaction rollback = NOT RUN
-tenant-scoped SQL isolation = NOT RUN
-representative relational/history query = NOT RUN
-database error translation = NOT RUN
+migration from zero = PASS
+forward migration = PASS
+
+concurrent attendance uniqueness = PASS
+12 attempts -> 1 effective row
+
+provider-event dedupe = PASS
+12 attempts -> 1 durable event claim
+
+exactly-once business effect = PASS
+12 attempts -> 1 effect claim
+            -> 1 target mutation
+later replay -> unchanged
+
+single-active no-show invariant = PASS
+12 attempts -> 1 active case
+resolved historical + later active -> valid
+
+transaction rollback = PASS
+fresh connection verification
+no partial mutation committed
+
+tenant-scoped SQL isolation = PASS
+
+representative relational/history query = PASS
+bounded Tenant A query + EXPLAIN ANALYZE
+
+database error translation = PASS
+23505 -> already_applied
+23503 -> invalid_reference
+23514 -> invalid_value
 ~~~
 
 ### Stage 6 result
 
 ~~~text
-backup creation = NOT RUN
-restore into separate database = NOT RUN
-restored invariant verification = NOT RUN
-application-style connection = NOT RUN
-concurrent DB connections = NOT RUN
-disconnect/unavailable behavior = NOT RUN
-database restart = NOT RUN
-reconnect/recovery = NOT RUN
-post-restart replay safety = NOT RUN
+backup creation = PASS
+custom pg_dump
+
+restore into separate database = PASS
+
+restored invariant verification = PASS
+
+application-style connection = PASS
+
+concurrent connections = PASS
+race sessions + six Node connections
+
+disconnect/unavailable behavior = PASS
+
+database restart = PASS
+disposable container only
+
+reconnect/recovery = PASS
+
+post-restart replay safety = PASS
+
+cleanup = PASS
 ~~~
 
-Important:
+Optional disproportionate ambiguous commit-window fault injection remains:
 
 ~~~text
-file-backed durability
-!=
-PostgreSQL evidence
-
-explicit tenant-scoped SQL proof
-!=
-RLS acceptance
+NOT RUN
 ~~~
 
-No SQLSTATE is claimed because no real PostgreSQL operation executed.
+### Safety / boundary findings
 
-No validation PostgreSQL database/schema was created.
+~~~text
+synthetic data only
+no production member data
+no production payment data
+no production provider credentials
+no production database
+no external managed database
+no production infrastructure
+no production secret
+~~~
 
-No final Member/Membership schema or D-DATA-007 semantics were encoded.
+Reusable validation harness now exists at:
 
-No PostgreSQL driver/package dependency was installed.
+~~~text
+validation/foundation/postgres/
+~~~
 
-No external managed database/cloud resource was provisioned.
+Preserve:
 
-No production infrastructure/data/secrets were touched.
+~~~text
+Validation Harness
+!=
+Production Scaffold
+
+Validation PostgreSQL
+!=
+Production PostgreSQL Provider
+
+Temporary PostgreSQL Driver
+!=
+D-ARCH-017 Acceptance
+
+Docker Validation Container
+!=
+Production Container Architecture
+
+Explicit Tenant Query
+!=
+RLS Acceptance
+
+Validation Schema
+!=
+Production Schema
+
+Passing Technical Evidence
+!=
+ADR Acceptance
+~~~
+
+Local restart evidence does not prove managed HA, multi-AZ failover, regional DR, PITR, provider SLA, or production connection topology.
+
+### ADR evidence impact
+
+ADR-0001 now has direct real-PostgreSQL supporting evidence for one-effective-result concurrency, transactional effect uniqueness, rollback, and post-restart replay.
+
+ADR-0002 now has direct real-PostgreSQL supporting evidence for a Node transaction-heavy path, simultaneous connections, real SQLSTATE observation, disconnect/reconnect, and restart recovery.
+
+ADR-0003 is unchanged by this PostgreSQL action because no material new workspace/package-boundary evidence was produced.
+
+ADR-0004 now has PASS evidence for its bounded PostgreSQL migration, correctness/concurrency, rollback, tenant-query, relational-query, backup/restore, connection, restart/reconnect, and replay gates.
+
+All four ADRs remain Proposed.
 
 ### Remaining external/security gaps
 
 ~~~text
 launch jurisdiction
 production region
-managed provider
+managed PostgreSQL provider
 RPO / RTO
 backup retention
-admin/support access
+production admin/support access
 production connection topology
+managed HA / failover / PITR evidence
 ~~~
 
 ### Remaining human governance gaps
@@ -3452,54 +3428,51 @@ Decision Owner = Open
 Explicit Approval = Missing
 ~~~
 
-Preserve:
+## Next Governance Action
 
-~~~text
-No ADR Accepted
-No canonical decision DECIDED
-No production implementation gate opened
-~~~
+The existing numbered ADR backlog remains complete through order 26.
 
-## Actual Next Bounded Prerequisite
+Do not invent Task 0035.
 
-Because the technical validation is environment-blocked, the next prerequisite remains:
+The required Stage 3 and Stage 6 technical evidence is sufficiently complete.
 
-~~~text
-obtain / authorize an isolated real PostgreSQL validation environment
-~~~
-
-Required properties:
-
-~~~text
-non-production
-isolated
-synthetic-data only
-safe to restart
-safe to delete
-~~~
-
-Do not substitute SQLite, DuckDB, file-backed state, mocks, or documentation inference.
-
-Do not automatically provision a potentially billable external managed database, cloud environment, or CI runner.
-
-After a real PostgreSQL environment is authorized, resume this same bounded action and complete Stage 3 / Stage 6.
-
-Only after that technical evidence is sufficiently complete should the next governance action become:
+The next bounded governance action is:
 
 ~~~text
 Foundation Decision-Owner Review Packet
 ~~~
 
+covering:
+
+~~~text
+ADR-0001
+ADR-0002
+ADR-0003
+ADR-0004
+~~~
+
 Do not execute ADR acceptance automatically.
+
+The review packet must surface the current proposal, alternatives/tradeoffs, technical evidence, remaining external/security/business gaps, current Open decision owner, and explicit decision choices:
+
+~~~text
+Accept
+Reject
+Remain Proposed
+~~~
+
+No outcome may be written as approved before authorized human evidence exists.
 
 ## Files To Read Next
 
 ~~~text
 validation/foundation/EVIDENCE.md
 validation/foundation/README.md
+validation/foundation/postgres/README.md
 docs/adr/foundation-acceptance-evidence-plan.md
 docs/adr/ADR-0001-modular-monolith.md
 docs/adr/ADR-0002-primary-language-runtime.md
+docs/adr/ADR-0003-monorepo-strategy.md
 docs/adr/ADR-0004-database-engine.md
 docs/adr/README.md
 docs/00-overview/assumptions.md
