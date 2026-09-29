@@ -3428,18 +3428,65 @@ Decision Owner = Open
 Explicit Approval = Missing
 ~~~
 
+## Foundation Decision-Owner Review Packet
+
+The canonical review packet is now prepared at:
+
+~~~text
+docs/adr/foundation-decision-owner-review-packet.md
+~~~
+
+Preparation effect:
+
+~~~text
+Foundation Decision-Owner Review Packet = PREPARED
+
+ADR-0001 = Proposed
+ADR-0002 = Proposed
+ADR-0003 = Proposed
+ADR-0004 = Proposed
+
+D-ARCH-005 = PROPOSED
+D-ARCH-016 = PROPOSED
+D-ARCH-001 = PROPOSED
+D-ARCH-002 = PROPOSED
+
+Decision Owner = Open
+Explicit Approval = Missing
+Production implementation gate = closed
+~~~
+
+The packet contains:
+
+~~~text
+current proposal
+actual ADR alternatives / tradeoffs
+technical evidence
+evidence limitations
+categorized remaining gaps
+dependencies kept separate
+neutral decision forms
+future Accept / Reject / Remain Proposed follow-up rules
+~~~
+
+No decision checkbox is selected.
+
+No owner is invented.
+
+No approval evidence is fabricated.
+
+The validation harness is retained as reusable technical evidence and remains non-production.
+
 ## Next Governance Action
 
 The existing numbered ADR backlog remains complete through order 26.
 
 Do not invent Task 0035.
 
-The required Stage 3 and Stage 6 technical evidence is sufficiently complete.
-
-The next bounded governance action is:
+The next bounded action is:
 
 ~~~text
-Foundation Decision-Owner Review Packet
+Authorized Foundation Decision Review
 ~~~
 
 covering:
@@ -3451,9 +3498,7 @@ ADR-0003
 ADR-0004
 ~~~
 
-Do not execute ADR acceptance automatically.
-
-The review packet must surface the current proposal, alternatives/tradeoffs, technical evidence, remaining external/security/business gaps, current Open decision owner, and explicit decision choices:
+The authorized owner must explicitly choose separately for each ADR:
 
 ~~~text
 Accept
@@ -3461,11 +3506,14 @@ Reject
 Remain Proposed
 ~~~
 
-No outcome may be written as approved before authorized human evidence exists.
+Do not execute or infer a governance choice automatically.
+
+Only after explicit authorized decision evidence exists may a separate synchronization action update an ADR status, matching canonical decision status, owner/date/reference, and the specific implementation gate that decision permits.
 
 ## Files To Read Next
 
 ~~~text
+docs/adr/foundation-decision-owner-review-packet.md
 validation/foundation/EVIDENCE.md
 validation/foundation/README.md
 validation/foundation/postgres/README.md
