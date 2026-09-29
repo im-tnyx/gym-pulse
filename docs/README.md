@@ -1036,24 +1036,22 @@ No Member/Membership schema, migration, enum/type, ORM model, constraint, index,
 
 Post-Task-0034 synchronization completes the existing numbered ADR queue through order 26. No Task 0035 is invented.
 
-Fresh synchronized review identified **Architecture Decision Review / Acceptance Readiness** as the next governance phase. The first foundation batch review is now complete.
+Fresh synchronized review identified **Architecture Decision Review / Acceptance Readiness** as the current governance phase.
+
+The bounded **Real PostgreSQL Foundation Validation** is now complete for its required Stage 3 and Stage 6 technical scope.
 
 Foundation result:
 
 ```text
-ADR-0001 / D-ARCH-005  reviewable, not acceptance-ready
-ADR-0002 / D-ARCH-016  reviewable, not acceptance-ready
-ADR-0003 / D-ARCH-001  reviewable, not acceptance-ready
-ADR-0004 / D-ARCH-002  reviewable, not acceptance-ready
+ADR-0001 / D-ARCH-005  Proposed; decision-owner reviewable
+ADR-0002 / D-ARCH-016  Proposed; decision-owner reviewable
+ADR-0003 / D-ARCH-001  Proposed; existing workspace evidence unchanged
+ADR-0004 / D-ARCH-002  Proposed; bounded PostgreSQL technical evidence complete
 ```
 
-All four remain Proposed. Common hard blockers are an unidentified authorized decision owner and absent explicit approval evidence. Each also still lacks its own bounded non-production validation evidence: module-boundary enforcement for ADR-0001; strict-TypeScript/runtime/webhook/worker/import-isolation evidence for ADR-0002; workspace/dependency/build evidence for ADR-0003; and real-PostgreSQL concurrency, restore, pooling/restart, and regional/hosting evidence for ADR-0004.
+No ADR was Accepted or Rejected, no canonical status changed, and no implementation/scaffold gate was opened.
 
-`D-DATA-007` still blocks final Member/Membership schema semantics, but `ADR-0004` explicitly states that this does not prevent reviewing the database-engine choice independently.
-
-No ADR was Accepted or Rejected, no canonical status changed, and no implementation/scaffold gate was opened by this review.
-
-The **Foundation Acceptance Evidence Plan** exists at `docs/adr/foundation-acceptance-evidence-plan.md`, and the first isolated validation pass is now committed under `validation/foundation/`.
+The **Foundation Acceptance Evidence Plan** exists at `docs/adr/foundation-acceptance-evidence-plan.md`. Reproducible evidence is under `validation/foundation/`, including the real PostgreSQL extension under `validation/foundation/postgres/`.
 
 Current evidence:
 
@@ -1070,42 +1068,52 @@ gym-timezone boundary behavior                            PASS
 raw-byte webhook verification + tamper rejection          PASS
 provider-event replay dedupe                              PASS
 
-real PostgreSQL concurrency / rollback / SQL isolation    NOT RUN
-PostgreSQL backup + restore                               NOT RUN
-PostgreSQL connection/pooling/restart                     NOT RUN
+real PostgreSQL migration from zero                       PASS
+real PostgreSQL forward migration                         PASS
+12-way attendance uniqueness                              PASS
+12-way provider-event dedupe                              PASS
+12-way exactly-once business effect                       PASS
+12-way single-active no-show invariant                    PASS
+transaction rollback / fresh-connection verification     PASS
+explicit tenant-scoped SQL isolation                      PASS
+bounded relational/history query + EXPLAIN ANALYZE        PASS
+real PostgreSQL SQLSTATE translation                      PASS
+PostgreSQL custom backup + separate restore               PASS
+restored invariant verification                           PASS
+application connection + concurrent connections           PASS
+database unavailable behavior                             PASS
+disposable PostgreSQL restart + reconnect                 PASS
+post-restart replay safety                                PASS
+cleanup                                                    PASS
 ```
 
-A fresh **Real PostgreSQL Foundation Validation** attempt was environment-gated and is now recorded as `BLOCKED`.
+The successful validation used PostgreSQL 17.11 in a disposable `postgres:17-bookworm` Docker container on an authorized GitHub Actions validation runner. These versions and the temporary CI orchestration are evidence only, not production pins or provider/tool acceptance.
 
-Observed environment:
+Observed real PostgreSQL SQLSTATEs were `23505` (unique violation), `23503` (foreign-key violation), and `23514` (check violation); application-level categories remained separate.
+
+Preserve:
 
 ```text
-Node.js v22.16.0
-TypeScript 5.8.3
-
-PostgreSQL server/client version: NOT AVAILABLE
-pg_dump / pg_restore: NOT AVAILABLE
-temporary PostgreSQL driver: NOT USED
-container image: NOT USED
-
-no PostgreSQL server/client executables
-no local 5432 listener/socket
-no Docker / Podman / nerdctl
-no PostgreSQL server/client packages
-libpq 17.10 libraries only
-no apt PostgreSQL candidate
-no DNS/package-repository access
+Validation PostgreSQL != Production PostgreSQL Provider
+Temporary PostgreSQL Driver != D-ARCH-017 Acceptance
+Explicit Tenant Query != RLS Acceptance
+Validation Schema != Production Schema
+Passing Technical Evidence != ADR Acceptance
 ```
 
-Therefore all real PostgreSQL migration, concurrency/idempotency, rollback, tenant-scoped SQL, relational-query, error-translation, backup/restore, connection, restart, and recovery rows remain `NOT RUN`.
+`D-DATA-007` still blocks final Member/Membership schema semantics, but it does not block database-engine decision-owner review.
 
-`validation/foundation/EVIDENCE.md` is the current evidence matrix. ADR-0001 through ADR-0004 all remain Proposed. Passing existing validation does not Accept an ADR, and the validation-only file-backed durability proof is explicitly **not** PostgreSQL evidence.
+Remaining human gates are an authorized decision owner and explicit approval/rejection/remain-Proposed record.
 
-No SQLite/mock/file substitute was used and no external managed database/cloud resource was provisioned.
+Remaining external/security gates include production launch jurisdiction/region, managed PostgreSQL provider, RPO/RTO, backup retention, production admin/support access, and production connection topology.
 
-The next bounded prerequisite is to obtain/authorize an isolated real PostgreSQL validation environment. Decision-owner review follows only after the missing technical evidence is sufficiently complete.
+The next bounded governance action is:
 
-`ADR-0026` still requires later explicit review of Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived effects, import/reporting semantics, attendance/no-show/authorization interaction, and historical migration approach before `D-DATA-007` can become Decided.
+```text
+Foundation Decision-Owner Review Packet
+```
+
+for ADR-0001 through ADR-0004. It must not auto-accept any ADR.
 
 ## Legacy Migration State
 
