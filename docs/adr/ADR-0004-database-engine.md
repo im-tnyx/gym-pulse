@@ -869,124 +869,185 @@ Primary references:
 - <https://www.cockroachlabs.com/docs/stable/constraints>
 - <https://www.cockroachlabs.com/docs/stable/backup>
 
-### 16.3 Acceptance-readiness evidence update — 2026-09-27
+### 16.3 Acceptance-readiness evidence update — 2026-09-29
 
-The shared validation harness at `../../validation/foundation/` proves architecture/runtime prerequisites around boundaries, retry-safe adapters, raw webhook handling, and durable-state independence.
+The shared validation harness at `../../validation/foundation/` now contains a reproducible real-PostgreSQL extension under `postgres/`.
 
-A fresh **Real PostgreSQL Foundation Validation** attempt was performed against the current execution environment.
+A successful **Real PostgreSQL Foundation Validation** run executed against an authorized disposable GitHub Actions Docker runner.
 
 Observed environment:
 
 ~~~text
-environment type:
-current isolated ChatGPT execution sandbox
+GitHub Actions hosted Ubuntu 24.04.5
+runner version: 2.337.0
 
-PostgreSQL server version:
-NOT AVAILABLE
+Docker:
+28.0.4
 
-PostgreSQL client version:
-NOT AVAILABLE
+PostgreSQL image:
+postgres:17-bookworm
 
-pg_dump / pg_restore version:
-NOT AVAILABLE
+image digest:
+postgres@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
 
-temporary PostgreSQL driver:
-NOT USED
+PostgreSQL server:
+17.11 (Debian 17.11-1.pgdg12+2)
 
-container image/tag/digest:
-NOT USED
+psql / pg_dump / pg_restore:
+17.11 (Debian 17.11-1.pgdg12+2)
 
-PostgreSQL server/client executables:
-unavailable
+Node validation runtime:
+v22.23.2
 
-Docker / Podman / nerdctl:
-unavailable
+temporary validation-only PostgreSQL client:
+pg 8.16.3
 
-local PostgreSQL 5432 listener/socket:
-none found
+workflow run:
+36554395928
 
-installed PostgreSQL server/client packages:
-none found
+workflow job:
+109359954215
 
-installed libpq:
-17.10 only
-
-apt PostgreSQL candidate:
-none
-
-DNS/package-repository access:
-unavailable
+evidence artifact:
+foundation-postgres-evidence / 11025937126
 ~~~
 
-Therefore the PostgreSQL-specific validation is **BLOCKED**, not failed.
+All versions are validation evidence only, not production pins.
 
 Actual technical results:
 
 ~~~text
-migration from zero                         NOT RUN
-forward migration                           NOT RUN
+migration from zero                         PASS
+forward migration                           PASS
 
-concurrent attendance uniqueness            NOT RUN
-provider-event dedupe under DB uniqueness   NOT RUN
-exactly-once business effect                NOT RUN
-single-active no-show invariant             NOT RUN
-transaction rollback                        NOT RUN
-tenant-scoped SQL isolation                 NOT RUN
-representative relational/history query     NOT RUN
-database error translation                  NOT RUN
+concurrent attendance uniqueness            PASS
+provider-event dedupe under DB uniqueness   PASS
+exactly-once business effect                PASS
+single-active no-show invariant             PASS
+transaction rollback                        PASS
+tenant-scoped SQL isolation                 PASS
+representative relational/history query     PASS
+database error translation                  PASS
 
-backup creation                             NOT RUN
-restore into separate database              NOT RUN
-restored invariant verification             NOT RUN
+backup creation                             PASS
+restore into separate database              PASS
+restored invariant verification             PASS
 
-application-style PostgreSQL connection     NOT RUN
-concurrent PostgreSQL connections           NOT RUN
-disconnect/unavailable behavior             NOT RUN
-database restart                            NOT RUN
-reconnect/recovery                          NOT RUN
-post-restart replay safety                  NOT RUN
+application-style PostgreSQL connection     PASS
+concurrent PostgreSQL connections           PASS
+disconnect/unavailable behavior             PASS
+database restart                            PASS
+reconnect/recovery                          PASS
+post-restart replay safety                  PASS
+
+optional ambiguous commit-window injection  NOT RUN
+cleanup                                     PASS
 ~~~
 
-No SQLSTATE was claimed because no real PostgreSQL operation executed.
+Concurrency proof used 12 overlapping sessions for attendance, provider-event, business-effect, and no-show scenarios.
 
-No validation database/schema was created.
+Observed outcomes:
 
-No PostgreSQL version is inferred or pinned.
+~~~text
+attendance:
+12 attempts -> 1 effective row
 
-No temporary driver/package manager use occurred.
+provider event:
+12 attempts -> 1 durable event claim
 
-No backup artifact or database credential was created.
+business effect:
+12 attempts -> 1 durable effect claim
+            -> 1 target mutation
+later replay -> no additional mutation
 
-No cloud/managed database was provisioned.
+single-active no-show:
+12 attempts -> 1 active case
+resolved historical case + later active case -> valid
 
-No production resource or production data was touched.
+rollback:
+target before = 1
+target after forced failure = 1
+partial history rows = 0
+fresh connection used for verification
+~~~
 
-The existing file-backed validation proof remains useful only for process-memory independence and adapter reuse.
+Observed database-error evidence:
+
+~~~text
+23505 unique violation      -> already_applied
+23503 foreign-key violation -> invalid_reference
+23514 check violation       -> invalid_value
+~~~
+
+These mappings are validation/application categories only:
+
+~~~text
+PostgreSQL SQLSTATE
+!=
+Application API Error Contract
+~~~
+
+The representative Tenant A query exercised tenant predicate, relation joins/LATERAL latest lookup, a history aggregate, deterministic ordering, a bounded result, and `EXPLAIN ANALYZE`. The tiny synthetic dataset is query-shape evidence only and is not a production performance claim.
+
+Stage 6 created a custom-format `pg_dump`, restored it into a distinct validation database, and re-verified attendance, provider-event, business-effect, no-show, and relational-query invariants.
+
+The disposable PostgreSQL instance was then stopped. The temporary Node client observed connection failure while unavailable, reconnected after restart, and replayed the same logical effect without creating a duplicate mutation.
+
+This local restart evidence does not prove managed HA, multi-AZ failover, regional disaster recovery, PITR, provider SLA, or production connection topology.
+
+Safety boundaries:
+
+~~~text
+synthetic data only
+no production member/payment/provider data
+no production credentials
+no external managed database
+no production infrastructure
+localhost/private validation binding
+cleanup PASS
+~~~
+
+The validation schema remains deliberately non-canonical and does not encode final Member/Membership lifecycle semantics, production Attendance/Payment schema, or production RLS.
 
 Preserve:
 
 ~~~text
-File-backed durability
+Validation PostgreSQL
 !=
-PostgreSQL evidence
+Production PostgreSQL Provider
+
+Temporary PostgreSQL Driver
+!=
+D-ARCH-017 Acceptance
+
+Explicit Tenant Query
+!=
+RLS Acceptance
+
+Validation Schema
+!=
+Production Schema
+
+Passing Technical Evidence
+!=
+ADR Acceptance
 ~~~
+
+The required bounded PostgreSQL technical evidence is now sufficient for database-engine decision-owner review.
 
 This ADR remains `Proposed` because:
 
 - no authorized decision owner is identified;
 - no explicit approval record exists;
-- the complete real-PostgreSQL concurrency/idempotency slice remains `NOT RUN`;
-- transaction rollback, tenant-scoped SQL, representative relational query, and database error-translation evidence remain missing;
-- PostgreSQL migration-from-zero and forward-migration feasibility remain unexecuted;
-- no PostgreSQL backup/restore rehearsal exists;
-- no representative PostgreSQL connection/concurrency/restart/recovery validation exists;
-- production launch jurisdiction, database region, RPO/RTO, backup retention, provider/admin/support access, and connection topology remain separately unresolved;
-- `D-DATA-007` still blocks final Member/Membership schema semantics, while this ADR continues to keep the engine decision independently reviewable;
-- `D-ARCH-017` remains separately governed and no production query/migration tool is accepted.
+- production launch jurisdiction and database region remain unresolved;
+- RPO/RTO and backup-retention objectives remain unresolved;
+- managed PostgreSQL provider, production admin/support access, and production connection topology remain separately unresolved;
+- local restart/backup evidence does not establish production HA/PITR/SLA;
+- `D-DATA-007` still blocks final Member/Membership schema semantics while not blocking engine review;
+- `D-ARCH-017` remains separately governed and no production query/migration tool is accepted;
+- `D-SEC-008` remains separately governed and explicit tenant-query proof is not RLS acceptance.
 
-The next technical prerequisite is an explicitly approved isolated real PostgreSQL validation environment that is non-production, synthetic-data-only, safe to restart, and safe to delete.
-
-Technical evidence alone cannot change this ADR to `Accepted` or promote `D-ARCH-002` to `DECIDED`.
+The next bounded governance action is the **Foundation Decision-Owner Review Packet**. Technical evidence alone cannot change this ADR to `Accepted` or promote `D-ARCH-002` to `DECIDED`.
 
 ## 17. Related Documents
 
