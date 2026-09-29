@@ -1043,13 +1043,13 @@ The bounded **Real PostgreSQL Foundation Validation** is now complete for its re
 Foundation result:
 
 ```text
-ADR-0001 / D-ARCH-005  Proposed; decision-owner reviewable
-ADR-0002 / D-ARCH-016  Proposed; decision-owner reviewable
-ADR-0003 / D-ARCH-001  Proposed; existing workspace evidence unchanged
-ADR-0004 / D-ARCH-002  Proposed; bounded PostgreSQL technical evidence complete
+ADR-0001 / D-ARCH-005  Accepted / DECIDED
+ADR-0002 / D-ARCH-016  Accepted / DECIDED
+ADR-0003 / D-ARCH-001  Accepted / DECIDED
+ADR-0004 / D-ARCH-002  Accepted / DECIDED
 ```
 
-No ADR was Accepted or Rejected, no canonical status changed, and no implementation/scaffold gate was opened.
+Authorized Decision Owner `santosh` accepted the four independent foundation ADRs on 2026-09-29. Approval evidence is GitHub Issue #1. Only these four canonical foundation decisions moved to `DECIDED`; no downstream technology/provider decision was accepted and no implementation/scaffold was created.
 
 The **Foundation Acceptance Evidence Plan** exists at `docs/adr/foundation-acceptance-evidence-plan.md`. Reproducible evidence is under `validation/foundation/`, including the real PostgreSQL extension under `validation/foundation/postgres/`.
 
@@ -1099,29 +1099,35 @@ Temporary PostgreSQL Driver != D-ARCH-017 Acceptance
 Explicit Tenant Query != RLS Acceptance
 Validation Schema != Production Schema
 Passing Technical Evidence != ADR Acceptance
+Authorized Human Approval + Synchronization = Foundation ADR Acceptance
 ```
 
-`D-DATA-007` still blocks final Member/Membership schema semantics, but it does not block database-engine decision-owner review.
+`D-DATA-007` still blocks final Member/Membership schema semantics. PostgreSQL engine acceptance does not resolve that separate data-model decision.
 
-Remaining human gates are an authorized decision owner and explicit approval/rejection/remain-Proposed record.
+Foundation human-governance gates are satisfied: Decision Owner `santosh`, decision date `2026-09-29`, approval evidence GitHub Issue #1. Other unresolved architecture/security/provider decisions retain their own governance gates.
 
 Remaining external/security gates include production launch jurisdiction/region, managed PostgreSQL provider, RPO/RTO, backup retention, production admin/support access, and production connection topology.
 
-The canonical **Foundation Decision-Owner Review Packet** is now prepared at:
+The canonical **Foundation Decision-Owner Review Packet** is synchronized at:
 
 ```text
 docs/adr/foundation-decision-owner-review-packet.md
 ```
 
-ADR-0001 through ADR-0004 remain Proposed. Decision Owner remains Open and explicit approval is still missing.
-
-The next bounded governance action is:
+Authorized review result:
 
 ```text
-Authorized Foundation Decision Review
+Decision Owner = santosh
+Decision Date = 2026-09-29
+Approval Evidence = GitHub Issue #1
+
+ADR-0001 / D-ARCH-005 = Accepted / DECIDED
+ADR-0002 / D-ARCH-016 = Accepted / DECIDED
+ADR-0003 / D-ARCH-001 = Accepted / DECIDED
+ADR-0004 / D-ARCH-002 = Accepted / DECIDED
 ```
 
-The authorized owner must decide each ADR independently as `Accept`, `Reject`, or `Remain Proposed`. No decision is preselected by the packet.
+The foundation architecture category gate is partially opened by these acceptances. The overall production implementation gate remains closed because multiple P0/P1 architecture, security, data, provider, and deployment decisions remain unresolved.
 
 ## Legacy Migration State
 

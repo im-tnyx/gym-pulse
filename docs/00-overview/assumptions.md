@@ -75,11 +75,11 @@ The following must not become final merely because they appear in a legacy archi
 
 | ID | Priority | Status | Decision Required | Current Direction / Constraint |
 |---|---:|---|---|---|
-| D-ARCH-001 | P0 | PROPOSED | Repository strategy and package boundaries. | Monorepo is recommended; no repository tool is accepted yet. |
-| D-ARCH-002 | P0 | PROPOSED | Canonical database engine. | PostgreSQL is the current recommendation, not an accepted decision. |
+| D-ARCH-001 | P0 | DECIDED | Repository strategy and package boundaries. | Use an explicit monorepo with deliberate application/package boundaries and independently buildable artifacts. Repository tooling/package-manager decisions remain separate. Accepted via `ADR-0003`; approval: GitHub Issue #1. |
+| D-ARCH-002 | P0 | DECIDED | Canonical database engine. | PostgreSQL is the canonical transactional database engine. Managed provider, exact production version, data-access tooling, RLS, recovery topology, and final schema remain separately governed. Accepted via `ADR-0004`; approval: GitHub Issue #1. |
 | D-ARCH-003 | P0 | PROPOSED | Primary client/server contract architecture. | JSON HTTP with typed/runtime-validated contracts is recommended. |
 | D-ARCH-004 | P0 | OPEN | Authentication/session strategy supporting staff web and member access. | Must support revocation and server-side principal resolution. |
-| D-ARCH-005 | P1 | PROPOSED | System decomposition style for Phase 1. | Modular monolith before microservices is recommended. |
+| D-ARCH-005 | P1 | DECIDED | System decomposition style for Phase 1. | Phase 1 uses a modular monolith with explicit domain/application/component boundaries. Accepted via `ADR-0001`; approval: GitHub Issue #1. |
 | D-ARCH-006 | P1 | OPEN | API deployment boundary. | Decide web-runtime API vs independently deployed API while preserving domain separation. |
 | D-ARCH-007 | P1 | OPEN | Durable background-job/scheduler technology. | Must support retries, visibility, tenant scope, and deterministic dedupe. |
 | D-ARCH-008 | P2 | OPEN | Whether Redis/cache/ephemeral coordination is required in Phase 1. | Do not add without demonstrated need. |
@@ -90,7 +90,7 @@ The following must not become final merely because they appear in a legacy archi
 | D-ARCH-013 | P1 | PROPOSED | Member client delivery/framework strategy. | Responsive web/PWA vs Expo/React Native must follow validated delivery needs; Expo/RN is not accepted. |
 | D-ARCH-014 | P0 | OPEN | Whether to use a managed backend platform and which responsibilities it owns. | Database/Auth/Storage/RLS responsibilities must not be bundled implicitly. |
 | D-ARCH-015 | P0 | PROPOSED | Authorization implementation boundary. | Central server-side capability + tenant/resource-scope enforcement is required; exact policy/library/storage implementation remains open. |
-| D-ARCH-016 | P0 | PROPOSED | Primary implementation language and server runtime. | Strict TypeScript with a supported Node.js LTS runtime is recommended; exact runtime/version is not accepted or pinned. |
+| D-ARCH-016 | P0 | DECIDED | Primary implementation language and server runtime. | Strict TypeScript is the primary implementation language and a supported Node.js LTS line is the primary trusted server runtime. Exact runtime/tool versions remain separately selected. Accepted via `ADR-0002`; approval: GitHub Issue #1. |
 | D-ARCH-017 | P1 | PROPOSED | Data-access, query, transaction, and migration tooling strategy. | Prefer a SQL-aware typed layer with explicit committed migrations and raw-SQL escape hatch; Drizzle/Kysely lead the current evaluation, Prisma remains a credible alternative. |
 | D-ARCH-018 | P1 | PROPOSED | Core automated testing toolchain for application, database, authorization, provider, worker, and web E2E coverage. | TS-native unit/application tests + real PostgreSQL integration tests + Playwright-style browser E2E is the current direction; exact tools are not accepted. |
 | D-ARCH-019 | P1 | OPEN | CI/CD, production release-gate, and secrets-management tooling baseline. | Required capabilities are defined; GitHub-native CI is a leading candidate, but hosting/runtime/security dependencies must be resolved before final selection. |
