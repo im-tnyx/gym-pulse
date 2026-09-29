@@ -398,7 +398,7 @@ no implementation/scaffold gate is opened
 
 Acceptance-readiness must not be confused with implementation completion.
 
-The PostgreSQL environment blocker is resolved. The next bounded governance action is the **Foundation Decision-Owner Review Packet** for ADR-0001 through ADR-0004. That packet must not pre-write acceptance or promote canonical decisions automatically.
+The PostgreSQL environment blocker is resolved. The **Foundation Decision-Owner Review Packet** is now prepared at `foundation-decision-owner-review-packet.md` for ADR-0001 through ADR-0004. No owner decision has occurred yet. The next bounded action is **Authorized Foundation Decision Review**.
 
 ### Second dependency/security batch
 
@@ -527,25 +527,49 @@ Current validation evidence is recorded at:
 validation/foundation/EVIDENCE.md
 ```
 
-ADR-0001 through ADR-0003 now have partial supporting technical evidence. ADR-0004 still lacks its required real-PostgreSQL evidence because the available execution sandbox has no PostgreSQL/container tooling and cannot reach package repositories.
+ADR-0001 and ADR-0002 now include bounded real-PostgreSQL supporting evidence. ADR-0003 retains its earlier repository-boundary evidence and was not materially advanced by PostgreSQL validation. ADR-0004 now has successful Stage 3 and Stage 6 real-PostgreSQL evidence.
 
-The Real PostgreSQL Foundation Validation action was freshly attempted and is **BLOCKED** by the execution environment. Stage 3 and Stage 6 remain `NOT RUN`.
-
-Exact environment blocker:
+Current technical state:
 
 ```text
-PostgreSQL server/client executables unavailable
-no local 5432 listener/socket
-Docker / Podman / nerdctl unavailable
-PostgreSQL server/client packages absent
-libpq 17.10 libraries only
-apt PostgreSQL candidate unavailable
-DNS/package-repository access unavailable
+Real PostgreSQL Foundation Validation = PASS
+Stage 3 = PASS
+Stage 6 = PASS
+Cleanup = PASS
 ```
 
-No SQLite/file/mock substitute and no external managed database/cloud resource was used.
+The reusable validation harness is retained under:
 
-The next bounded prerequisite is to **obtain/authorize an isolated real PostgreSQL validation environment**. Only after Stage 3/Stage 6 technical evidence is sufficiently complete should the human Foundation Decision-Owner Review Packet be prepared.
+```text
+validation/foundation/
+validation/foundation/postgres/
+```
+
+The canonical governance review artifact is now prepared:
+
+```text
+docs/adr/foundation-decision-owner-review-packet.md
+```
+
+Current governance state remains:
+
+```text
+ADR-0001 = Proposed
+ADR-0002 = Proposed
+ADR-0003 = Proposed
+ADR-0004 = Proposed
+
+D-ARCH-005 = PROPOSED
+D-ARCH-016 = PROPOSED
+D-ARCH-001 = PROPOSED
+D-ARCH-002 = PROPOSED
+
+Decision Owner = Open
+Explicit Approval = Missing
+Production implementation gate = closed
+```
+
+The next bounded action is **Authorized Foundation Decision Review**. The authorized owner must choose independently for each ADR: `Accept`, `Reject`, or `Remain Proposed`. The prepared packet does not preselect any choice.
 
 No ADR may move to `Accepted` and no canonical decision may move to `DECIDED` without explicit authorized approval.
 
@@ -553,6 +577,7 @@ For `ADR-0026` specifically, later acceptance review must cover the proposed Mem
 
 ## 16. Related Documents
 
+- `foundation-decision-owner-review-packet.md`
 - `foundation-acceptance-evidence-plan.md`
 - `../README.md`
 - `../00-overview/assumptions.md`
