@@ -153,7 +153,7 @@ RLS != Complete Authorization System
 
 If PostgreSQL is later accepted, selective tenant-focused RLS remains the leading defense-in-depth direction. Explicit tenant-scoped application queries, least-privileged non-bypass runtime/worker access, separate migration/admin privilege, transaction-safe tenant context, and Tenant A -> Tenant B pool/reuse tests remain required.
 
-PostgreSQL itself remains only `PROPOSED` under `D-ARCH-002`.
+PostgreSQL is Accepted via ADR-0004 / D-ARCH-002 = DECIDED; this does not accept RLS under D-SEC-008.
 
 ## Current Primary API Contract Proposal
 
@@ -3467,49 +3467,33 @@ The packet preserves the original alternatives, evidence, limitations, scope bou
 
 The validation harness is retained as reusable technical evidence and remains non-production.
 
-## Next Governance Action
+## Second Dependency/Security Acceptance-Readiness Review
 
-The existing numbered ADR backlog remains complete through order 26.
+Review date: 2026-10-15. Baseline audited: 787955db8618578ab66ee49a78dc7390f75f4c08.
 
-Do not invent Task 0035.
-
-Fresh post-foundation audit shows the next dependency/security batch remains unresolved and has heterogeneous evidence gaps:
+Canonical review: docs/adr/second-dependency-security-acceptance-readiness-review.md
 
 ~~~text
-ADR-0005 / D-ARCH-017  Data-access/query/migration strategy      Proposed / PROPOSED
-ADR-0006 / D-ARCH-014  Managed backend responsibilities          Proposed / OPEN
-ADR-0007 / D-ARCH-004  Authentication/session architecture       Proposed / OPEN
-ADR-0008 / D-SEC-002   Member authentication                     Proposed / OPEN
-ADR-0009 / D-ARCH-015  Authorization implementation              Proposed / PROPOSED
-ADR-0010 / D-SEC-008   Data-layer tenant isolation / RLS         Proposed / OPEN
+Second Dependency/Security Acceptance-Readiness Review = COMPLETED
+ADR-0005 / D-ARCH-017 = Proposed / PROPOSED | BOUNDED VALIDATION REQUIRED
+ADR-0006 / D-ARCH-014 = Proposed / OPEN | DECISION-OWNER REVIEWABLE (boundary only)
+ADR-0007 / D-ARCH-004 = Proposed / OPEN | EVIDENCE-BLOCKED
+ADR-0008 / D-SEC-002 = Proposed / OPEN | EVIDENCE-BLOCKED
+ADR-0009 / D-ARCH-015 = Proposed / PROPOSED | DECISION-OWNER REVIEWABLE (boundary only)
+ADR-0010 / D-SEC-008 = Proposed / OPEN | BOUNDED VALIDATION REQUIRED
+Second-batch Decision Owners = OPEN
+Second-batch Decisions = PENDING
+Second-batch Approval References = MISSING
+ADR status changes = none
+Canonical decision changes = none
+Production implementation = none
+Overall production implementation gate = CLOSED
 ~~~
 
-Their missing evidence is not uniform: data-access tooling still needs representative tool/transaction/migration validation; managed-backend selection still needs provider/region/recovery/exit evidence; authentication/member-auth still need provider/session/jurisdiction/abuse/UX evidence; authorization still needs policy and negative-matrix proof; RLS still needs role/pooling/tenant-context validation.
+Foundation Accepted/DECIDED via GitHub Issue #1. D-SEC-001, D-SEC-004, D-DATA-007, provider/policy/hosting/deployment/tool decisions remain unresolved. The existing PostgreSQL foundation PASS does not prove RLS or candidate ORM/auth integration.
 
-Therefore the next bounded governance action is:
+## Exact Next Bounded Action
 
-~~~text
-Second Dependency/Security Acceptance-Readiness Review
-~~~
+**Isolated Real PostgreSQL RLS Isolation Validation** (NOT STARTED). After separate explicit authorization, run only on disposable synthetic real PostgreSQL to validate A/B tenant CRUD, no-context default-deny, effective non-bypass runtime role, transaction-local context and A-to-B pool/rollback reuse, worker/callback scoping, RLS DDL/drift/performance, and independent app authorization. Record observed evidence and cleanup.
 
-covering ADR-0005 through ADR-0010.
-
-That review must classify each ADR independently as decision-owner reviewable, evidence-blocked, or requiring a smaller bounded validation/governance action. It must not accept any ADR automatically and must not start production implementation.
-
-## Files To Read Next
-
-~~~text
-docs/adr/ADR-0005-data-access-migration-strategy.md
-docs/adr/ADR-0006-managed-backend-responsibilities.md
-docs/adr/ADR-0007-authentication-session-architecture.md
-docs/adr/ADR-0008-member-authentication-method.md
-docs/adr/ADR-0009-authorization-implementation.md
-docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md
-docs/adr/README.md
-docs/00-overview/assumptions.md
-docs/README.md
-docs/02-architecture/technology-stack.md
-docs/adr/foundation-decision-owner-review-packet.md
-validation/foundation/EVIDENCE.md
-.ai/current-state.md
-~~~
+No Task 0035 or ADR-0027 created; no technical spike, production code, credentials, provider or infrastructure created. Production gate remains closed.

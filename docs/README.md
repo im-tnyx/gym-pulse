@@ -229,10 +229,10 @@ docs/adr/README.md
 Current decision ADRs:
 
 ```text
-docs/adr/ADR-0001-modular-monolith.md                    Proposed   D-ARCH-005
-docs/adr/ADR-0002-primary-language-runtime.md            Proposed   D-ARCH-016
-docs/adr/ADR-0003-monorepo-strategy.md                   Proposed   D-ARCH-001
-docs/adr/ADR-0004-database-engine.md                     Proposed   D-ARCH-002
+docs/adr/ADR-0001-modular-monolith.md                    Accepted   D-ARCH-005
+docs/adr/ADR-0002-primary-language-runtime.md            Accepted   D-ARCH-016
+docs/adr/ADR-0003-monorepo-strategy.md                   Accepted   D-ARCH-001
+docs/adr/ADR-0004-database-engine.md                     Accepted   D-ARCH-002
 docs/adr/ADR-0005-data-access-migration-strategy.md      Proposed   D-ARCH-017
 docs/adr/ADR-0006-managed-backend-responsibilities.md    Proposed   D-ARCH-014
 docs/adr/ADR-0007-authentication-session-architecture.md Proposed   D-ARCH-004
@@ -257,15 +257,15 @@ docs/adr/ADR-0025-redis-cache-requirement.md                      Proposed   D-A
 docs/adr/ADR-0026-member-membership-state-ownership.md              Proposed   D-DATA-007
 ```
 
-`ADR-0001` proposes a modular monolith with explicit domain/application/component boundaries and remains unaccepted.
+`ADR-0001` is Accepted: Phase 1 uses a modular monolith with explicit domain/application/component boundaries. Deployment and implementation choices remain independently governed.
 
-`ADR-0002` proposes strict TypeScript with a supported Node.js LTS runtime, while keeping framework, repository, database, hosting, job-runner, test-tool, and provider choices separate. It requires runtime validation and explicit client-safe/server-only source boundaries. It remains unaccepted.
+`ADR-0002` is Accepted: strict TypeScript plus a supported Node.js LTS runtime. Exact versions/frameworks/providers and production boundary enforcement remain separate.
 
-`ADR-0003` proposes an explicit monorepo with deliberate application/package boundaries, independent build/deployment artifacts, and structural client-safe/server-only enforcement. It keeps package manager, workspace orchestrator, API deployment topology, database, data-access tooling, CI/CD, framework, and hosting decisions separate. It remains unaccepted.
+`ADR-0003` is Accepted: an explicit monorepo with deliberate package boundaries and independently buildable artifacts. Package manager, orchestrator, CI, framework and deployment remain separate.
 
-`ADR-0004` proposes PostgreSQL as the canonical transactional database engine after comparing MySQL/MariaDB, document/NoSQL-first, and distributed SQL alternatives against GymPulse correctness, tenancy, querying, backup/restore, and operational requirements. It explicitly does not approve a final schema, managed provider, RLS policy, ORM/query builder, hosting platform, job runner, database role model, exact indexes, or exact PostgreSQL version. It remains unaccepted.
+`ADR-0004` is Accepted: PostgreSQL is the canonical transactional database engine. Final schema, managed provider, RLS, ORM/query builder, hosting, jobs, role model, indexes and production version remain separately governed.
 
-`ADR-0005` proposes a Drizzle-oriented SQL-transparent TypeScript persistence strategy with application-owned transaction boundaries, generated/reviewed committed SQL migrations, raw/custom SQL escape capability, purpose-specific read models, and future RLS compatibility. It is conditional on compatible final runtime/database decisions and does not approve Drizzle, PostgreSQL, RLS, a managed provider, or a final schema. It remains unaccepted.
+`ADR-0005` proposes a Drizzle-oriented SQL-transparent TypeScript persistence strategy with application-owned transaction boundaries, generated/reviewed committed SQL migrations, raw/custom SQL escape capability, purpose-specific read models, and future RLS compatibility. PostgreSQL and TypeScript/Node.js foundation categories are accepted; it does not accept Drizzle, RLS, a managed provider, or a final schema. ADR-0005 remains Proposed.
 
 `ADR-0006` proposes a selective managed-backend responsibility model: commodity infrastructure may be delegated to managed services while GymPulse retains product/domain/application/security semantics. Integrated platforms such as Supabase are candidates only; database, Auth/session, Storage, RLS, jobs/queues/Cron, hosting, observability, and direct-client database access remain separately governed. `D-ARCH-014` remains canonically `OPEN` and no provider is accepted or provisioned.
 
@@ -275,7 +275,7 @@ docs/adr/ADR-0026-member-membership-state-ownership.md              Proposed   D
 
 `ADR-0009` proposes a GymPulse-owned provider-independent application authorization module using stable named capabilities, roles as capability bundles, current scoped assignments, trusted resource ownership resolution, explicit Member-self relationships, deny-by-default behavior, and bounded non-human execution contexts. Provider roles/claims, framework middleware, RLS, and external policy engines are not the sole business authority. No authorization library/service, role/capability schema, RLS policy, Redis/cache, or full permission matrix is accepted. `D-ARCH-015` remains canonically `PROPOSED`.
 
-`ADR-0010` proposes the data-layer tenant-isolation posture beneath application authorization. It keeps application authorization mandatory and keeps explicit tenant-scoped persistence queries. If `D-ARCH-002` is later accepted with PostgreSQL, it proposes selective tenant-focused PostgreSQL RLS on materially tenant-owned canonical tables as defense in depth, policy-enforced least-privileged runtime/worker access, separate migration/admin privilege, and transaction-safe trusted tenant context when required. It explicitly does not approve PostgreSQL, Supabase or another provider, a specific RLS policy, database role, schema, migration, Data API, direct-client database access, or implementation. Canonical `D-SEC-008` remains `OPEN`.
+`ADR-0010` proposes the data-layer tenant-isolation posture beneath application authorization. It keeps application authorization mandatory and keeps explicit tenant-scoped persistence queries. With PostgreSQL accepted under `D-ARCH-002`, it still proposes selective tenant-focused PostgreSQL RLS on materially tenant-owned canonical tables as defense in depth, policy-enforced least-privileged runtime/worker access, separate migration/admin privilege, and transaction-safe trusted tenant context when required. It explicitly does not approve PostgreSQL, Supabase or another provider, a specific RLS policy, database role, schema, migration, Data API, direct-client database access, or implementation. Canonical `D-SEC-008` remains `OPEN`.
 
 `ADR-0011` proposes a versioned JSON-over-HTTPS resource/action application contract with runtime trust-boundary schemas, explicit API DTO/application/domain/persistence separation, purpose-specific success representations, RFC 9457-compatible machine-readable errors, cursor-first bounded operational pagination, explicit idempotency semantics for designated retry-sensitive commands, a provider-specific raw-body verification boundary for webhooks, and optional mechanically derived OpenAPI. It does not select an API framework, runtime validator, OpenAPI/client generator, web/native framework, or API deployment topology. `D-ARCH-003` remains canonically `PROPOSED`.
 
@@ -310,6 +310,12 @@ docs/adr/ADR-0026-member-membership-state-ownership.md              Proposed   D
 `ADR-0026` proposes Membership as the owner of time-bounded commercial entitlement and separates Member administrative/relationship state from entitlement. Membership keeps `Pending / Active / Frozen / Expired / Cancelled`; the leading Member-state candidate is `Enabled / Blocked / Archived`, with `Enabled` explicitly not meaning an Active Membership. Membership expiry/freeze/cancellation no longer mirror into Member state in the proposal. `FR-MEMBER-004` remains unchanged because the ADR is Proposed; exact Blocked/Archived behavior, current-Membership selection, overlap rules, early-renewal timing, cancellation/refund, deletion/export, retention, and schema/migration mechanics remain unresolved.
 
 No decision ADR is currently `Accepted`.
+
+## Second Dependency/Security Acceptance-Readiness Review (2026-10-15)
+
+The [canonical unnumbered readiness review](adr/second-dependency-security-acceptance-readiness-review.md) is **COMPLETED**. ADR-0005/0010: BOUNDED VALIDATION REQUIRED; ADR-0006/0009: DECISION-OWNER REVIEWABLE (category boundary only); ADR-0007/0008: EVIDENCE-BLOCKED. All six remain Proposed and their matching canonical decisions remain unchanged.
+
+**Next bounded action (not started):** Isolated Real PostgreSQL RLS Isolation Validation with disposable, synthetic test resources. No second-batch acceptance, provider selection or production implementation is authorized. Overall production implementation gate remains closed.
 
 ## Current Architecture Governance Position
 
@@ -1148,7 +1154,7 @@ High-value migration sources include:
 16-open-decisions.md
 ```
 
-Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as already canonical does not override current structured governance. `docs/00-overview/assumptions.md` remains authoritative and keeps `D-ARCH-002` `PROPOSED`.
+Legacy wording such as `docs/06-database-schema.md` describing PostgreSQL as already canonical does not override current structured governance. `docs/00-overview/assumptions.md` remains authoritative and records `D-ARCH-002 = DECIDED` through accepted ADR-0004 and GitHub Issue #1.
 
 Legacy API endpoint/envelope examples in `docs/07-api-contracts.md` also remain migration evidence; ADR-0011 does not make every legacy path or payload canonical.
 

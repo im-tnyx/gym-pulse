@@ -426,7 +426,7 @@ Data-Layer Tenant Isolation = Defense in Depth
 RLS != Complete Authorization System
 ```
 
-Its leading direction is conditional on PostgreSQL later being accepted: retain explicit tenant-scoped SQL and add selective tenant-focused RLS on materially tenant-owned canonical tables using policy-enforced runtime/worker access, separate migration/admin privilege, and transaction-safe tenant context where required. It does not accept PostgreSQL, Supabase or another provider, direct-client database access, any database role, any RLS policy, or any migration. Canonical `D-SEC-008` remains `OPEN`.
+With PostgreSQL accepted as the engine, its still-Proposed leading direction is to retain explicit tenant-scoped SQL and add selective tenant-focused RLS on materially tenant-owned canonical tables using policy-enforced runtime/worker access, separate migration/admin privilege, and transaction-safe tenant context where required. It does not accept PostgreSQL, Supabase or another provider, direct-client database access, any database role, any RLS policy, or any migration. Canonical `D-SEC-008` remains `OPEN`.
 
 ### Third runtime/operations batch
 
@@ -481,7 +481,7 @@ Payment and messaging provider ADRs should follow confirmed pilot methods/channe
 
 The C4 architecture, data-flow architecture, technology evaluation, technology-decision normalization, and `ADR-0001` through `ADR-0026` are complete at Draft/Proposed level.
 
-The repository is **not** thereby implementation-ready. No ADR is Accepted. `D-ARCH-003`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-002`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
+The repository is **not** thereby implementation-ready. Only foundation ADR-0001 through ADR-0004 are Accepted and `D-ARCH-002` is DECIDED. `D-ARCH-003`, `D-ARCH-012`, `D-ARCH-013`, `D-ARCH-017`, and `D-ARCH-015` remain `PROPOSED`; `D-ARCH-014`, `D-ARCH-004`, `D-SEC-002`, and `D-SEC-008` remain `OPEN`; other P0/P1 product/security/platform decisions remain unresolved.
 
 `ADR-0012` does not create a Next.js/React application, install dependencies, select hosting, accept TypeScript/Node.js, or decide whether the trusted API is co-hosted with the web runtime or independently deployed. `D-ARCH-006` remains `OPEN`.
 
@@ -579,12 +579,13 @@ Foundation architecture category gate = partially opened
 Overall production implementation gate = closed
 ```
 
-The next bounded action is **Second Dependency/Security Acceptance-Readiness Review** covering ADR-0005 through ADR-0010. That review must assess each decision's current evidence and blockers independently; it does not pre-accept any of them.
+The **Second Dependency/Security Acceptance-Readiness Review** is COMPLETED at [second-dependency-security-acceptance-readiness-review.md](second-dependency-security-acceptance-readiness-review.md) (2026-10-15). ADR-0005/0010: BOUNDED VALIDATION REQUIRED; ADR-0006/0009: DECISION-OWNER REVIEWABLE for category only; ADR-0007/0008: EVIDENCE-BLOCKED. All six remain Proposed; no canonical decision was promoted. **Next bounded action: Isolated Real PostgreSQL RLS Isolation Validation (NOT STARTED).** Overall production implementation gate remains closed.
 
 For `ADR-0026` specifically, later acceptance review must cover the proposed Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived policy, import/reporting terminology, attendance/no-show/authorization interaction, and historical migration strategy.
 
 ## 16. Related Documents
 
+- `second-dependency-security-acceptance-readiness-review.md`
 - `foundation-decision-owner-review-packet.md`
 - `foundation-acceptance-evidence-plan.md`
 - `../README.md`
