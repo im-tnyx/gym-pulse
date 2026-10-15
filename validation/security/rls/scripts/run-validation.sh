@@ -57,7 +57,7 @@ docker run -d --rm --name "$CONTAINER" --label gympulse.rls.validation=true \
   -p 127.0.0.1::5432 -v "$VOLUME:/var/lib/postgresql/data" "$POSTGRES_IMAGE" >/dev/null
 for i in $(seq 1 75); do
   if docker exec -e PGPASSWORD="$PGPASSWORD" "$CONTAINER" \
-    pg_isready -U "$PGUSER" -d postgres >/dev/null 2>&1; then break; fi
+    pg_isready -h 127.0.0.1 -U "$PGUSER" -d postgres >/dev/null 2>&1; then break; fi
   if [[ "$i" == 75 ]]; then echo 'PostgreSQL readiness timeout'; exit 1; fi
   sleep 1
 done
