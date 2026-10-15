@@ -3492,8 +3492,28 @@ Overall production implementation gate = CLOSED
 
 Foundation Accepted/DECIDED via GitHub Issue #1. D-SEC-001, D-SEC-004, D-DATA-007, provider/policy/hosting/deployment/tool decisions remain unresolved. The existing PostgreSQL foundation PASS does not prove RLS or candidate ORM/auth integration.
 
-## Exact Next Bounded Action
+## Isolated Real PostgreSQL RLS Isolation Validation — Executed
 
-**Isolated Real PostgreSQL RLS Isolation Validation** (NOT STARTED). After separate explicit authorization, run only on disposable synthetic real PostgreSQL to validate A/B tenant CRUD, no-context default-deny, effective non-bypass runtime role, transaction-local context and A-to-B pool/rollback reuse, worker/callback scoping, RLS DDL/drift/performance, and independent app authorization. Record observed evidence and cleanup.
+User-specific authorization: 2026-10-15; GitHub Actions isolated synthetic PostgreSQL runner. Audited main baseline: 9a39f71a8dcc31c4cb311694df474396c8e5f660. Tested branch commit: 239e334af3fed69fee97c0b198916722c84b2b79; [workflow run](https://github.com/im-tnyx/gym-pulse/actions/runs/38772742264).
 
-No Task 0035 or ADR-0027 created; no technical spike, production code, credentials, provider or infrastructure created. Production gate remains closed.
+~~~text
+Real PostgreSQL = 17.11 (disposable Docker)
+RLS scenario suite = PASS (29/29)
+A/B CRUD, missing/invalid context, non-bypass roles = PASS
+FORCE RLS, broad SQL, admin policy separation = PASS
+Transaction commit/rollback, same backend pool reuse, concurrent A/B = PASS
+Synthetic worker/callback and independent application authorization = PASS
+Invoker view, tenant-aware FK, migration/forward/drift, EXPLAIN = PASS
+Explicit cleanup = PASS
+Overall ADR-0010 acceptance/readiness evidence = PARTIAL
+ADR-0010 / D-SEC-008 = Proposed / OPEN
+Second-batch statuses = unchanged
+Canonical decision changes = none
+Production implementation gate = CLOSED
+~~~
+
+Canonical executed results, security findings, missing tests and observed versions: validation/security/rls/EVIDENCE.md. First failed startup-readiness run and recovery preserved. PostgreSQL GUC is not an authoritative tenant identity; managed pooler, privileged functions, real callback signatures, production performance and authorized human approval remain open.
+
+## Exact Next Bounded Governance Action
+
+**ADR-0010 Evidence Consolidation and Decision-Owner Review Preparation**, using actual RLS synthetic evidence and explicit untested/provider/security gaps. Not ADR acceptance. Do not decide D-SEC-008, open production implementation, fabricate Task 0035/ADR-0027, or alter other canonical decisions. Production implementation gate remains CLOSED.

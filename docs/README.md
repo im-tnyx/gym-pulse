@@ -1135,6 +1135,12 @@ ADR-0004 / D-ARCH-002 = Accepted / DECIDED
 
 The foundation architecture category gate is partially opened by these acceptances. The overall production implementation gate remains closed because multiple P0/P1 architecture, security, data, provider, and deployment decisions remain unresolved.
 
+## Isolated Real PostgreSQL RLS Validation — 2026-10-15
+
+[Executed non-production RLS evidence](../validation/security/rls/EVIDENCE.md) | [GitHub Actions run](https://github.com/im-tnyx/gym-pulse/actions/runs/38772742264) | Tested commit: `239e334af3fed69fee97c0b198916722c84b2b79`.
+
+Synthetic disposable PostgreSQL **17.11** RLS tenant-isolation suite: **29/29 executed cases PASS**; PostgreSQL role, A/B CRUD, missing-context, broad SQL, FORCE RLS, concurrent reused/rolled-back pools, bounded workers/callbacks, independent application checks, view, FK, migration, drift and EXPLAIN evidence; cleanup **PASS**. The first startup-readiness failure and remediation are documented. **Overall ADR-0010 acceptance-readiness = PARTIAL** because provider/pooler, verified tenant authority, privileged functions, real provider callbacks, committed deployed-policy drift and production performance/approval gaps remain. **ADR-0010 = Proposed; D-SEC-008 = OPEN; production gate = CLOSED.** The exact next bounded action is **ADR-0010 Evidence Consolidation and Decision-Owner Review Preparation** (not approval).
+
 ## Legacy Migration State
 
 Legacy flat architecture/database/API/automation/payment/notification/security/testing/engineering/open-decision files remain migration inputs until their useful material has canonical structured destinations and they are explicitly deprecated or replaced by pointers.

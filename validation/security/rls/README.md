@@ -34,3 +34,7 @@ The callback verifier and independent authorization checks are validation-only a
 - Preserve tested SHA, image digest, Node/pg versions, SQL migration and policy catalog results and failing checks.
 - ADR-0010 remains **Proposed**; D-SEC-008 remains **OPEN**. Other governance unchanged; production gate stays **CLOSED**.
 - No Task 0035, ADR-0027, production schema, secrets or managed infrastructure is introduced.
+
+## Executed evidence (2026-10-15)
+
+The bounded disposable PostgreSQL RLS suite **executed successfully** on GitHub Actions: **29/29 real-PostgreSQL scenarios PASS**, cleanup **PASS**, tested SHA `239e334af3fed69fee97c0b198916722c84b2b79`, [workflow run](https://github.com/im-tnyx/gym-pulse/actions/runs/38772742264). See [EVIDENCE.md](EVIDENCE.md) for the observed results, failed first attempt and unresolved risks. **Overall architecture acceptance-readiness remains PARTIAL**: runtime-defined GUC authority, production provider pooler, privileged functions, production performance, provider signature verification, static deployed-policy drift and human approval are not validated. ADR-0010 stays Proposed and D-SEC-008 OPEN.

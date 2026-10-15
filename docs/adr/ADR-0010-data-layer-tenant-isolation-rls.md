@@ -1339,6 +1339,20 @@ Before ADR-0010 can become `Accepted` and `D-SEC-008` can become `DECIDED`, evid
 - representative query-plan/performance validation,
 - migration/rollout/rollback and drift-control evidence.
 
+
+### 19.5 Executed real PostgreSQL RLS isolation evidence (2026-10-15)
+
+**Evidence type:** authorized, non-production synthetic test only. Source: [validation/security/rls/EVIDENCE.md](../../validation/security/rls/EVIDENCE.md); [GitHub Actions run](https://github.com/im-tnyx/gym-pulse/actions/runs/38772742264); tested branch commit `239e334af3fed69fee97c0b198916722c84b2b79`.
+
+- PostgreSQL **17.11** in a disposable GitHub Actions Docker instance. Node **v22.23.3**, temporary `pg@8.16.3`; these do not pin or select production tooling.
+- **29/29 executed scenarios PASS; disposal/cleanup PASS.** Includes A/B SELECT and all mutation paths, RLS WITH CHECK/default deny, missing/unknown/malformed context, broad query containment, runtime/worker non-bypass and DDL denial, owner vs FORCE RLS, transaction-local scope, same physical connection reuse, rollback, two concurrent sessions, scoped workers/callback simulations, independent synthetic application authorization (including a table without RLS), `security_invoker` view, tenant-aware FK, validation-only migrations, policy drift and bounded query plans.
+- The ordinary role is an actual PostgreSQL LOGIN role without superuser/BYPASSRLS/table ownership and with no owner role-switch permission. Separate admin path used for policies. Owner saw **3** rows before FORCE RLS and **0** without authorized context after FORCE; this is not proof against privileged/superuser bypass.
+- **Security finding:** PostgreSQL custom tenant GUC cannot itself authenticate tenant authority; arbitrary SQL using the runtime role can set it. Application identity, eligibility, resource/capability/member-self verification and explicit tenant-scoped SQL remain mandatory. A verified webhook is not a GymPulse Owner.
+- **Unresolved / NOT RUN:** privileged SECURITY DEFINER helper attacks, production pooler/session modes, production database roles and ownership schema, managed-provider configuration, real callback signatures, scale/latency, backup confidentiality/policy restoration and static deployed-policy drift monitoring. Member/Membership D-DATA-007 remains unresolved.
+- **Boundary:** bounded RLS scenario suite = **PASS**; overall ADR-0010 acceptance-readiness evidence = **PARTIAL**. Technical tests are **not** human decision-owner approval or production readiness. **Status: Proposed; D-SEC-008: OPEN.**
+
+**Next bounded governance action:** ADR-0010 Evidence Consolidation and Decision-Owner Review Preparation (no approval within this action).
+
 ## 20. Related Documents
 
 - `README.md`
