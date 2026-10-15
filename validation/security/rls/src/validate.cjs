@@ -393,6 +393,61 @@ async function run() {
     }
     return {queryPlans:results,caveat:"tiny synthetic fixtures; not production benchmark"};
   }));
+  await caseRun("worker_invalid_tenant_context",async()=>{
+    const unknown=await scoped(worker,UNKNOWN,async c=>count(await c.query("SELECT count(*)::int AS n FROM rls_validation.validation_job_ref")));
+    assert.equal(unknown,0);
+    let sqlstate="";
+    try {await scoped(worker,"malformed-worker-id",async c=>c.query("SELECT * FROM rls_validation.validation_job_ref"));}
+    catch(error){sqlstate=error.code;}
+    assert.equal(sqlstate,"22P02");
+    return { unknownTenantVisible:0, malformedTenantSqlstate:sqlstate };
+  });
+  await caseRun("application_auth_with_rls_absent_in_disposable_table",async()=>{
+    await ownerSQL("CREATE TABLE rls_validation.validation_unprotected_auth_probe(id text PRIMARY KEY,tenant_id uuid NOT NULL,member_ref text NOT NULL)");
+    await ownerSQL("GRANT SELECT,INSERT ON rls_validation.validation_unprotected_auth_probe TO validation_runtime");
+    try {
+      const meta=await root.query("SELECT relrowsecurity FROM pg_class WHERE oid='rls_validation.validation_unprotected_auth_probe'::regclass");
+      assert.equal(meta.rows[0].relrowsecurity,false);
+      const principal={verified:true,active:true,tenantId:A,branches:["branch-a"],capabilities:["members.read"],memberId:"member-a"};
+      const good={tenantId:A,branchId:"branch-a",capability:"members.read",memberId:"member-a"};
+      async function write(action){
+        authorize(principal,action);
+        return runtime.query("INSERT INTO rls_validation.validation_unprotected_auth_probe(id,tenant_id,member_ref) VALUES($1,$2,$3)",
+          ["authorized-only",action.tenantId,action.memberId]);
+      }
+      await write(good);
+      const bad=[
+        {...good,tenantId:B},{...good,branchId:"branch-b"},
+        {...good,capability:"payments.refund"},{...good,memberId:"member-b"}
+      ];
+      const errors=[];
+      for(const action of bad){
+        try{await write(action);throw new Error("application guard bypassed");}
+        catch(e){if(e.message==="application guard bypassed")throw e;errors.push(e.message);}
+      }
+      const persisted=await root.query("SELECT tenant_id FROM rls_validation.validation_unprotected_auth_probe");
+      assert.equal(persisted.rows.length,1);
+      assert.equal(persisted.rows[0].tenant_id,A);
+      return {rlsEnabled:false,unauthorizedWrites:0,authorizationDenials:errors};
+    } finally {await ownerSQL("DROP TABLE rls_validation.validation_unprotected_auth_probe");}
+  });
+  await caseRun("protected_vs_unprotected_explain_assessment",async()=>{
+    const sql="EXPLAIN (ANALYZE,FORMAT JSON) SELECT id FROM rls_validation.validation_tenant_record ORDER BY id";
+    const privileged=(await root.query(sql)).rows[0]["QUERY PLAN"][0];
+    const scopedPlan=await scoped(one,A,async c=>(await c.query(sql)).rows[0]["QUERY PLAN"][0]);
+    const privilegedCount=await root.query("SELECT count(*)::int AS n FROM rls_validation.validation_tenant_record");
+    const restrictedCount=await scoped(one,A,async c=>countRecords(c));
+    check(count(privilegedCount)>restrictedCount,"RLS cardinality comparison inconclusive");
+    const functions=await root.query("SELECT proname,prosecdef FROM pg_proc WHERE pronamespace='rls_validation'::regnamespace");
+    check(functions.rows.every(x=>!x.prosecdef),"unexpected SECURITY DEFINER function");
+    return {
+      privilegedPlan:{node:privileged.Plan["Node Type"],rows:privileged.Plan["Actual Rows"],ms:privileged["Execution Time"]},
+      restrictedPlan:{node:scopedPlan.Plan["Node Type"],rows:scopedPlan.Plan["Actual Rows"],ms:scopedPlan["Execution Time"]},
+      privilegedRows:count(privilegedCount),tenantRows:restrictedCount,
+      definerFunctionsPresent:functions.rows.filter(x=>x.prosecdef).length,
+      caveat:"Privileged vs restricted roles differ; not a controlled production overhead benchmark"
+    };
+  });
   await caseRun("policy_force_state_after_forward",async()=>{
     const r=await root.query("SELECT relrowsecurity,relforcerowsecurity FROM pg_class WHERE oid='rls_validation.validation_tenant_record'::regclass");
     check(r.rows[0].relrowsecurity&&r.rows[0].relforcerowsecurity,"RLS was weakened by migration");
@@ -412,7 +467,7 @@ run().catch(e=>{console.error("HARNESS_FATAL "+e.message);process.exitCode=1;}).
     "background_worker_scope_and_reuse","verified_callback_resource_scope",
     "security_invoker_view_isolation","tenant_aware_referential_integrity",
     "admin_forward_policy_migration","validation_policy_drift_detection",
-    "representative_query_plans","policy_force_state_after_forward"];
+    "representative_query_plans","worker_invalid_tenant_context","application_auth_with_rls_absent_in_disposable_table","protected_vs_unprotected_explain_assessment","policy_force_state_after_forward"];
   const present=new Set(matrix.map(x=>x.test));
   for(const name of required)if(!present.has(name))matrix.push({test:name,result:"NOT RUN"});
   const passed=matrix.filter(x=>x.result==="PASS").length;
