@@ -1,0 +1,40 @@
+name: GymPulse Isolated PostgreSQL RLS Validation
+
+on:
+  push:
+    branches:
+      - 'validation/rls-*'
+    paths:
+      - '.github/workflows/rls-isolation-validation.yml'
+      - 'validation/security/rls/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gympulse-rls-isolation
+  cancel-in-progress: false
+
+jobs:
+  isolated-rls:
+    name: Disposable synthetic PostgreSQL RLS proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout validation branch
+        uses: actions/checkout@v4
+      - name: Validation-only Node.js runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Real PostgreSQL RLS suite with cleanup trap
+        run: bash validation/security/rls/scripts/run-validation.sh
+      - name: Capture audit evidence even if validation fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gympulse-rls-security-evidence
+          path: validation/security/rls/results/
+          if-no-files-found: warn
+          retention-days: 7
