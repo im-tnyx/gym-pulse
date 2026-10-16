@@ -581,10 +581,13 @@ Overall production implementation gate = closed
 
 The **Second Dependency/Security Acceptance-Readiness Review** is COMPLETED at [second-dependency-security-acceptance-readiness-review.md](second-dependency-security-acceptance-readiness-review.md) (2026-10-15). ADR-0005/0010: BOUNDED VALIDATION REQUIRED; ADR-0006/0009: DECISION-OWNER REVIEWABLE for category only; ADR-0007/0008: EVIDENCE-BLOCKED. All six remain Proposed; no canonical decision was promoted. **Next bounded action completed: authorized isolated real PostgreSQL RLS validation (29/29 bounded scenarios PASS; cleanup PASS; overall ADR acceptance-readiness PARTIAL).** See [RLS evidence](../../validation/security/rls/EVIDENCE.md) and [executed run](https://github.com/im-tnyx/gym-pulse/actions/runs/38772742264). Next bounded governance action: **ADR-0010 Evidence Consolidation and Decision-Owner Review Preparation**. No ADR/decision status was changed. Overall production implementation gate remains closed.
 
+**ADR-0010 Evidence Consolidation and Decision-Owner Review Preparation** is **COMPLETED** (2026-10-16): [owner review packet](adr-0010-rls-evidence-decision-owner-review-packet.md). Latest independently reviewed [Actions run](https://github.com/im-tnyx/gym-pulse/actions/runs/38773398231) at `6431efb84aa1cd202e33f88b781d668927459291` confirmed **29/29 synthetic PostgreSQL RLS scenarios PASS** and **cleanup PASS**. **Full ADR acceptance-readiness = PARTIAL / EVIDENCE-GATED**, authorized D-SEC-008 owner **OPEN**, approval **MISSING**, ADR **Proposed**, canonical decision **OPEN**, production gate **CLOSED**. **Exact next bounded governance action: D-SEC-008 Authorized Decision-Owner Assignment and Evidence-Gap Triage** (not yet performed). No ADR accepted or canonical decision changed.
+
 For `ADR-0026` specifically, later acceptance review must cover the proposed Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived policy, import/reporting terminology, attendance/no-show/authorization interaction, and historical migration strategy.
 
 ## 16. Related Documents
 
+- `adr-0010-rls-evidence-decision-owner-review-packet.md`
 - `second-dependency-security-acceptance-readiness-review.md`
 - `foundation-decision-owner-review-packet.md`
 - `foundation-acceptance-evidence-plan.md`

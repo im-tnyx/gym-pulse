@@ -1141,6 +1141,12 @@ The foundation architecture category gate is partially opened by these acceptanc
 
 Synthetic disposable PostgreSQL **17.11** RLS tenant-isolation suite: **29/29 executed cases PASS**; PostgreSQL role, A/B CRUD, missing-context, broad SQL, FORCE RLS, concurrent reused/rolled-back pools, bounded workers/callbacks, independent application checks, view, FK, migration, drift and EXPLAIN evidence; cleanup **PASS**. The first startup-readiness failure and remediation are documented. **Overall ADR-0010 acceptance-readiness = PARTIAL** because provider/pooler, verified tenant authority, privileged functions, real provider callbacks, committed deployed-policy drift and production performance/approval gaps remain. **ADR-0010 = Proposed; D-SEC-008 = OPEN; production gate = CLOSED.** The exact next bounded action is **ADR-0010 Evidence Consolidation and Decision-Owner Review Preparation** (not approval).
 
+## ADR-0010 Evidence Consolidation / Decision-Owner Review — 2026-10-16
+
+The unnumbered [ADR-0010 RLS evidence and decision-owner review packet](adr/adr-0010-rls-evidence-decision-owner-review-packet.md) is **PREPARED**, based on the independently inspected synthetic run [#38773398231](https://github.com/im-tnyx/gym-pulse/actions/runs/38773398231) at `6431efb84aa1cd202e33f88b781d668927459291` (**29/29 PASS**, **cleanup PASS**). It reconciles the real PostgreSQL test matrix with remaining security risks and missing authorized human decisions. **Full ADR acceptance readiness remains PARTIAL**, `ADR-0010 = Proposed`, `D-SEC-008 = OPEN`, `Decision Owner = OPEN`, `Approval = MISSING`; **production implementation gate = CLOSED**.
+
+**One next bounded governance action:** D-SEC-008 Authorized Decision-Owner Assignment and Evidence-Gap Triage. No automatic human approval, runtime implementation, or new technical test is authorized by this documentation action.
+
 ## Legacy Migration State
 
 Legacy flat architecture/database/API/automation/payment/notification/security/testing/engineering/open-decision files remain migration inputs until their useful material has canonical structured destinations and they are explicitly deprecated or replaced by pointers.

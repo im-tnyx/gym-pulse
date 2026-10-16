@@ -3514,6 +3514,29 @@ Production implementation gate = CLOSED
 
 Canonical executed results, security findings, missing tests and observed versions: validation/security/rls/EVIDENCE.md. First failed startup-readiness run and recovery preserved. PostgreSQL GUC is not an authoritative tenant identity; managed pooler, privileged functions, real callback signatures, production performance and authorized human approval remain open.
 
+## ADR-0010 Evidence Consolidation and Decision-Owner Review Preparation
+
+Preparation date: 2026-10-16. Audited main: 6431efb84aa1cd202e33f88b781d668927459291.
+
+Canonical review packet: docs/adr/adr-0010-rls-evidence-decision-owner-review-packet.md
+
+Latest independently inspected GitHub Actions successful execution: https://github.com/im-tnyx/gym-pulse/actions/runs/38773398231; tested SHA 6431efb84aa1cd202e33f88b781d668927459291; PostgreSQL 17.11; 29 of 29 synthetic validation cases PASS; cleanup PASS. This preparation only reviews the already executed synthetic evidence; no new run, database, CI changes or provider action.
+
+~~~text
+ADR-0010 RLS Evidence/Owner Review Packet = PREPARED
+Bounded real PostgreSQL RLS execution = PASS (29/29)
+Full ADR-0010 acceptance-readiness = PARTIAL / EVIDENCE-GATED
+ADR-0010 = Proposed
+D-SEC-008 = OPEN
+Authorized D-SEC-008 Decision Owner = OPEN
+Human ADR-0010 Approval Reference = MISSING
+Other ADR changes = NONE
+Canonical decision changes = NONE
+Production implementation gate = CLOSED
+~~~
+
+Explicit residual gaps: client/runtime-custom-GUC trust boundary and arbitrary SQL risk; production authorization capability and Member-self policy; final tenant ownership and D-DATA-007; managed database pooler/roles/provider; privileged function review; actual provider callback signature verification; backup/policy restoration; static deployed-policy drift; production-scale query performance; authorized human signoff.
+
 ## Exact Next Bounded Governance Action
 
-**ADR-0010 Evidence Consolidation and Decision-Owner Review Preparation**, using actual RLS synthetic evidence and explicit untested/provider/security gaps. Not ADR acceptance. Do not decide D-SEC-008, open production implementation, fabricate Task 0035/ADR-0027, or alter other canonical decisions. Production implementation gate remains CLOSED.
+**D-SEC-008 Authorized Decision-Owner Assignment and Evidence-Gap Triage** (NOT STARTED). Request a human-documented owner scope, review and disposition of the technical/security/provider gaps and approved evidence plan. Do not pre-appoint the Foundation Issue #1 owner, mark ADR-0010 Accepted, promote D-SEC-008 to DECIDED, or open the production gate. No Task 0035 or ADR-0027 created.

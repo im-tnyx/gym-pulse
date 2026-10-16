@@ -1353,8 +1353,15 @@ Before ADR-0010 can become `Accepted` and `D-SEC-008` can become `DECIDED`, evid
 
 **Next bounded governance action:** ADR-0010 Evidence Consolidation and Decision-Owner Review Preparation (no approval within this action).
 
+### 19.6 ADR-0010 evidence consolidation and decision-owner review preparation (2026-10-16)
+
+A separate unnumbered [ADR-0010 RLS evidence / decision-owner review packet](adr-0010-rls-evidence-decision-owner-review-packet.md) consolidates the **29/29 PASS** bounded synthetic RLS results and **cleanup PASS**, independently cross-checks the latest completed [GitHub Actions run](https://github.com/im-tnyx/gym-pulse/actions/runs/38773398231) at source SHA `6431efb84aa1cd202e33f88b781d668927459291`, and maps the remaining security/provider/authorization/ownership/performance evidence gaps to decision-owner questions.
+
+**Governance effect: NONE.** This packet is **prepared for review but full acceptance-readiness remains PARTIAL/evidence-gated**. The authorized `D-SEC-008` decision owner remains **OPEN**, explicit review/approval remains **MISSING**, `ADR-0010` remains **Proposed**, `D-SEC-008` remains **OPEN**, and the production gate remains **CLOSED**. The next single bounded action is `D-SEC-008 Authorized Decision-Owner Assignment and Evidence-Gap Triage`; it is not performed by preparing the packet.
+
 ## 20. Related Documents
 
+- [ADR-0010 Evidence and Decision-Owner Review Packet](adr-0010-rls-evidence-decision-owner-review-packet.md)
 - `README.md`
 - `../README.md`
 - `../00-overview/assumptions.md`

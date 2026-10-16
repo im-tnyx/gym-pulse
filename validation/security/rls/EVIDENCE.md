@@ -110,3 +110,9 @@ Actual attempted runtime/worker DDL and unauthorized owner-role switches all ret
 **ADR-0010 Evidence Consolidation and Decision-Owner Review Preparation** — review the executed synthetic evidence and unresolved production/security requirements for an authorized human decision owner; **do not accept ADR-0010, decide D-SEC-008, deploy policies or begin production implementation**. A further targeted evidence request may be needed.
 
 No Task 0035, ADR-0027, production secrets, infra or canonical status changes were created.
+
+## 5. Subsequent independently verified run / governance review (2026-10-16)
+
+The repository's subsequently completed [Actions run #38773398231](https://github.com/im-tnyx/gym-pulse/actions/runs/38773398231) tested source SHA `6431efb84aa1cd202e33f88b781d668927459291`. Its downloaded artifact `11992323149` (`gympulse-rls-security-evidence`, scheduled expiration **2026-10-22**) was independently inspected: `test-results.json` reported **29/29 PASS**, every enumerated case PASS; PostgreSQL version **17.11**; `cleanup.txt` **PASS**; `summary.txt` exit **0**; restricted runtime/worker roles remained non-superuser/non-BYPASSRLS. This is confirmation of the **same bounded synthetic suite**, not validation of the remaining production gaps.
+
+The next governance-preparation artifact is the [ADR-0010 RLS Evidence Consolidation and Decision-Owner Review Packet](../../docs/adr/adr-0010-rls-evidence-decision-owner-review-packet.md) (**PREPARED**); the **one next bounded action** is `D-SEC-008 Authorized Decision-Owner Assignment and Evidence-Gap Triage` (**NOT STARTED**). Historical Section 4 records the immediate next step at execution time. `ADR-0010` stays **Proposed**, `D-SEC-008` stays **OPEN**, and production remains **CLOSED**.
