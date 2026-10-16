@@ -1147,6 +1147,10 @@ The unnumbered [ADR-0010 RLS evidence and decision-owner review packet](adr/adr-
 
 **One next bounded governance action:** D-SEC-008 Authorized Decision-Owner Assignment and Evidence-Gap Triage. No automatic human approval, runtime implementation, or new technical test is authorized by this documentation action.
 
+## D-SEC-008 Human Governance Request — 2026-10-16
+
+[GitHub Issue #2 — request authorized D-SEC-008 owner and evidence-gap triage](https://github.com/im-tnyx/gym-pulse/issues/2) is **OPEN / AWAITING HUMAN RESPONSE**. This follows the completed [ADR-0010 review packet](adr/adr-0010-rls-evidence-decision-owner-review-packet.md) and observed real PostgreSQL **29/29 synthetic PASS**. No one was assigned as decision owner; Foundation Issue #1 does not authorize D-SEC-008 decisions. Each identified evidence gap remains subject to actual human `REQUIRE PROOF` / `DEFER WITH RATIONALE` / `REQUEST REVISION` disposition. **ADR-0010 Proposed; D-SEC-008 OPEN; approval MISSING; production implementation gate CLOSED.** The next human action is documented owner authority and gap-by-gap triage in Issue #2.
+
 ## Legacy Migration State
 
 Legacy flat architecture/database/API/automation/payment/notification/security/testing/engineering/open-decision files remain migration inputs until their useful material has canonical structured destinations and they are explicitly deprecated or replaced by pointers.

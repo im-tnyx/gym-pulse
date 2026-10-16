@@ -204,3 +204,9 @@ A human must identify/confirm the authorized D-SEC-008 reviewer and triage the t
 - [Real PostgreSQL RLS Evidence](../../validation/security/rls/EVIDENCE.md)
 - [GitHub run #38773398231](https://github.com/im-tnyx/gym-pulse/actions/runs/38773398231) and uploaded synthetic evidence artifact `11992323149`
 - [GitHub Foundation approval Issue #1](https://github.com/im-tnyx/gym-pulse/issues/1) — Foundation scope **only**
+
+## 11. Human Governance Review Request — Opened 2026-10-16
+
+The next bounded action has been **initiated as a human-review request**, not completed as an owner assignment or triage: [GitHub Issue #2 — D-SEC-008 Owner Assignment and Evidence-Gap Triage](https://github.com/im-tnyx/gym-pulse/issues/2). This issue contains explicit authority-verification fields, an **unfilled** disposition for each outstanding P0/P1/security/provider/policy gap, a human-response template and completion criteria. No GitHub assignee or decision owner was assigned based on inference.
+
+**Request status: OPEN / AWAITING AUTHORIZED HUMAN RESPONSE.** At issuance, neither the authorized D-SEC-008 decision owner nor risk/acceptance dispositions have been evidenced. Issue #2 is **a request**, **not an approval reference**. Foundation Issue #1 grants no implied authority over this ADR. The active single next human governance step is **document authorized D-SEC-008 owner authority and complete issue-level evidence-gap dispositions in Issue #2**. Until then, `ADR-0010 = Proposed`, `D-SEC-008 = OPEN`, approval **MISSING**, overall production implementation **CLOSED**.

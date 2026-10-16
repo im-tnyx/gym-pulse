@@ -3537,6 +3537,27 @@ Production implementation gate = CLOSED
 
 Explicit residual gaps: client/runtime-custom-GUC trust boundary and arbitrary SQL risk; production authorization capability and Member-self policy; final tenant ownership and D-DATA-007; managed database pooler/roles/provider; privileged function review; actual provider callback signature verification; backup/policy restoration; static deployed-policy drift; production-scale query performance; authorized human signoff.
 
+## D-SEC-008 Owner Assignment and Evidence-Gap Triage — Request Raised
+
+Dispatch date: 2026-10-16. Main audited: 12075ffa031e2ddd2995a84dbcc61e28d4fe46ca. Durable request: https://github.com/im-tnyx/gym-pulse/issues/2
+
+The prepared ADR-0010 evidence review packet was sent to an **unassigned** human governance issue. A structured P0/P1 evidence-gap table, actual 29/29 synthetic PASS provenance, authority verification template, recommended decision-owner review agenda and explicit non-approval guardrails were recorded. **Raising an Issue is not an owner assignment, human triage response, approval, or a production implementation authorization.**
+
+~~~text
+D-SEC-008 Human Governance Request = OPENED (Issue #2)
+Authorized D-SEC-008 Decision Owner = OPEN / NOT IDENTIFIED
+Owner Authority / Delegation = MISSING
+Individual Evidence-Gap Triage Decisions = PENDING
+D-SEC-008 Decision = OPEN
+ADR-0010 = Proposed
+Bounded PostgreSQL RLS Evidence = PASS (29/29 synthetic)
+Full ADR acceptance-readiness = PARTIAL / EVIDENCE-GATED
+Human Approval Reference = MISSING
+Production Implementation Gate = CLOSED
+Canonical Decision Changes = NONE
+Production/Technical Implementation = NONE
+~~~
+
 ## Exact Next Bounded Governance Action
 
-**D-SEC-008 Authorized Decision-Owner Assignment and Evidence-Gap Triage** (NOT STARTED). Request a human-documented owner scope, review and disposition of the technical/security/provider gaps and approved evidence plan. Do not pre-appoint the Foundation Issue #1 owner, mark ADR-0010 Accepted, promote D-SEC-008 to DECIDED, or open the production gate. No Task 0035 or ADR-0027 created.
+**Await documented authorized D-SEC-008 owner assignment and row-by-row evidence-gap triage on GitHub Issue #2.** A human with evidenced authority must respond. **NOT COMPLETED**. Do not infer appointment from an account name or user instruction, do not accept ADR-0010, do not mark D-SEC-008 DECIDED, do not decide provider/ORM/production RLS, and do not start a technical test. No Task 0035 or ADR-0027 created.
