@@ -3597,3 +3597,9 @@ Infrastructure, migration, secrets or provider changes = NONE
 ## Exact Next Bounded Governance Action
 
 **Human `@im-tnyx` evidence-gap triage in Issue #2:** explicitly adopt, modify, conditionally defer or reject each of `G01–G12` with rationale, human evidence owner and ADR-acceptance-versus-production gate. Do not imply human approval of suggested tests from this plan or from the user request to prepare it. No technical validation run, separate provider decision, production rollout or risk acceptance is authorized by this preparation; no numbered Task/ADR created.
+
+## Three Historical Branches Reconciled — 2026-10-16
+
+Scope: user's explicit request to bring the three remaining branches through merge. Completed ancestry reconciliation of docs/phase-2-architecture and validation/postgres-foundation-20260929 without changing current main file tree. Historical validation/rls-isolation-20261015 was already in main ancestry. Two-parent merge commits: foundation 1e2b877d437b7e9ce1fc9120e8487c6172f45d36 (GitHub PR #8 MERGED); phase-2 docs 174be6be94333b6747962d1f288a32205d2e6c18 (GitHub PR #7 MERGED). Post-merge all three branches returned ahead_by=0 in comparison against main. Audit: docs/adr/branch-history-reconciliation-2026-10-16.md. Older branch source artifacts (including obsolete ADR-0001-use-monorepo) remain in Git history but are not promoted as current; current canonical ADR approvals untouched; no tests rerun. The three branch refs remain visible pending optional manual deletion. Production gate CLOSED.
+
+**Next bounded governance action remains:** confirmed owner @im-tnyx must explicitly review 12 ADR-0010 / D-SEC-008 security evidence gaps in GitHub Issue #2. Human gap dispositions pending (0/12), ADR-0010 Proposed, D-SEC-008 OPEN. This is separate from branch merge housekeeping.

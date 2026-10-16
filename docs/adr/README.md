@@ -589,7 +589,13 @@ The **Second Dependency/Security Acceptance-Readiness Review** is COMPLETED at [
 
 For `ADR-0026` specifically, later acceptance review must cover the proposed Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived policy, import/reporting terminology, attendance/no-show/authorization interaction, and historical migration strategy.
 
+## Historical Branch Merge Audit — 2026-10-16
+
+Three existing branches are now **included in main Git ancestry**, confirmed by GitHub compare (`ahead_by = 0` for all): `docs/phase-2-architecture`, `validation/postgres-foundation-20260929`, and `validation/rls-isolation-20261015`. The docs/foundation histories were reconciled through [merged PR #7](https://github.com/im-tnyx/gym-pulse/pull/7) and [merged PR #8](https://github.com/im-tnyx/gym-pulse/pull/8) using two-parent merges **without replacing current main tree content**; the RLS source was already an ancestor. [Detailed audit](branch-history-reconciliation-2026-10-16.md). Old branch references still exist (no deletion), but contain **zero unmerged commits**. ADR/governance statuses and production gate unchanged.
+
 ## 16. Related Documents
+
+- `branch-history-reconciliation-2026-10-16.md`
 
 - `adr-0010-security-evidence-gap-triage-plan.md`
 
