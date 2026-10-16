@@ -1149,7 +1149,7 @@ The unnumbered [ADR-0010 RLS evidence and decision-owner review packet](adr/adr-
 
 ## D-SEC-008 Human Governance Request — 2026-10-16
 
-[GitHub Issue #2 — request authorized D-SEC-008 owner and evidence-gap triage](https://github.com/im-tnyx/gym-pulse/issues/2) is **OPEN / AWAITING HUMAN RESPONSE**. This follows the completed [ADR-0010 review packet](adr/adr-0010-rls-evidence-decision-owner-review-packet.md) and observed real PostgreSQL **29/29 synthetic PASS**. No one was assigned as decision owner; Foundation Issue #1 does not authorize D-SEC-008 decisions. Each identified evidence gap remains subject to actual human `REQUIRE PROOF` / `DEFER WITH RATIONALE` / `REQUEST REVISION` disposition. **ADR-0010 Proposed; D-SEC-008 OPEN; approval MISSING; production implementation gate CLOSED.** The next human action is documented owner authority and gap-by-gap triage in Issue #2.
+[GitHub Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2) now includes the [human-confirmed `@im-tnyx` Decision Owner declaration](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976) (2026-10-16). The owner self-attested GymPulse architecture/security decision authority; the GitHub account's repository `admin` permission was verified. **Human owner identity/consent confirmed**, but **12 security evidence-gap decisions are still pending** and Independent Security Reviewer is **not appointed**. Prior 29/29 PostgreSQL RLS synthetic PASS is not full acceptance. **ADR-0010 Proposed; D-SEC-008 OPEN; final approval MISSING; production implementation gate CLOSED.** The next human action is per-gap `REQUIRE PROOF` / `DEFER WITH RATIONALE` / `REQUEST REVISION` disposition in Issue #2.
 
 ## Legacy Migration State
 

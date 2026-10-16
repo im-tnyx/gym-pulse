@@ -3558,6 +3558,22 @@ Canonical Decision Changes = NONE
 Production/Technical Implementation = NONE
 ~~~
 
+## Verified D-SEC-008 Decision-Owner Confirmation — 2026-10-16
+
+The human owner personally posted https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976 on 2026-10-16. Authenticated GitHub identity: `@im-tnyx`; repository permission observed `admin`; owner self-attested authority over GymPulse architecture and security governance. Owner explicitly accepts ADR-0010/D-SEC-008 decision responsibility and evidence review, but **withholds final ADR approval**, keeps D-SEC-008 OPEN, and does **not** authorize production. Independent Security Reviewer: NOT APPOINTED. This is a direct human self-attestation, not evidence of independent third-party delegation.
+
+~~~text
+D-SEC-008 Decision Owner = @im-tnyx (HUMAN-CONFIRMED / SELF-ATTESTED)
+Owner confirmation = GitHub Issue #2, comment 6214567976
+Decision owner identity assignment = COMPLETED
+Full evidence-gap triage = PENDING (0 of 12 explicitly decided)
+Human ADR-0010 final approval = NOT GRANTED
+ADR-0010 = Proposed
+D-SEC-008 = OPEN
+Production implementation gate = CLOSED
+RLS synthetic evidence = 29/29 PASS
+~~~
+
 ## Exact Next Bounded Governance Action
 
-**Await documented authorized D-SEC-008 owner assignment and row-by-row evidence-gap triage on GitHub Issue #2.** A human with evidenced authority must respond. **NOT COMPLETED**. Do not infer appointment from an account name or user instruction, do not accept ADR-0010, do not mark D-SEC-008 DECIDED, do not decide provider/ORM/production RLS, and do not start a technical test. No Task 0035 or ADR-0027 created.
+**D-SEC-008 human evidence-gap disposition review** in GitHub Issue #2: the confirmed `@im-tnyx` Decision Owner must explicitly decide each of 12 residual risk/evidence rows, with acceptance/production gating, accountable owner, rationale and review date. Assistant-proposed remedies are not automatically human decisions. Issue #2 remains OPEN. No production implementation, direct client DB access, additional security risk acceptance, ADR-0010 status promotion, Task 0035 or ADR-0027 is authorized by this owner assignment.

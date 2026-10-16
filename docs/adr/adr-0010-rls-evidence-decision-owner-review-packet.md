@@ -210,3 +210,21 @@ A human must identify/confirm the authorized D-SEC-008 reviewer and triage the t
 The next bounded action has been **initiated as a human-review request**, not completed as an owner assignment or triage: [GitHub Issue #2 — D-SEC-008 Owner Assignment and Evidence-Gap Triage](https://github.com/im-tnyx/gym-pulse/issues/2). This issue contains explicit authority-verification fields, an **unfilled** disposition for each outstanding P0/P1/security/provider/policy gap, a human-response template and completion criteria. No GitHub assignee or decision owner was assigned based on inference.
 
 **Request status: OPEN / AWAITING AUTHORIZED HUMAN RESPONSE.** At issuance, neither the authorized D-SEC-008 decision owner nor risk/acceptance dispositions have been evidenced. Issue #2 is **a request**, **not an approval reference**. Foundation Issue #1 grants no implied authority over this ADR. The active single next human governance step is **document authorized D-SEC-008 owner authority and complete issue-level evidence-gap dispositions in Issue #2**. Until then, `ADR-0010 = Proposed`, `D-SEC-008 = OPEN`, approval **MISSING**, overall production implementation **CLOSED**.
+
+## 12. Subsequent Verified Human Decision-Owner Confirmation — 2026-10-16
+
+**Status update after the original preparation and issue dispatch:** The connected GitHub account `@im-tnyx` with observed repository `admin` permission personally posted [owner acceptance and self-attested governance authority](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976) on 2026-10-16 (comment ID `6214567976`). The statement claims authority for GymPulse architecture/security governance and accepts responsibility for reviewing remaining evidence and determining required tests. It expressly **does not approve ADR-0010 or production implementation**. Independent Security Reviewer: **NOT APPOINTED**. This GitHub record is direct human self-attestation, **not third-party certification of delegated authority**. Prior sections retain the historical preparation/request-stage snapshot.
+
+| Governance check | Current verified state |
+| --- | --- |
+| Named owner and owner consent | **CONFIRMED: @im-tnyx** by personally submitted GitHub Issue #2 comment |
+| Owner authority basis | **Self-attested** GymPulse architecture/security authority; repository `admin` permission additionally checked |
+| Confirmation record/effective date | [Comment 6214567976](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976) — **2026-10-16** |
+| Review mandate | ADR-0010 / D-SEC-008 evidence review and security-governance decision responsibility |
+| Independent Security Reviewer | **Not appointed** (explicit declaration) |
+| Individual gap dispositions in Section 6 | **0 of 12 confirmed by human**; assistant recommended positions are **nonbinding** |
+| Final ADR decision / risk acceptance | **PENDING / MISSING** |
+| ADR-0010 / D-SEC-008 | **Proposed / OPEN** |
+| Production implementation | **CLOSED / NOT AUTHORIZED** |
+
+**One next bounded action:** the confirmed human owner must **review, modify/confirm and formally dispose each of 12 evidence gaps in [Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2)** with rationale, proof/next test, accountable person, review date and `ADR acceptance` versus `production implementation` gate. Do not claim `OWNER TRIAGE COMPLETED`, close Issue #2 or accept ADR-0010 before that response.

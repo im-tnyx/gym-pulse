@@ -9,7 +9,7 @@
 - ADR: `ADR-0010`
 - Primary Decision ID: `D-SEC-008`
 - Related Decision IDs: `D-SEC-003`, `D-ARCH-015`, `D-ARCH-004`, `D-SEC-002`, `D-ARCH-002`, `D-ARCH-017`, `D-ARCH-014`, `D-ARCH-006`, `D-ARCH-007`, `D-ARCH-009`, `D-ARCH-018`, `D-DATA-004`, `D-DATA-007`
-- Decision Owner: `Open`
+- Decision Owner: `@im-tnyx` — directly self-confirmed 2026-10-16 in [human GitHub comment](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976); repository admin permission observed; no ADR approval implied
 - Technical Owner: `Security / Architecture / Data Architecture`
 - Date Proposed: `2026-09-08`
 - Date Accepted: `Not accepted`
@@ -1226,7 +1226,7 @@ Lowest reversibility among evaluated options because data movement, connection r
 
 ## 18. Open Questions
 
-- Who is the authorized decision owner for `D-SEC-008`?
+- **Resolved for repository tracking 2026-10-16:** `@im-tnyx` personally confirmed owner responsibility and self-attested governance authority ([human GitHub comment](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976)); an independent reviewer is not appointed, and no actual ADR approval was given.
 - Will `D-ARCH-002` ultimately accept PostgreSQL, another relational engine, or another persistence architecture?
 - Which eventual schema objects qualify as tenant-owned, tenant-scoped configuration, global reference, or platform/system metadata?
 - At which ownership level should the initial isolation key be represented where organization, gym, and branch scopes coexist?
@@ -1358,6 +1358,12 @@ Before ADR-0010 can become `Accepted` and `D-SEC-008` can become `DECIDED`, evid
 A separate unnumbered [ADR-0010 RLS evidence / decision-owner review packet](adr-0010-rls-evidence-decision-owner-review-packet.md) consolidates the **29/29 PASS** bounded synthetic RLS results and **cleanup PASS**, independently cross-checks the latest completed [GitHub Actions run](https://github.com/im-tnyx/gym-pulse/actions/runs/38773398231) at source SHA `6431efb84aa1cd202e33f88b781d668927459291`, and maps the remaining security/provider/authorization/ownership/performance evidence gaps to decision-owner questions.
 
 **Governance effect: NONE.** This packet is **prepared for review but full acceptance-readiness remains PARTIAL/evidence-gated**. The authorized `D-SEC-008` decision owner remains **OPEN**, explicit review/approval remains **MISSING**, `ADR-0010` remains **Proposed**, `D-SEC-008` remains **OPEN**, and the production gate remains **CLOSED**. The next single bounded action is `D-SEC-008 Authorized Decision-Owner Assignment and Evidence-Gap Triage`; it is not performed by preparing the packet.
+
+### 19.7 Human decision-owner confirmation — not ADR acceptance (2026-10-16)
+
+The connected account `@im-tnyx` (verified repository `admin` permission) posted its own [D-SEC-008 owner confirmation](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976) on 2026-10-16. The human explicitly accepted the **ADR-0010 / D-SEC-008 Decision Owner** responsibility, self-attested authority over GymPulse architecture/security governance, accepted evidence-review responsibility, and **explicitly withheld final ADR acceptance and production implementation authorization**. Independent Security Reviewer is **not appointed**. This is an owner's self-attestation with durable issue evidence, not an independently documented external delegation.
+
+The owner nomination/confirmation step is **COMPLETED** for repository governance tracking. The **12 individual evidence-gap dispositions remain PENDING** in [Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2); do not transform the assistant's prior recommended dispositions into human-approved risk decisions. Consequently **ADR-0010 remains Proposed**, **D-SEC-008 remains OPEN**, risk acceptance and ADR final approval are **MISSING**, and production implementation gate remains **CLOSED**. The next one bounded action is **human review and explicit per-gap triage of all 12 open rows in Issue #2**.
 
 ## 20. Related Documents
 

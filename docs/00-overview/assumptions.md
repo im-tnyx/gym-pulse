@@ -133,6 +133,8 @@ This registration does **not** approve TypeScript, Node.js, Drizzle, Kysely, Pri
 | D-SEC-006 | P1 | OPEN | Retention periods for audit, attendance, payment, notification, and future health data |
 | D-SEC-007 | P3 | OPEN | Whether future health data requires additional encryption, consent, access controls, or regional hosting |
 | D-SEC-008 | P0 when client-accessible database patterns are used | OPEN | Define data-layer tenant-isolation/RLS strategy and its relationship to application capability authorization. |
+**D-SEC-008 owner-only governance update (2026-10-16):** `@im-tnyx` personally confirmed ADR-0010/D-SEC-008 security decision ownership and self-attested GymPulse architecture/security decision authority in [GitHub Issue #2 comment](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976). Repository admin permission was verified. **Owner = confirmed/self-attested; twelve evidence-gap dispositions = PENDING; human ADR-0010 acceptance = NOT GRANTED; D-SEC-008 status = OPEN; production implementation gate = CLOSED.** The statement is not independent third-party delegation proof and does not alter other decision statuses.
+
 
 ## 9. Data Model Assumptions and Decisions
 
