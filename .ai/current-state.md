@@ -3574,6 +3574,26 @@ Production implementation gate = CLOSED
 RLS synthetic evidence = 29/29 PASS
 ~~~
 
+## D-SEC-008 12-Gap Technical Disposition and Validation Plan — Prepared
+
+Preparation date: 2026-10-16; audited main `6610aaaa609eaaa4286c28cd399bd2bb9c293793`.
+
+Proposed matrix and future non-production packs: docs/adr/adr-0010-security-evidence-gap-triage-plan.md. Owner review issue: https://github.com/im-tnyx/gym-pulse/issues/2.
+
+~~~text
+Security gap recommendations = PREPARED (G01-G12, 12 rows)
+Future proposed validation packs = SPECIFIED (TP-01 through TP-10)
+Actual 2026-10-15 synthetic real PostgreSQL suite = PASS 29/29
+New tests executed under this step = 0
+Authorized owner = @im-tnyx (self-attested, verified GitHub comment)
+Human individual gap dispositions = 0/12, PENDING
+Final ADR approval = NOT GRANTED
+ADR-0010 = Proposed
+D-SEC-008 = OPEN
+Production gate = CLOSED
+Infrastructure, migration, secrets or provider changes = NONE
+~~~
+
 ## Exact Next Bounded Governance Action
 
-**D-SEC-008 human evidence-gap disposition review** in GitHub Issue #2: the confirmed `@im-tnyx` Decision Owner must explicitly decide each of 12 residual risk/evidence rows, with acceptance/production gating, accountable owner, rationale and review date. Assistant-proposed remedies are not automatically human decisions. Issue #2 remains OPEN. No production implementation, direct client DB access, additional security risk acceptance, ADR-0010 status promotion, Task 0035 or ADR-0027 is authorized by this owner assignment.
+**Human `@im-tnyx` evidence-gap triage in Issue #2:** explicitly adopt, modify, conditionally defer or reject each of `G01–G12` with rationale, human evidence owner and ADR-acceptance-versus-production gate. Do not imply human approval of suggested tests from this plan or from the user request to prepare it. No technical validation run, separate provider decision, production rollout or risk acceptance is authorized by this preparation; no numbered Task/ADR created.

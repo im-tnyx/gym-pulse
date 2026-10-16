@@ -1365,6 +1365,12 @@ The connected account `@im-tnyx` (verified repository `admin` permission) posted
 
 The owner nomination/confirmation step is **COMPLETED** for repository governance tracking. The **12 individual evidence-gap dispositions remain PENDING** in [Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2); do not transform the assistant's prior recommended dispositions into human-approved risk decisions. Consequently **ADR-0010 remains Proposed**, **D-SEC-008 remains OPEN**, risk acceptance and ADR final approval are **MISSING**, and production implementation gate remains **CLOSED**. The next one bounded action is **human review and explicit per-gap triage of all 12 open rows in Issue #2**.
 
+### 19.8 12-gap technical disposition and test plan — prepared, awaiting human triage (2026-10-16)
+
+[ADR-0010 Security Evidence-Gap Triage and Validation Plan](adr-0010-security-evidence-gap-triage-plan.md) records **12 proposed, individually scoped G01–G12 evidence dispositions** and **10 future non-production validation packs TP-01–TP-10**, with trust boundaries, residual risks, dependencies and acceptance-versus-release criteria. All recommendations are **assistant-prepared**, not decisions made by the human owner. **0/12 gap dispositions have been explicitly adopted by the owner** as of preparation; [GitHub Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2) stays OPEN for review. No provider, driver, pooler, migration, SQL helper, deployed role or new test has been implemented or approved. `ADR-0010 = Proposed`, `D-SEC-008 = OPEN`, production gate `CLOSED`.
+
+**Next bounded action:** `@im-tnyx` reviews and explicitly records adopt/modify/defer/reject decisions for the 12 security gaps in Issue #2 with rationale, evidence owners and acceptance/release gating. Do **not** treat the current "go" to prepare this plan as formal approval.
+
 ## 20. Related Documents
 
 - [ADR-0010 Evidence and Decision-Owner Review Packet](adr-0010-rls-evidence-decision-owner-review-packet.md)

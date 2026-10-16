@@ -1151,6 +1151,10 @@ The unnumbered [ADR-0010 RLS evidence and decision-owner review packet](adr/adr-
 
 [GitHub Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2) now includes the [human-confirmed `@im-tnyx` Decision Owner declaration](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976) (2026-10-16). The owner self-attested GymPulse architecture/security decision authority; the GitHub account's repository `admin` permission was verified. **Human owner identity/consent confirmed**, but **12 security evidence-gap decisions are still pending** and Independent Security Reviewer is **not appointed**. Prior 29/29 PostgreSQL RLS synthetic PASS is not full acceptance. **ADR-0010 Proposed; D-SEC-008 OPEN; final approval MISSING; production implementation gate CLOSED.** The next human action is per-gap `REQUIRE PROOF` / `DEFER WITH RATIONALE` / `REQUEST REVISION` disposition in Issue #2.
 
+## ADR-0010 12-Gap Technical Triage Plan — 2026-10-16
+
+[Read the proposed 12-gap security dispositions and 10-pack validation plan](adr/adr-0010-security-evidence-gap-triage-plan.md) (G01–G12, TP-01–TP-10). It identifies what real proof is still needed beyond the bounded **29/29 PASS** synthetic PostgreSQL validation. **Human review/adoption = PENDING (0/12)**; the [confirmed owner `@im-tnyx`](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976) must review each recommendation in [Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2). Plan authoring is not production readiness or ADR acceptance. `ADR-0010 = Proposed`; `D-SEC-008 = OPEN`; no new tests/deployments; production gate `CLOSED`.
+
 ## Legacy Migration State
 
 Legacy flat architecture/database/API/automation/payment/notification/security/testing/engineering/open-decision files remain migration inputs until their useful material has canonical structured destinations and they are explicitly deprecated or replaced by pointers.

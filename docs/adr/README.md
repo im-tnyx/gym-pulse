@@ -585,9 +585,13 @@ The **Second Dependency/Security Acceptance-Readiness Review** is COMPLETED at [
 
 **D-SEC-008 human decision-owner confirmation — VERIFIED:** On 2026-10-16 `@im-tnyx` directly [accepted owner responsibility and self-attested architecture/security authority](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976); GitHub repository admin permission was observed. This is an owner identity/consent record, not external delegation certification or formal ADR acceptance. Independent Security Reviewer **not appointed**. [Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2) remains **OPEN**; **all 12 individual evidence-gap dispositions remain PENDING**. `ADR-0010 = Proposed`, `D-SEC-008 = OPEN`, risk/ADR approval **MISSING**, production implementation gate **CLOSED**. **Next one bounded human action:** owner must review and explicitly disposition each issue gap with rationale/evidence owner and gating.
 
+**D-SEC-008 12-gap technical triage plan — PREPARED / HUMAN REVIEW PENDING:** [proposed G01–G12 matrix and TP-01–TP-10 future tests](adr-0010-security-evidence-gap-triage-plan.md), 2026-10-16. The plan proposes critical tenant-context, actual app authorization, tenant ownership, managed pooling, privileged SQL, callbacks/workers, backup, drift, performance, direct-client and governance gates. **No human per-gap adoption (0/12); no new test run; no technical/provider/production changes.** [Owner issue #2](https://github.com/im-tnyx/gym-pulse/issues/2) remains OPEN for `@im-tnyx`'s explicit row decisions. `ADR-0010 = Proposed`, `D-SEC-008 = OPEN`, implementation gate **CLOSED**.
+
 For `ADR-0026` specifically, later acceptance review must cover the proposed Member administrative semantics, Membership entitlement ownership, the proposed `FR-MEMBER-004` replacement, Blocked/Archived policy, import/reporting terminology, attendance/no-show/authorization interaction, and historical migration strategy.
 
 ## 16. Related Documents
+
+- `adr-0010-security-evidence-gap-triage-plan.md`
 
 - `adr-0010-rls-evidence-decision-owner-review-packet.md`
 - `second-dependency-security-acceptance-readiness-review.md`

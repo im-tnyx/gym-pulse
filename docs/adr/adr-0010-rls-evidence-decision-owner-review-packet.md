@@ -228,3 +228,7 @@ The next bounded action has been **initiated as a human-review request**, not co
 | Production implementation | **CLOSED / NOT AUTHORIZED** |
 
 **One next bounded action:** the confirmed human owner must **review, modify/confirm and formally dispose each of 12 evidence gaps in [Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2)** with rationale, proof/next test, accountable person, review date and `ADR acceptance` versus `production implementation` gate. Do not claim `OWNER TRIAGE COMPLETED`, close Issue #2 or accept ADR-0010 before that response.
+
+## 13. Proposed Gap Triage and Test Pack — prepared 2026-10-16
+
+An additional unnumbered [ADR-0010 Security Evidence-Gap Triage and Validation Plan](adr-0010-security-evidence-gap-triage-plan.md) organizes all **12** gaps as `G01–G12` with explicit **proposed** dispositions, severity/ownership/dependencies, evidence acceptance gates, and **10** non-production validation packs (`TP-01–TP-10`). This is a **draft engineering/security review input**. Owner `@im-tnyx` confirmed responsibility earlier, but has **not** explicitly adopted the 12 gap dispositions. **Triage pending 0/12**, formal ADR approval pending, `D-SEC-008 = OPEN`, `ADR-0010 = Proposed`, production implementation `CLOSED`. [Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2) is the sole human disposition tracking surface; do not equate technical preparation with authorized human risk acceptance.
