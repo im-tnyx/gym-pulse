@@ -1,6 +1,6 @@
 # GymPulse — Main Branch Protection and PR CI Readiness Audit
 
-> **Historical snapshot and later update.** Sections 1–7 describe the audited `main` commit `0160030f364eba68336235ed8f598e365ab501f6` on 2026-10-17. Their "only workflow", "no PR CI" and "NOT RUN" descriptions are **not statements about the current repository**. Read [Section 8](#8-post-audit-update--2026-10-18-ist) for newly observed CI evidence and still-unenforced gates; always recheck live GitHub before acting.
+> **Historical snapshot and later update.** Sections 1–7 describe the audited `main` commit `0160030f364eba68336235ed8f598e365ab501f6` on 2026-10-17. Their "only workflow", "no PR CI" and "NOT RUN" descriptions are **not statements about the current repository**. Read Section 8 below for newly observed CI evidence and still-unenforced gates; always recheck live GitHub before acting.
 
 ## Record Control
 
