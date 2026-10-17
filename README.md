@@ -62,6 +62,7 @@ Use the structured documentation first:
 | [`docs/01-product/`](./docs/01-product/) | Product requirements, roles, journeys, features, FRs/NFRs, and success metrics |
 | [`docs/02-architecture/`](./docs/02-architecture/) | Architecture principles and subsequent architecture documents |
 | [`docs/adr/`](./docs/adr/) | Architecture Decision Record governance and accepted/proposed decision history |
+| [`DESIGN.md`](./DESIGN.md) | Draft Phase 1 design-system entry point; visual tokens and brand approvals remain open |
 
 The older flat files under `docs/` remain **legacy migration sources** until their useful content is migrated and explicitly deprecated. They are not the preferred entry point when a structured canonical document covers the same topic.
 

@@ -108,6 +108,10 @@ docs/
 
 `docs/adr/` is the single canonical ADR store. Do not create a competing ADR directory under `02-architecture/`.
 
+## Application Design Reference — Draft Proposal
+
+The proposed [Phase 1 UI Design System](03-applications/design-system.md) organizes semantic token roles, member mobile interactions, front-desk/owner operational layouts, accessibility/failure states and design-to-code review criteria. [Root `DESIGN.md` entry point](../DESIGN.md) points here and does **not** establish a second canonical design source. **Brand palette, font, exact tokens, conformance target, responsive breakpoints and app frameworks remain unapproved/open.** Legacy [screen behavior](04-screen-specifications.md) and [user flows](03-user-flows.md) inform this draft; approved requirements/ADRs and structured docs retain precedence. See [Issue #4](https://github.com/im-tnyx/gym-pulse/issues/4).
+
 ## Documentation Creation Sequence
 
 1. Existing-information assessment and information architecture.
