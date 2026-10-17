@@ -36,7 +36,7 @@
 - **Checks not run and why:** `<including local git commands if only GitHub API was available>`
 - **Review/PR evidence:** `<PR link, review disposition, CI status as actually observed>`
 - **Remaining risks/decisions:** `<specific unresolved items>`
-- **Handoff outcome (only when paused/reviewed/completed):** `BLOCKED | NEEDS_APPROVAL | READY_FOR_REVIEW | COMPLETE | NOT YET HANDED OFF`; the last value is a placeholder, not a completed handoff.
+- **Handoff outcome (record only when paused, reviewed or completed):** `BLOCKED | NEEDS_APPROVAL | READY_FOR_REVIEW | COMPLETE`; before any handoff, leave this field unfilled and note `NOT YET HANDED OFF` in the task status/notes, not as a fifth outcome.
 - **Next bounded action:** `<one action, owner/dependency if known>`
 - **Ownership transfer (if any):** `<from/to, time, branch/commit, worktree status, pending work; otherwise none>`
 
