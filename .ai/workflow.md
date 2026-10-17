@@ -14,7 +14,7 @@ Use these steps for one reviewable task slice. Read the smallest relevant source
 ## 2. Check evidence and decision gates
 
 - Confirm a bounded task scope and relevant authority before editing. A clearly scoped user request may authorize **preparing docs or a review-only PR**, subject to applicable repo rules; an issue's existence alone does not. This task-level permission is **not** ADR acceptance, security-risk disposition, production authorization or permission to merge. A PR, roadmap entry, passing test or generic "go" must never substitute for those distinct gates.
-- Record the **separate gate and evidence for each applicable category**: (1) bounded task/docs scope; (2) architecture/product/provider/ADR choice; (3) auth, privacy, tenant/security or residual-risk decision; (4) production/infra or destructive action; and (5) latest-PR-specific human merge authorization and required review. Require the applicable owner decision before a new product feature, unresolved technology/provider commitment, sensitive schema/security change, production action or risk acceptance. Do not let a lower-tier task approval satisfy a higher-tier gate.
+- Record the **separate gate and evidence for each applicable category**: (1) bounded task/docs scope; (2) architecture/product/provider/ADR choice; (3) auth, privacy, tenant/security or residual-risk decision; (4) production/infra or destructive action; and (5) the actually adopted review/merge policy plus any explicit PR-specific merge decision. The [interim manual PR review procedure](../docs/13-engineering/interim-manual-pr-review-proposal.md) is **PROPOSED / NOT ADOPTED / UNENFORCED** under [Issue #15](https://github.com/im-tnyx/gym-pulse/issues/15): its independent-human-review and per-PR authorization steps are **recommended conservative practice, not an already adopted or technically enforced rule**. Verify any separately adopted policy and its source before describing a review as required or permission to merge as granted. Require the applicable owner decision before a new product feature, unresolved technology/provider commitment, sensitive schema/security change, production action or risk acceptance. Do not let a lower-tier task approval satisfy a higher-tier gate.
 - Routine subtasks **within an already authorized scope** do not require an invented new approval; keep changes inside the recorded boundaries.
 - If a required decision is `OPEN`, `PROPOSED`, `ASSUMED`, `DEFERRED` or `BLOCKED`, do **not** treat its candidate direction as approved implementation authority. Only an applicable `DECIDED` register entry synchronized with an authorized `Accepted` ADR/explicit owner decision supports that governed choice. `Rejected`, `Superseded` or `Deprecated` ADRs are historical evidence, not permission to implement their rejected/replaced choice. Continue only with independently permitted work (for example, a labeled docs proposal) and report the blocker.
 - For tenant isolation, authorization, payments, audit, consent, identity or RLS, apply the unchanged restrictions in root `AGENTS.md`; a validation-only proof is not production authorization.
@@ -31,7 +31,7 @@ Use these steps for one reviewable task slice. Read the smallest relevant source
 - Assign at most **one active implementation owner per bounded slice**. Planning/review agents can research and review, but must not simultaneously edit the slice's implementation files.
 - Before takeover, record a handoff with previous owner, new owner, branch/commit, dirty/uncommitted work, outstanding decisions and actual verification status. Never overwrite another contributor's work.
 - Use existing patterns and exact file boundaries. If scope or approval conditions change, stop and re-plan rather than expanding silently.
-- Propose changes in a reviewable branch and PR. Never auto-merge or bypass required human reviews.
+- Propose changes in a reviewable branch and PR. Never auto-merge or bypass any **actually adopted** required human reviews. Where no independent reviewer or enforceable branch/check gate exists, report that limitation; recommend explicit owner consideration of the current PR head and a PR-specific merge decision, but do not claim the [proposed interim procedure](../docs/13-engineering/interim-manual-pr-review-proposal.md) is adopted or enforced. Opening/reviewing a PR is never permission to merge.
 
 ## 5. Validate relevant evidence
 
@@ -42,7 +42,7 @@ Use these steps for one reviewable task slice. Read the smallest relevant source
 
 ## 6. Review and hand off
 
-**Task status** may be `PLANNED` or `IN_PROGRESS` while work continues. A **handoff outcome** is recorded only at a review/completion/pause boundary and must be one of the four outcomes below. `IN_PROGRESS` by itself is not evidence of review readiness or completion.
+**Task status** may be `PLANNED` or `IN_PROGRESS` while work continues. A **terminal/review handoff outcome** is used only when work is blocked, awaits a required approval, is ready for review, or is complete; it is one of the four values below. `IN_PROGRESS` alone does **not** imply review readiness or completion.
 
 | Outcome | Required evidence |
 | --- | --- |
@@ -51,7 +51,9 @@ Use these steps for one reviewable task slice. Read the smallest relevant source
 | `READY_FOR_REVIEW` | Reviewable branch/PR, changed paths, actual validations and reviewer questions |
 | `COMPLETE` | Acceptance criteria met with evidence and any required review/merge confirmed; not just PR opened |
 
-At handoff, record actual file/commit/PR links, validation run/not-run, residual risks, unresolved approvals, a supported handoff outcome and **one next bounded action**. Update the existing task brief **only when used**; otherwise keep that evidence in the linked issue/PR. Refresh [`.ai/current-state.md`](current-state.md) only for a material context/next-action change or confirmed staleness, and only after checking live sources. Keep historical audit records intact.
+**Routine pause / resumable continuation:** A healthy task may remain `IN_PROGRESS` across sessions without a blocker, approval request, or reviewable PR. Record a **continuation checkpoint**, not a false terminal/review outcome: current owner (and incoming owner if transferring), branch and exact HEAD/baseline, clean/dirty/uncommitted work where visible, changed paths, completed and pending steps, actual validation with `NOT RUN` reasons, risks, and **one next bounded action**. Keep the terminal/review outcome field empty (note `CONTINUATION — IN_PROGRESS` separately). On restart, inspect live files/branch/status before resuming; if a transfer occurs, explicitly acknowledge ownership without overwriting another contributor's work.
+
+**Blocked/review/completion handoff:** Record actual file/commit/PR links, validation run/not-run, residual risks, unresolved approvals, the applicable outcome from the table, and **one next bounded action**. Update the existing task brief **only when used**; otherwise keep the evidence in the linked issue/PR. Refresh [`.ai/current-state.md`](current-state.md) only for a material context/next-action change or confirmed staleness, and only after checking live sources. Keep historical audit records intact.
 
 ## Tool or tracker unavailable?
 
