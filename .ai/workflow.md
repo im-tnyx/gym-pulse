@@ -42,7 +42,7 @@ Use these steps for one reviewable task slice. Read the smallest relevant source
 
 ## 6. Review and hand off
 
-Use one clear task outcome:
+**Task status** may be `PLANNED` or `IN_PROGRESS` while work continues. A **handoff outcome** is recorded only at a review/completion/pause boundary and must be one of the four outcomes below. `IN_PROGRESS` by itself is not evidence of review readiness or completion.
 
 | Outcome | Required evidence |
 | --- | --- |
@@ -51,7 +51,7 @@ Use one clear task outcome:
 | `READY_FOR_REVIEW` | Reviewable branch/PR, changed paths, actual validations and reviewer questions |
 | `COMPLETE` | Acceptance criteria met with evidence and any required review/merge confirmed; not just PR opened |
 
-At handoff, record actual file/commit/PR links, validation run/not-run, residual risks, unresolved approvals, current outcome and **one next bounded action**. Update [`.ai/current-state.md`](current-state.md) only when useful, and only after checking live sources. Keep historical audit records intact.
+At handoff, record actual file/commit/PR links, validation run/not-run, residual risks, unresolved approvals, a supported handoff outcome and **one next bounded action**. Update the existing task brief **only when used**; otherwise keep that evidence in the linked issue/PR. Refresh [`.ai/current-state.md`](current-state.md) only for a material context/next-action change or confirmed staleness, and only after checking live sources. Keep historical audit records intact.
 
 ## Tool or tracker unavailable?
 
