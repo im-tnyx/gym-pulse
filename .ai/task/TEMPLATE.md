@@ -7,7 +7,7 @@
 - **Title:** `<short objective>`
 - **Issue / PR:** `<live links, or none>`
 - **Implementation owner:** `<one named owner, or unassigned>`
-- **Status:** `PLANNED | IN_PROGRESS | BLOCKED | NEEDS_APPROVAL | READY_FOR_REVIEW | COMPLETE`
+- **Task status (current lifecycle):** `PLANNED | IN_PROGRESS | BLOCKED | NEEDS_APPROVAL | READY_FOR_REVIEW | COMPLETE`; task status can be `IN_PROGRESS` even if no handoff has occurred.
 - **Baseline:** `<verified main SHA + date; active branch/HEAD; worktree status if available>`
 
 ## Evidence and approvals
@@ -36,7 +36,7 @@
 - **Checks not run and why:** `<including local git commands if only GitHub API was available>`
 - **Review/PR evidence:** `<PR link, review disposition, CI status as actually observed>`
 - **Remaining risks/decisions:** `<specific unresolved items>`
-- **Handoff outcome:** `BLOCKED | NEEDS_APPROVAL | READY_FOR_REVIEW | COMPLETE`
+- **Handoff outcome (only when paused/reviewed/completed):** `BLOCKED | NEEDS_APPROVAL | READY_FOR_REVIEW | COMPLETE | NOT YET HANDED OFF`; the last value is a placeholder, not a completed handoff.
 - **Next bounded action:** `<one action, owner/dependency if known>`
 - **Ownership transfer (if any):** `<from/to, time, branch/commit, worktree status, pending work; otherwise none>`
 
@@ -50,5 +50,5 @@
 - **Approval:** Docs-only bounded scope to be confirmed; no architecture approval implied.
 - **Acceptance:** Link resolves, one-file reviewable diff, checks honestly reported.
 - **Validation:** `git diff --check: NOT RUN` if no local worktree; `relative link target: PASS` only after the actual check is performed.
-- **Handoff:** `READY_FOR_REVIEW` only after a real PR exists; otherwise `IN_PROGRESS`.
+- **Handoff:** `READY_FOR_REVIEW` only after a real PR exists; otherwise task status remains `IN_PROGRESS` with handoff outcome `NOT YET HANDED OFF`.
 - **Next action:** Review the docs-only diff before any merge.
