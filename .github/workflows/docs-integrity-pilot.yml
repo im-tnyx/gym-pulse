@@ -1,0 +1,62 @@
+# Issue #19: bounded non-production documentation pilot; NOT a required or security gate.
+# Review this workflow carefully: PRs that change workflow YAML can change execution.
+# Draft PRs do not start runners. Checking included-minute balance requires human UI.
+name: GymPulse Read-Only Docs Integrity Pilot
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gympulse-docs-integrity-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  docs-integrity:
+    name: docs-integrity
+    # Opening this implementation PR as Draft prevents initial runner consumption.
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout reviewed base for trusted checker
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Checkout proposed PR merge as untrusted data
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.ref }}
+          path: subject
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run base-owned scoped checks only
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MERGE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! -f trusted/tools/ci/docs-integrity.mjs ]]; then
+            echo "::error::Trusted checker absent from PR base (bootstrap). Fail closed; no CI PASS."
+            exit 1
+          fi
+          # Use only reviewed base checker. Never execute scripts from subject/.
+          node trusted/tools/ci/docs-integrity.mjs subject "$BASE_SHA" "$HEAD_SHA" "$MERGE_SHA"
