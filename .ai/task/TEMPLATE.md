@@ -15,7 +15,11 @@
 - **Read and verified:** `<specific canonical files, live issues/PRs and observed source/config>`
 - **Requirement IDs:** `<exact IDs, links or none>`
 - **Decision/ADR IDs + live statuses:** `<IDs, statuses and approved evidence links; list OPEN/PROPOSED separately>`
-- **Approval for this scope:** `<explicit owner decision/link, or NOT YET GRANTED; do not infer from an issue>`
+- **Task/docs preparation authorization:** `<scoped user instruction or specific owner record/link; clarify exactly what review-only activity is permitted. Issue creation alone is not permission>`
+- **Separate architecture/product/provider ADR approval:** `<Accepted ADR + synchronized DECIDED record/owner evidence, NOT APPLICABLE, or NOT GRANTED>`
+- **Separate auth/security/privacy/risk approval:** `<explicit governing decision, NOT APPLICABLE, or NOT GRANTED>`
+- **Separate production/infra/destructive-action authorization:** `<explicit governing decision, NOT APPLICABLE, or NOT GRANTED>`
+- **PR-specific review and merge authorization:** `<latest-head human approval and merge permission, NOT APPLICABLE until PR, or NOT GRANTED>`
 - **Unresolved blockers:** `<what cannot be chosen or changed without approval>`
 
 ## Bounded plan
@@ -47,7 +51,7 @@
 - **Baseline:** `<live HEAD SHA to verify>`
 - **Goal:** Correct an outdated link in one documentation file.
 - **Scope:** `docs/example.md` only; no ADR, implementation, CI or production changes.
-- **Approval:** Docs-only bounded scope to be confirmed; no architecture approval implied.
+- **Approval:** An explicit scoped request may permit drafting this docs-only PR. Architecture/security/production approvals are **NOT APPLICABLE** to the example's non-production task; human PR-merge authorization is **NOT GRANTED**.
 - **Acceptance:** Link resolves, one-file reviewable diff, checks honestly reported.
 - **Validation:** `git diff --check: NOT RUN` if no local worktree; `relative link target: PASS` only after the actual check is performed.
 - **Handoff:** `READY_FOR_REVIEW` only after a real PR exists; while work remains `IN_PROGRESS`, leave the handoff outcome empty and note `NOT YET HANDED OFF` in task notes.
