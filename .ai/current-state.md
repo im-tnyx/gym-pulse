@@ -10,23 +10,25 @@
 - **Canonical sources:** [docs precedence](../docs/README.md), [decision register](../docs/00-overview/assumptions.md), [ADR index and acceptance policy](../docs/adr/README.md), [architecture principles](../docs/02-architecture/architecture-principles.md), [AI continuity contract](README.md). Legacy flat documents, old branches and `.ai/` notes are not approval evidence.
 - **Bounded agent tasks:** [task index](task/), especially [Task 0034, Member/Membership state ownership ADR proposal](task/0034-resolve-member-membership-state-ownership-adr.md). Do not interpret historical completed-task files as a current work order; consult live issues below.
 
-## 2. Actual decisions and test evidence
+## 2. Decision and test evidence at audited snapshot
 
-| Topic | Verified current state and canonical proof |
+The statuses and open-item counts below are **observations as of 2026-10-17**, not permanently current facts. Recheck each linked canonical decision/ADR, GitHub issue and test run before acting; newer evidence can supersede this handoff, but never silently approve a previously unapproved decision.
+
+| Topic | Evidence at audit date (recheck live canonical source) |
 | --- | --- |
 | Foundation architecture | **ADR-0001..0004 Accepted**: modular monolith (`D-ARCH-005`), strict TypeScript / Node LTS (`D-ARCH-016`), monorepo (`D-ARCH-001`), PostgreSQL category (`D-ARCH-002`); authorized approval [Issue #1](https://github.com/im-tnyx/gym-pulse/issues/1) |
 | Other architecture/provider/identity topics | **OPEN or PROPOSED as recorded in register**; ADR-0005 onward do **not** inherit Foundation approval. Especially `D-ARCH-004` Auth/Sessions OPEN, `D-ARCH-015` App Authorization PROPOSED, `D-ARCH-014` managed backend OPEN, `D-ARCH-017` data access PROPOSED, `D-DATA-007` Member/Membership ownership unresolved |
 | RLS architecture | [ADR-0010](../docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md) = **Proposed**; canonical `D-SEC-008 = OPEN`; application capability/tenant/Member-self authorization remains separately required |
 | Human security owner | `@im-tnyx` personally self-confirmed D-SEC-008 ownership and governance authority in [direct GitHub comment](https://github.com/im-tnyx/gym-pulse/issues/2#issuecomment-6214567976). **Independent security reviewer not appointed; no ADR acceptance** |
 | Bounded PostgreSQL validation | [29/29 synthetic RLS PASS, cleanup PASS](../validation/security/rls/EVIDENCE.md) at [Actions run #38773398231](https://github.com/im-tnyx/gym-pulse/actions/runs/38773398231). **Not** production, real app authorization, pooler, restore or performance proof |
-| Residual security review | [Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2) = **OPEN**; human row decisions **0/12**. The [G01–G12 triage + TP-01–TP-10 test proposals](../docs/adr/adr-0010-security-evidence-gap-triage-plan.md) are prepared but **not executed/approved** |
+| Residual security review | As of **2026-10-17**, [Issue #2](https://github.com/im-tnyx/gym-pulse/issues/2) was **OPEN** and human row dispositions were **0/12**. The [G01–G12 triage + TP-01–TP-10 test proposals](../docs/adr/adr-0010-security-evidence-gap-triage-plan.md) had been prepared but **not executed or accepted**. Recheck the live issue before using those counts or conclusions |
 | Production implementation | **CLOSED** until separate documented approvals. PostgreSQL custom tenant GUC under one SQL role is **not independently trusted tenant identity** |
 
 **Do not** upgrade Proposed/OPEN decisions, mark risk accepted, or infer production authorization from owner appointment, test success, PR merge or a user saying `go`.
 
 ## 3. Git branch / PR audit and active documentation work
 
-- Three earlier branches' **Git history is merged**: `docs/phase-2-architecture`, `validation/postgres-foundation-20260929`, `validation/rls-isolation-20261015`. All had **0 unmerged commits** after reconciliation; branch references may remain visible. Audit: [branch history reconciliation](../docs/adr/branch-history-reconciliation-2026-10-16.md); merged PRs [#7](https://github.com/im-tnyx/gym-pulse/pull/7) and [#8](https://github.com/im-tnyx/gym-pulse/pull/8). Do not revive historical ADR numbering.
+- Three earlier branches' **Git history was merged at the historical 2026-10-16 audit**: `docs/phase-2-architecture`, `validation/postgres-foundation-20260929`, `validation/rls-isolation-20261015`. They had **0 unmerged commits at that audit**; branch references may remain visible. Audit: [branch history reconciliation](../docs/adr/branch-history-reconciliation-2026-10-16.md); merged PRs [#7](https://github.com/im-tnyx/gym-pulse/pull/7) and [#8](https://github.com/im-tnyx/gym-pulse/pull/8). Do not revive historical ADR numbering.
 - [Issue #3](https://github.com/im-tnyx/gym-pulse/issues/3) is **CLOSED/completed**; [PR #9](https://github.com/im-tnyx/gym-pulse/pull/9) is **MERGED**. Root `AGENTS.md` exists on `main`. A merge does not accept unrelated Proposed ADRs or grant production permission.
 - [Issue #4](https://github.com/im-tnyx/gym-pulse/issues/4) is **CLOSED/completed**; [PR #11](https://github.com/im-tnyx/gym-pulse/pull/11) is **MERGED**. `DESIGN.md` and the design-system **Draft/Proposed** docs are on `main`; merging a design proposal does **not** approve palette, framework or other open design decisions.
 - [Issue #5](https://github.com/im-tnyx/gym-pulse/issues/5) is **CLOSED/completed**. Its compact `.ai/current-state.md` landed on `main`; the earlier working-state content remains in [the dated archive](archive/current-state-pre-cleanup-2026-10-17.md). Do not resurrect its historical "awaiting review" wording.
