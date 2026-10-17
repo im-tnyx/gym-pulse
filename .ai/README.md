@@ -60,3 +60,7 @@ At the end of a bounded documentation task:
 - Requirement IDs must come from canonical requirement documents.
 - Legacy flat docs may be listed as migration inputs, not promoted to canonical truth.
 - Future AI sessions should read `current-state.md`, then the active task, then only the canonical files listed for that task.
+
+## Agent evaluation reference (draft)
+
+The [agent effectiveness evaluation proposal](agent-effectiveness-evaluation.md) defines a prospective evidence rubric for separately authorized tasks. It is **not an active benchmark**, an agent policy override, a CI gate, an ADR acceptance or proof of improved results. Check its current PR/decision status before using it.
