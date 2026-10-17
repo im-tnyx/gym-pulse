@@ -19,7 +19,8 @@
 - **Separate architecture/product/provider ADR approval:** `<Accepted ADR + synchronized DECIDED record/owner evidence, NOT APPLICABLE, or NOT GRANTED>`
 - **Separate auth/security/privacy/risk approval:** `<explicit governing decision, NOT APPLICABLE, or NOT GRANTED>`
 - **Separate production/infra/destructive-action authorization:** `<explicit governing decision, NOT APPLICABLE, or NOT GRANTED>`
-- **PR-specific review and merge authorization:** `<latest-head human approval and merge permission, NOT APPLICABLE until PR, or NOT GRANTED>`
+- **Review/merge policy status and source:** `<adopted/enforced rule + evidence, or PROPOSED / NOT ADOPTED / UNENFORCED; Issue #15's interim manual procedure is only a proposal>`
+- **PR-specific reviewer and owner decision evidence:** `<latest-head independent review/owner merge disposition if actually recorded, REVIEW UNAVAILABLE, NOT APPLICABLE until PR, or NOT GRANTED; never infer policy adoption or approval>`
 - **Unresolved blockers:** `<what cannot be chosen or changed without approval>`
 
 ## Bounded plan
@@ -40,7 +41,8 @@
 - **Checks not run and why:** `<including local git commands if only GitHub API was available>`
 - **Review/PR evidence:** `<PR link, review disposition, CI status as actually observed>`
 - **Remaining risks/decisions:** `<specific unresolved items>`
-- **Handoff outcome (record only when paused, reviewed or completed):** `BLOCKED | NEEDS_APPROVAL | READY_FOR_REVIEW | COMPLETE`; before any handoff, leave this field unfilled and note `NOT YET HANDED OFF` in the task status/notes, not as a fifth outcome.
+- **Resumable continuation checkpoint (if paused while IN_PROGRESS):** `<CONTINUATION — IN_PROGRESS; branch/head, clean/dirty state, owner/transfer, changed paths, completed/pending steps, checks actually run/not run, one next action; NOT a formal handoff outcome>`
+- **Review/completion outcome (only if applicable):** `BLOCKED | NEEDS_APPROVAL | READY_FOR_REVIEW | COMPLETE`; leave unfilled during normal unblocked `IN_PROGRESS` work, even across sessions.
 - **Next bounded action:** `<one action, owner/dependency if known>`
 - **Ownership transfer (if any):** `<from/to, time, branch/commit, worktree status, pending work; otherwise none>`
 
@@ -54,5 +56,6 @@
 - **Approval:** An explicit scoped request may permit drafting this docs-only PR. Architecture/security/production approvals are **NOT APPLICABLE** to the example's non-production task; human PR-merge authorization is **NOT GRANTED**.
 - **Acceptance:** Link resolves, one-file reviewable diff, checks honestly reported.
 - **Validation:** `git diff --check: NOT RUN` if no local worktree; `relative link target: PASS` only after the actual check is performed.
-- **Handoff:** `READY_FOR_REVIEW` only after a real PR exists; while work remains `IN_PROGRESS`, leave the handoff outcome empty and note `NOT YET HANDED OFF` in task notes.
+- **Continuation:** If the docs edit is unfinished at session end, keep task status `IN_PROGRESS` and record `CONTINUATION — IN_PROGRESS` with branch/head, owner, changes, actual checks and next action. Leave review/completion outcome empty.
+- **Handoff:** Use `READY_FOR_REVIEW` only after a real, reviewable PR exists; record that outcome with evidence, not merely because an issue was opened.
 - **Next action:** Review the docs-only diff before any merge.
