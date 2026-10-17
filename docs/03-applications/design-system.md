@@ -17,7 +17,7 @@
 
 A reviewable starting language for GymPulse's operational interfaces, not an approved brand style guide or a runnable component library. This file organizes layout, states, semantic design tokens, accessibility and component contracts so design-to-code reviews do not have to infer behavior from visuals.
 
-The authoritative business behavior is described in [`docs/04-screen-specifications.md`](../04-screen-specifications.md) and [`docs/01-product/`](../01-product/). [`docs/README.md`](../README.md) establishes source precedence. [`docs/00-overview/assumptions.md`](../00-overview/assumptions.md) remains the canonical decision register; design proposals cannot change it.
+Structured product requirements and user journeys in [`docs/01-product/`](../01-product/) take precedence where they cover the same behavior. The older [`docs/04-screen-specifications.md`](../04-screen-specifications.md) and [`docs/03-user-flows.md`](../03-user-flows.md) supply additional screen/flow detail as **legacy migration inputs**, not overriding authority. [`docs/README.md`](../README.md) governs source precedence. [`docs/00-overview/assumptions.md`](../00-overview/assumptions.md) remains the canonical decision register; design proposals cannot change it.
 
 **Status labels throughout:** `REQUIRED` = traceable to existing behavior/NFRs; `PROPOSED` = optional design direction to validate; `OPEN` = actual product/brand/technical decision not yet approved. Numbers in PROPOSED token examples are **not frozen specifications**.
 
