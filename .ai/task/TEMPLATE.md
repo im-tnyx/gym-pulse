@@ -50,5 +50,5 @@
 - **Approval:** Docs-only bounded scope to be confirmed; no architecture approval implied.
 - **Acceptance:** Link resolves, one-file reviewable diff, checks honestly reported.
 - **Validation:** `git diff --check: NOT RUN` if no local worktree; `relative link target: PASS` only after the actual check is performed.
-- **Handoff:** `READY_FOR_REVIEW` only after a real PR exists; otherwise task status remains `IN_PROGRESS` with handoff outcome `NOT YET HANDED OFF`.
+- **Handoff:** `READY_FOR_REVIEW` only after a real PR exists; while work remains `IN_PROGRESS`, leave the handoff outcome empty and note `NOT YET HANDED OFF` in task notes.
 - **Next action:** Review the docs-only diff before any merge.
