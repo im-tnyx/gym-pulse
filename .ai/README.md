@@ -26,7 +26,9 @@ AI notes must never be cited as approval evidence for a product, security, archi
 .ai/
 ├── README.md
 ├── current-state.md
+├── workflow.md          # Bounded contributor execution guide
 └── task/
+    ├── TEMPLATE.md      # Reusable, noncanonical task brief
     └── NNNN-short-task-name.md
 ```
 
@@ -42,16 +44,17 @@ Use monotonically increasing four-digit task numbers:
 
 One task should represent one bounded documentation objective.
 
+Before starting a bounded task, consult the [contributor execution workflow](workflow.md). Create or update a brief using [the task template](task/TEMPLATE.md) **when the task needs durable, cross-session ownership/decision/validation context**; for a small single-PR docs fix, a sufficiently complete GitHub issue/PR can be the sole execution record. Both aids are **noncanonical**; recheck live source and authoritative decisions first.
+
 ## Update Protocol
 
-At the end of a bounded documentation task:
+At a pause, review handoff or completion of a bounded task:
 
-1. update the task file with result and files changed,
-2. refresh `current-state.md` with only the minimum context needed to resume,
-3. record the exact next task,
-4. do not copy large canonical sections into `.ai/`,
-5. do not mark Open/Proposed decisions as accepted in `.ai/`,
-6. link to canonical files instead of duplicating them.
+1. record the real changed files/commits, task status, executed/not-run checks, blockers and one next bounded action in its **existing** issue/PR or task brief; for an ordinary unblocked pause, capture a `CONTINUATION — IN_PROGRESS` checkpoint rather than inventing a terminal/review outcome;
+2. update `.ai/task/NNNN-...md` **only if** that brief exists or durable handoff/ownership details justify creating one; do not generate duplicate records for every small issue;
+3. refresh `current-state.md` **only when** the active working context, blocker or next bounded action materially changes, or to correct verified staleness; verify live GitHub and canonical docs first;
+4. preserve audit history and link to canonical sources instead of copying their content;
+5. never treat Open/Proposed decisions or these handoff notes as an approved architecture or production authorization.
 
 ## Rules
 
