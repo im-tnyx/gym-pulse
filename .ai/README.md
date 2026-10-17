@@ -50,7 +50,7 @@ Before starting a bounded task, consult the [contributor execution workflow](wor
 
 At a pause, review handoff or completion of a bounded task:
 
-1. record the real changed files/commits, outcome, executed/not-run checks, blockers, and one next bounded action in its **existing** issue/PR or task brief;
+1. record the real changed files/commits, task status, executed/not-run checks, blockers and one next bounded action in its **existing** issue/PR or task brief; for an ordinary unblocked pause, capture a `CONTINUATION — IN_PROGRESS` checkpoint rather than inventing a terminal/review outcome;
 2. update `.ai/task/NNNN-...md` **only if** that brief exists or durable handoff/ownership details justify creating one; do not generate duplicate records for every small issue;
 3. refresh `current-state.md` **only when** the active working context, blocker or next bounded action materially changes, or to correct verified staleness; verify live GitHub and canonical docs first;
 4. preserve audit history and link to canonical sources instead of copying their content;
