@@ -26,7 +26,9 @@ AI notes must never be cited as approval evidence for a product, security, archi
 .ai/
 ├── README.md
 ├── current-state.md
+├── workflow.md          # Bounded contributor execution guide
 └── task/
+    ├── TEMPLATE.md      # Reusable, noncanonical task brief
     └── NNNN-short-task-name.md
 ```
 
@@ -41,6 +43,8 @@ Use monotonically increasing four-digit task numbers:
 ```
 
 One task should represent one bounded documentation objective.
+
+Before starting a bounded task, follow the [contributor execution workflow](workflow.md) and use [the optional task brief template](task/TEMPLATE.md) when a task record improves handoff. Both are **noncanonical**; check current live repository state and the authoritative decisions first.
 
 ## Update Protocol
 
