@@ -13,10 +13,10 @@ Use these steps for one reviewable task slice. Read the smallest relevant source
 
 ## 2. Check evidence and decision gates
 
-- Confirm an authorized, bounded scope before editing. An issue, a PR, a roadmap entry, a passing test, or a casual "go" is **not** ADR acceptance or production authorization.
-- Require the applicable authorized decision process before a new independently scoped product feature, unresolved technology/provider commitment, sensitive schema/security change, production action, or risk acceptance.
+- Confirm a bounded task scope and relevant authority before editing. A clearly scoped user request may authorize **preparing docs or a review-only PR**, subject to applicable repo rules; an issue's existence alone does not. This task-level permission is **not** ADR acceptance, security-risk disposition, production authorization or permission to merge. A PR, roadmap entry, passing test or generic "go" must never substitute for those distinct gates.
+- Record the **separate gate and evidence for each applicable category**: (1) bounded task/docs scope; (2) architecture/product/provider/ADR choice; (3) auth, privacy, tenant/security or residual-risk decision; (4) production/infra or destructive action; and (5) latest-PR-specific human merge authorization and required review. Require the applicable owner decision before a new product feature, unresolved technology/provider commitment, sensitive schema/security change, production action or risk acceptance. Do not let a lower-tier task approval satisfy a higher-tier gate.
 - Routine subtasks **within an already authorized scope** do not require an invented new approval; keep changes inside the recorded boundaries.
-- If a required decision is `OPEN`, `PROPOSED`, `ASSUMED` or `BLOCKED`, do not silently implement the proposed choice. Continue only with work that is independently safe and permitted (for example, a clearly labeled docs proposal). Report the blocker precisely.
+- If a required decision is `OPEN`, `PROPOSED`, `ASSUMED`, `DEFERRED` or `BLOCKED`, do **not** treat its candidate direction as approved implementation authority. Only an applicable `DECIDED` register entry synchronized with an authorized `Accepted` ADR/explicit owner decision supports that governed choice. `Rejected`, `Superseded` or `Deprecated` ADRs are historical evidence, not permission to implement their rejected/replaced choice. Continue only with independently permitted work (for example, a labeled docs proposal) and report the blocker.
 - For tenant isolation, authorization, payments, audit, consent, identity or RLS, apply the unchanged restrictions in root `AGENTS.md`; a validation-only proof is not production authorization.
 
 ## 3. Plan a bounded task
