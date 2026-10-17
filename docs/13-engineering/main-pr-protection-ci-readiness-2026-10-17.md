@@ -1,5 +1,7 @@
 # GymPulse — Main Branch Protection and PR CI Readiness Audit
 
+> **Historical snapshot and later update.** Sections 1–7 describe the audited `main` commit `0160030f364eba68336235ed8f598e365ab501f6` on 2026-10-17. Their "only workflow", "no PR CI" and "NOT RUN" descriptions are **not statements about the current repository**. Read [Section 8](#8-post-audit-update--2026-10-18-ist) for newly observed CI evidence and still-unenforced gates; always recheck live GitHub before acting.
+
 ## Record Control
 
 | Field | Value |
@@ -133,3 +135,39 @@ Issue #10 remains OPEN until **(a)** actual GitHub branch protection/plan availa
 ## 7. Next Bounded Action
 
 The repository owner must identify which **private-repository** review/branch-rule controls are actually available in the admin UI and select the minimum policy or an explicit temporary unenforced procedure. That determines the scope of a separate non-production documentation-gate test PR; **do not conflate the owner decision with assistant-written audit prose**.
+
+## 8. Post-audit update — 2026-10-18 IST
+
+**Maturity:** Evidence update to this **DRAFT / NOT ADOPTED** governance recommendation; the original 2026-10-17 findings above remain an immutable-by-meaning historical account, not an active gate. The new current-state observations below were checked against GitHub after the CI and agent-documentation merges. **Verification baseline:** `main` = `8c005007fb3fd2e132ab8afa3a3df20c3b303aa5` at this follow-up; check the live SHA and settings before applying any conclusion.
+
+### What changed since the original audit
+
+1. [PR #20](https://github.com/im-tnyx/gym-pulse/pull/20) merged the read-only [`docs-integrity-pilot.yml`](../../.github/workflows/docs-integrity-pilot.yml) workflow into `main`; the [base-owned `docs-integrity.mjs` checker](../../tools/ci/docs-integrity.mjs) is also on `main`. The workflow uses `pull_request` events, a read-only token, a pinned checkout, an untrusted PR-merge checkout for input, and a 5-minute-per-job timeout. This is a bounded **documentation check**, not CI/CD architecture acceptance or a release/security test.
+2. [PR #23](https://github.com/im-tnyx/gym-pulse/pull/23), [PR #24](https://github.com/im-tnyx/gym-pulse/pull/24) and [PR #25](https://github.com/im-tnyx/gym-pulse/pull/25) were merged as separately owner-authorized documentation changes. Their *latest merge-time* `docs-integrity` checks really ran on changed Markdown:
+
+   | PR | Actual latest-head check | Changed Markdown files | Observed result |
+   | --- | --- | --- | --- |
+   | #23 | [Actions #39059347757](https://github.com/im-tnyx/gym-pulse/actions/runs/39059347757) | 1 | **PASS** |
+   | #24 | [Actions #39060803034](https://github.com/im-tnyx/gym-pulse/actions/runs/39060803034) | 4 | **PASS** |
+   | #25 | [Actions #39060943581](https://github.com/im-tnyx/gym-pulse/actions/runs/39060943581) | 2 | **PASS** |
+
+   The check scope is changed-file whitespace plus supported repository-relative Markdown links and heading anchors. External URL availability and advanced/nested Markdown syntax were **NOT RUN**. Some earlier CI attempts failed closed on stale PR base metadata; the failed run history remains **FAIL**, distinct from the subsequent passing runs.
+3. The [manual PR review procedure](interim-manual-pr-review-proposal.md) tracked under [Issue #15](https://github.com/im-tnyx/gym-pulse/issues/15) remains **PROPOSED / NOT ADOPTED / UNENFORCED**. Owner decisions permitting the three documentation merges were *per-PR manual decisions*, **not** independent GitHub `APPROVED` reviews or automated enforcement.
+4. The [Issue #10 owner-supplied UI evidence](https://github.com/im-tnyx/gym-pulse/issues/10) recorded **GitHub Free + private**, no configured classic rule and a warning that rulesets would not be enforced for that private repository. This is attributed to **owner-provided screenshots**, *not* independently accessible durable screenshots or a permanent entitlement guarantee. Do not upload an unredacted billing screenshot. Current connected branch metadata separately reports `main.protected=false`, `protection.enabled=false` and **zero required-check contexts**; the private rulesets endpoint still returns **403**. A successfully running check is **not a required merge gate**.
+
+### Evidence matrix after the CI pilot
+
+| Concern | Follow-up status | Limitation or next evidence |
+| --- | --- | --- |
+| Limited `pull_request` docs workflow | **INSTALLED / OBSERVED** | Read-only, not a production or all-files release gate |
+| Positive real changed-Markdown validation | **PASS (3 distinct PR heads)** | See run URLs and scopes above; not equivalent to comprehensive Markdown parsing |
+| Deliberately broken whitespace and local-link negative-case PRs | **NOT RUN** | Still require separately authorized disposable negative tests; do not infer pass/fail behavior from source review |
+| Fork/untrusted-account execution scenario | **NOT RUN** | Verify privileges and data exposure only in an authorized bounded test |
+| Required checks, independent reviews, branch push/deletion restrictions | **NOT ENFORCED / NOT VERIFIED AVAILABLE** | An owner/admin must inspect plan and settings, choose a policy, and separately verify effective enforcement or accept a documented manual-only risk disposition |
+| Application, PostgreSQL/RLS production tests, release gates | **NOT RUN / NOT AUTHORIZED BY THIS AUDIT** | Keep ADR-0017 Proposed, `D-ARCH-019 OPEN`, `D-ARCH-018 PROPOSED`, ADR-0010 Proposed and `D-SEC-008 OPEN` |
+
+### Updated next bounded action (supersedes historical Section 7)
+
+The authorized repository owner reviews [Issue #10](https://github.com/im-tnyx/gym-pulse/issues/10)'s recorded **current settings/plan evidence**, and chooses whether to pursue enforceable protections where available or formally dispose of the **unenforced manual-only residual risk**. [Issue #19](https://github.com/im-tnyx/gym-pulse/issues/19) separately tracks the still-missing negative/fork/runner evidence for the docs pilot. **Do not mark either issue completed from three positive checks alone.**
+
+This addendum does **not** change repository visibility, subscription/billing, branch rules, CI workflow code, testing decisions, ADR status, production state or security risk acceptance. This documentation PR itself still needs a **fresh current-base CI PASS** and a separate PR #14-specific owner disposition before any merge.
