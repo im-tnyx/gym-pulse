@@ -19,6 +19,7 @@ Before proposing or editing anything, consult only the relevant live sources:
 
 - Inspect the current `main` head, relevant branch/PR/issue, owners, canonical files and applicable ADR statuses **before editing**.
 - Work on **one bounded task** and use the smallest reviewable change. Link it to the issue and identify scope, dependencies, success criteria and risks.
+- For bounded task planning, ownership, honest verification, and handoff use the [AI task workflow](.ai/workflow.md) and [task brief template](.ai/task/TEMPLATE.md); neither is approval authority.
 - Never interpret `go`, a passing test, a merged branch, or an issue opened by an agent as **human ADR acceptance** or production authorization.
 - Open a reviewable pull request for proposed changes; do not bypass agreed human reviews, required checks, branch rules or release approvals. If protection/checks are missing, **report the gap** instead of assuming automatic merge is safe.
 - Keep proposals explicitly marked as proposals. Do not turn an `OPEN`, `PROPOSED`, or `ASSUMED` decision into `DECIDED`, `Accepted`, or an implementation mandate without the recorded, authorized decision process.
