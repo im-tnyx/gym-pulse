@@ -162,7 +162,7 @@ function removeCode(markdown) {
 }
 
 function headingSlug(heading) {
-  return heading.replace(/!?\[([^\]]+)\]\([^)]+\)/g, '$1')
+  return decodeLinkEntities(heading).replace(/!?\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/<[^>]*>/g, '')
     .replace(/[\x60*_~]/g, '')
     .normalize('NFKC').toLowerCase()
@@ -308,6 +308,35 @@ function baseTargetValid(relative, anchor) {
   return valid;
 }
 
+function resolveMissingParentAliases(parent) {
+  // Deleted last-file targets remove their containing directory from Git's
+  // checkout. Resolve a surviving tracked symlink without dereferencing a
+  // now-missing directory. Never follow aliases outside the checkout.
+  if (!withinRoot(parent)) throw new Error('Unsafe alias path');
+  let pending = path.relative(root, parent).split(path.sep).filter(Boolean);
+  let current = root, hops = 0, steps = 0;
+  while (pending.length) {
+    if (++steps > 128) throw new Error('Alias path exceeds resolution bounds');
+    const next = path.resolve(current, pending.shift());
+    if (!withinRoot(next)) throw new Error('Symlink alias escapes repository');
+    let stat;
+    try { stat = fs.lstatSync(next); }
+    catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      current = next;
+      continue;
+    }
+    if (stat.isSymbolicLink()) {
+      if (++hops > 8) throw new Error('Too many symlink aliases');
+      const resolved = path.resolve(path.dirname(next), fs.readlinkSync(next));
+      if (!withinRoot(resolved)) throw new Error('Symlink alias escapes repository');
+      pending = path.relative(root, resolved).split(path.sep).filter(Boolean).concat(pending);
+      current = root;
+    } else current = next;
+  }
+  return current;
+}
+
 function refersToDeletedMarkdown(source, raw, deleted) {
   let link;
   try { link = destination(raw); } catch { throw new Error('Unparseable inbound destination; fail closed'); }
@@ -327,7 +356,11 @@ function refersToDeletedMarkdown(source, raw, deleted) {
     // Deleted basename cannot be realpathed, but any symlinked parent can.
     const parent = fs.realpathSync(path.dirname(absolute));
     if (withinRoot(parent)) paths.push(path.join(parent, path.basename(absolute)));
-  } catch { /* Normal missing parent: no alias candidate. */ }
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    const parent = resolveMissingParentAliases(path.dirname(absolute));
+    if (withinRoot(parent)) paths.push(path.join(parent, path.basename(absolute)));
+  }
   return paths.some(candidate => {
     if (!withinRoot(candidate)) return false;
     const relative = path.relative(root, candidate).split(path.sep).join('/');
@@ -399,6 +432,9 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
       if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
       const opener = match.index + (match[0][0] === '!' ? 1 : 0);
       if (escapedAt(text, opener)) continue;
+      // A closing bracket immediately before this token means it is the
+      // suffix of a full/collapsed reference, not an independent shortcut.
+      if (match.index > 0 && text[match.index - 1] === ']') continue;
       const after = text[match.index + match[0].length] || '';
       if (after === ':' || after === '[' || after === '(') continue;
       const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
