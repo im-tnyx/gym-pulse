@@ -19,8 +19,8 @@
 - **Separate architecture/product/provider ADR approval:** `<Accepted ADR + synchronized DECIDED record/owner evidence, NOT APPLICABLE, or NOT GRANTED>`
 - **Separate auth/security/privacy/risk approval:** `<explicit governing decision, NOT APPLICABLE, or NOT GRANTED>`
 - **Separate production/infra/destructive-action authorization:** `<explicit governing decision, NOT APPLICABLE, or NOT GRANTED>`
-- **Review/merge policy status and source:** `<adopted/enforced rule + evidence, or PROPOSED / NOT ADOPTED / UNENFORCED; Issue #15's interim manual procedure is only a proposal>`
-- **PR-specific reviewer and owner decision evidence:** `<latest-head independent review/owner merge disposition if actually recorded, REVIEW UNAVAILABLE, NOT APPLICABLE until PR, or NOT GRANTED; never infer policy adoption or approval>`
+- **Review/merge policy status and source:** `<verify current owner decision and enforcement separately; Issue #15's voluntary docs-only manual PR procedure was ADOPTED on 2026-10-18: https://github.com/im-tnyx/gym-pulse/issues/15#issuecomment-6252020586; it remains MANUAL-ONLY / UNENFORCED, not a security-risk acceptance or an approval for non-docs/sensitive work>`
+- **PR-specific reviewer and owner decision evidence:** `<Codex bot technical review of exact latest PR head (not independent human approval); human reviewer APPROVED or INDEPENDENT HUMAN REVIEW UNAVAILABLE; separate explicit owner merge authorization or NOT GRANTED; no inference from green CI or bot comments>`
 - **Unresolved blockers:** `<what cannot be chosen or changed without approval>`
 
 ## Bounded plan
