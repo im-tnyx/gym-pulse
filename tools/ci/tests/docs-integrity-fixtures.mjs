@@ -3,7 +3,8 @@
  * Issue #19: offline, synthetic docs-integrity checker fixtures.
  * Manual invocation only: node tools/ci/tests/docs-integrity-fixtures.mjs
  * No packages, network, GitHub tokens, production data, or workflow changes.
- * This is local subprocess evidence, NOT a GitHub Actions Gate B negative run.
+ * Local subprocess evidence only, NOT a GitHub Actions Gate B negative run.
+ * Filesystem-dependent fixtures explicitly SKIP when their premise is unavailable.
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -20,7 +21,14 @@ function run(bin, args, cwd, expectSuccess = true) {
     encoding: 'utf8',
     timeout: 20000,
     maxBuffer: 1024 * 1024,
-    env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
+    env: {
+      ...process.env,
+      // Ignore machine/user Git signing, hooks and credential configuration.
+      GIT_CONFIG_NOSYSTEM: '1',
+      GIT_CONFIG_GLOBAL: os.devNull,
+      GIT_CONFIG_COUNT: '0',
+      GIT_CONFIG_PARAMETERS: '',
+    },
   });
   if (result.error) throw result.error;
   if (expectSuccess && result.status !== 0) {
@@ -30,26 +38,33 @@ function run(bin, args, cwd, expectSuccess = true) {
 }
 
 function git(cwd, ...args) {
-  return run('git', args, cwd).stdout.trim();
+  // Also neutralize explicitly configured repo hooks/signing; never invoke PR scripts.
+  return run('git', [
+    '-c', 'commit.gpgSign=false',
+    '-c', `core.hooksPath=${path.join(cwd, '.nonexistent-fixture-hooks')}`,
+    ...args,
+  ], cwd).stdout.trim();
 }
 
 const fixtures = [
   { name: 'valid local link and anchor', md: '# New\n[ok](Target.md#hello-there)\n', pass: true },
   { name: 'trailing whitespace', md: '# Header  \n', pass: false, signal: 'Changed-line whitespace check failed' },
   { name: 'missing local file', md: '# New\n[missing](no-such-file.md)\n', pass: false, signal: 'invalid local link' },
-  { name: 'incorrect filename case', md: '# New\n[case](target.md)\n', pass: false, signal: 'invalid local link' },
+  { name: 'incorrect filename case', md: '# New\n[case](target.md)\n', extra: 'case', pass: false, signal: 'invalid local link' },
   { name: 'missing Markdown anchor', md: '# New\n[anchor](Target.md#no-such-heading)\n', pass: false, signal: 'invalid local link' },
   { name: 'valid reference link', md: '# New\n[Target][one]\n\n[one]: Target.md#existing\n', pass: true },
   { name: 'undefined reference label', md: '# New\n[Target][undefined]\n', pass: false, signal: 'undefined reference label' },
   { name: 'fenced-code exclusion', md: '# New\n```md\n[missing](does-not-exist.md)\n```\n', pass: true },
   { name: 'external URL excluded', md: '# New\n[remote](https://example.invalid/blocked)\n', pass: true },
-  { name: 'path traversal rejected', md: '# New\n[escape](../../../../etc/passwd)\n', pass: false, signal: 'invalid local link' },
+  { name: 'path traversal to existing outside file', md: null, extra: 'traversal', pass: false, signal: 'invalid local link' },
   { name: 'bad percent encoding', md: '# New\n[bad](file%ZZ.md)\n', pass: false, signal: 'invalid URL encoding' },
   { name: 'root-absolute path rejected', md: '# New\n[absolute](/etc/passwd)\n', pass: false, signal: 'root-absolute link unsupported' },
   { name: 'wrong merge parent rejected', md: '# New\n[ok](Target.md)\n', pass: false, wrongBase: true, signal: 'Unexpected PR merge commit parents' },
-  { name: 'non-doc change classified', md: null, extra: 'other', pass: true, signal: 'NO DOC FILES' },
+  { name: 'non-doc change classified', md: null, extra: 'other', pass: true, signal: 'NO DOC FILES', markdownCount: 0 },
   { name: 'symlink escape rejected', md: '# New\n[secret](external-link.txt)\n', extra: 'symlink', pass: false, signal: 'invalid local link' },
-  { name: 'filename with whitespace', md: '# New\n[ok](Target.md)\n', extra: 'spaced', pass: true },
+  // The *only changed Markdown* has a space in its path and a deliberately broken link.
+  // A broken NUL-delimited changed-path parser would miss it and incorrectly PASS.
+  { name: 'spaced Markdown filename checked', md: null, extra: 'spaced', pass: false, signal: 'docs/space file.md: invalid local link', markdownCount: 1 },
 ];
 
 function executeFixture(test) {
@@ -65,14 +80,34 @@ function executeFixture(test) {
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'synthetic baseline');
     const base = git(root, 'rev-parse', 'HEAD');
+    if (test.extra === 'case' && fs.existsSync(path.join(root, 'docs', 'target.md'))) {
+      return { skip: 'case-insensitive filesystem; case-mismatch cannot be asserted' };
+    }
     git(root, 'checkout', '-q', '-b', 'pr');
     if (test.md !== null) fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), test.md);
     if (test.extra === 'other') fs.writeFileSync(path.join(root, 'other.txt'), 'synthetic non-doc\n');
-    if (test.extra === 'spaced') fs.writeFileSync(path.join(root, 'space file.txt'), 'synthetic whitespace filename\n');
+    if (test.extra === 'spaced') {
+      fs.writeFileSync(path.join(root, 'docs', 'space file.md'), '# New\n[missing](absent-spaced-target.md)\n');
+    }
+    if (test.extra === 'traversal') {
+      const target = path.join(outside, 'outside.txt');
+      fs.writeFileSync(target, 'synthetic existing outside target\n');
+      const rel = path.relative(path.join(root, 'docs'), target);
+      assert.ok(!path.isAbsolute(rel) && rel.split(path.sep).includes('..'), 'fixture must escape repository');
+      const url = rel.split(path.sep).map(encodeURIComponent).join('/');
+      fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), `# New\n[escape](${url})\n`);
+    }
     if (test.extra === 'symlink') {
       const target = path.join(outside, 'outside.txt');
       fs.writeFileSync(target, 'synthetic outside repository\n');
-      fs.symlinkSync(target, path.join(root, 'docs', 'external-link.txt'));
+      try {
+        fs.symlinkSync(target, path.join(root, 'docs', 'external-link.txt'));
+      } catch (error) {
+        if (['EPERM', 'ENOSYS', 'EACCES'].includes(error.code)) {
+          return { skip: 'symlinks unavailable on this filesystem/user' };
+        }
+        throw error;
+      }
     }
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'synthetic PR change');
@@ -85,21 +120,30 @@ function executeFixture(test) {
     const combined = result.stdout + result.stderr;
     assert.equal(result.status === 0, test.pass, `${test.name}: unexpected checker exit (${result.status})\n${combined}`);
     if (test.signal) assert.ok(combined.includes(test.signal), `${test.name}: missing signal ${test.signal}\n${combined}`);
+    if (test.markdownCount !== undefined) {
+      assert.ok(combined.includes(`markdown_files=${test.markdownCount}`), `${test.name}: incorrect docs count\n${combined}`);
+    }
+    return { checked: true };
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
     fs.rmSync(outside, { recursive: true, force: true });
   }
 }
 
-let failed = 0;
+let failed = 0, skipped = 0;
 for (const test of fixtures) {
   try {
-    executeFixture(test);
-    console.log(`PASS fixture: ${test.name} (expected checker ${test.pass ? 'PASS' : 'FAIL'})`);
+    const result = executeFixture(test);
+    if (result.skip) {
+      skipped += 1;
+      console.log(`SKIP fixture: ${test.name} (${result.skip})`);
+    } else {
+      console.log(`PASS fixture: ${test.name} (expected checker ${test.pass ? 'PASS' : 'FAIL'})`);
+    }
   } catch (error) {
     failed += 1;
     console.error(`FAIL fixture: ${test.name}: ${error.message}`);
   }
 }
-console.log(`Offline fixtures: ${fixtures.length - failed}/${fixtures.length} expected outcomes matched; GitHub Actions negative runs: NOT RUN`);
+console.log(`Offline fixtures: ${fixtures.length - failed - skipped}/${fixtures.length} executed successfully; ${skipped} SKIP; ${failed} FAIL; GitHub Actions negative runs: NOT RUN`);
 if (failed) process.exitCode = 1;
