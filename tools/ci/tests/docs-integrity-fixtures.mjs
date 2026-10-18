@@ -40,6 +40,8 @@ function run(bin, args, cwd, expectSuccess = true) {
   // GIT_CONFIG changes where `git config` writes. It must not leak into synthetic repos.
   const env = { ...process.env };
   for (const name of localGitVars) delete env[name];
+  // Never initialize synthetic repositories from inherited hooks/config templates.
+  delete env.GIT_TEMPLATE_DIR;
   // Git author/committer overrides take precedence over local user.name/email.
   for (const name of [
     'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_AUTHOR_DATE',
@@ -95,6 +97,8 @@ const fixtures = [
   { name: 'root-absolute path rejected', md: '# New\n[absolute](/etc/passwd)\n', pass: false, signal: 'root-absolute link unsupported' },
   { name: 'wrong merge parent rejected', md: '# New\n[ok](Target.md)\n', pass: false, wrongBase: true, signal: 'Unexpected PR merge commit parents' },
   { name: 'wrong PR head parent rejected', md: '# New\n[ok](Target.md)\n', pass: false, wrongHead: true, signal: 'Unexpected PR merge commit parents' },
+  { name: 'octopus merge with third parent rejected', md: '# New\n[ok](Target.md)\n', extra: 'octopus', pass: false, signal: 'Unexpected PR merge commit parents' },
+  { name: 'oversized changed Markdown rejected', md: null, extra: 'oversized', pass: false, signal: 'unsupported file or >1MiB', markdownCount: 1 },
   { name: 'non-doc change classified', md: null, extra: 'other', pass: true, signal: 'NO DOC FILES', markdownCount: 0 },
   { name: 'non-doc trailing whitespace rejected', md: null, extra: 'other-white', pass: false, signal: 'Changed-line whitespace check failed', markdownCount: 0 },
   { name: 'symlink escape rejected', md: '# New\n[secret](external-link.txt)\n', extra: 'symlink', pass: false, signal: 'invalid local link' },
@@ -122,6 +126,7 @@ function executeFixture(test) {
     git(root, 'checkout', '-q', '-b', 'pr');
     if (test.md !== null) fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), test.md);
     if (test.extra === 'modified') fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Changed\n[missing](absent-modified-target.md)\n');
+    if (test.extra === 'oversized') fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), Buffer.alloc(1024 * 1024 + 1, 'X'));
     if (test.extra === 'renamed') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
     if (test.extra === 'other') fs.writeFileSync(path.join(root, 'other.txt'), 'synthetic non-doc\n');
     if (test.extra === 'other-white') fs.writeFileSync(path.join(root, 'other.txt'), 'synthetic non-doc with trailing spaces  \n');
@@ -158,7 +163,16 @@ function executeFixture(test) {
       git(root, 'commit', '-q', '-m', 'base-only removal after PR branch');
       base = git(root, 'rev-parse', 'HEAD');
     }
-    git(root, 'merge', '-q', '--no-ff', '-m', 'synthetic PR merge', 'pr');
+    if (test.extra === 'octopus') {
+      git(root, 'checkout', '-q', '-b', 'third');
+      fs.writeFileSync(path.join(root, 'third-party.txt'), 'unrelated third-parent change\n');
+      git(root, 'add', '-A');
+      git(root, 'commit', '-q', '-m', 'unrelated third parent');
+      git(root, 'checkout', '-q', 'main');
+      git(root, 'merge', '-q', '--no-ff', '-m', 'synthetic three-parent merge', 'pr', 'third');
+    } else {
+      git(root, 'merge', '-q', '--no-ff', '-m', 'synthetic PR merge', 'pr');
+    }
     const merge = git(root, 'rev-parse', 'HEAD');
     if (test.extra === 'diverged') {
       assert.ok(!fs.existsSync(path.join(root, 'docs', 'Target.md')), 'base-only deleted Markdown must stay absent in merge');
