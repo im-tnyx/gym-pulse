@@ -88,19 +88,20 @@ function destination(raw) {
   return (value.match(/^(?:\\.|[^\s])+/) || [''])[0].replace(/\\([() ])/g, '$1');
 }
 
-function checkLink(source, raw) {
+function checkLink(source, raw, line) {
+  const at = line ? ' [' + safe(source) + ':' + line + ']' : '';
   let target;
-  try { target = destination(raw); } catch { fail(safe(source) + ': malformed link'); return; }
+  try { target = destination(raw); } catch { fail(safe(source) + ': malformed link' + at); return; }
   if (!target || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(target)) return; // No external URL calls.
-  if (target.startsWith('/')) { fail(safe(source) + ': root-absolute link unsupported'); return; }
+  if (target.startsWith('/')) { fail(safe(source) + ': root-absolute link unsupported' + at); return; }
   const hash = target.indexOf('#'), query = target.indexOf('?');
   const end = Math.min(hash < 0 ? target.length : hash, query < 0 ? target.length : query);
   let filePart, anchor;
   try {
     filePart = decodeURIComponent(target.slice(0, end));
     anchor = hash < 0 ? '' : decodeURIComponent(target.slice(hash + 1));
-  } catch { fail(safe(source) + ': invalid URL encoding'); return; }
-  if (filePart.includes('\0') || filePart.includes('\\')) { fail(safe(source) + ': unsafe encoding'); return; }
+  } catch { fail(safe(source) + ': invalid URL encoding' + at); return; }
+  if (filePart.includes('\0') || filePart.includes('\\')) { fail(safe(source) + ': unsafe encoding' + at); return; }
   const rel = filePart ? path.join(path.dirname(source), filePart) : source;
   try {
     const resolved = localFile(rel), stat = fs.statSync(resolved);
@@ -108,7 +109,21 @@ function checkLink(source, raw) {
     if (anchor && stat.isFile() && resolved.toLowerCase().endsWith('.md')) {
       if (!headingsFor(resolved).has(anchor)) throw new Error('Missing Markdown anchor');
     } else if (anchor && stat.isDirectory()) throw new Error('Directory anchor unsupported');
-  } catch { fail(safe(source) + ': invalid local link ' + safe(target)); }
+  } catch { fail(safe(source) + ': invalid local link ' + safe(target) + at); }
+}
+
+// Convert match offsets to 1-based file lines without rescanning for each link.
+function lineLookup(text) {
+  const breaks = [];
+  for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) === 10) breaks.push(i);
+  return offset => {
+    let lo = 0, hi = breaks.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (breaks[mid] < offset) lo = mid + 1; else hi = mid;
+    }
+    return lo + 1;
+  };
 }
 
 function validateMarkdown(filename) {
@@ -117,17 +132,18 @@ function validateMarkdown(filename) {
   const stat = fs.statSync(resolved);
   if (!stat.isFile() || stat.size > 1024 * 1024) { fail(safe(filename) + ': unsupported file or >1MiB'); return; }
   const text = removeCode(fs.readFileSync(resolved, 'utf8'));
+  const lineOf = lineLookup(text);
   const refs = new Map();
   for (const match of text.matchAll(/^ {0,3}\[([^\]]+)\]:\s*(<[^>]+>|[^\s]+)/gm)) {
     const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
     refs.set(id, match[2]);
-    checkLink(filename, match[2]);
+    checkLink(filename, match[2], lineOf(match.index));
   }
   // Scoped syntax support only; nested/multiline links, HTML href and live URL checks are NOT RUN.
-  for (const match of text.matchAll(/!?\[[^\]\n]*\]\((<[^>\n]*>|[^)\n]*(?:\([^)\n]*\)[^)\n]*)?)\)/g)) checkLink(filename, match[1]);
+  for (const match of text.matchAll(/!?\[[^\]\n]*\]\((<[^>\n]*>|[^)\n]*(?:\([^)\n]*\)[^)\n]*)?)\)/g)) checkLink(filename, match[1], lineOf(match.index));
   for (const match of text.matchAll(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g)) {
     const id = (match[2] || match[1]).trim().toLowerCase().replace(/\s+/g, ' ');
-    if (!refs.has(id)) fail(safe(filename) + ': undefined reference label ' + safe(id));
+    if (!refs.has(id)) fail(safe(filename) + ': undefined reference label ' + safe(id) + ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
   }
 }
 
@@ -141,8 +157,18 @@ try {
   for (const ref of [base, head, merge]) git(['cat-file', '-e', ref + '^{commit}']);
   const white = spawnSync('git', ['-C', root, 'diff', '--check', base, merge, '--'], {
     encoding: 'utf8', timeout: 20000, maxBuffer: 1024 * 1024,
+    env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
   });
-  if (white.error || white.status !== 0) fail('Changed-line whitespace check failed');
+  if (white.error || white.status !== 0) {
+    fail('Changed-line whitespace check failed');
+    // Only report Git's path, line and known reason. Never log the offending
+    // source line from PR data (it could contain secrets or control sequences).
+    let count = 0;
+    for (const line of (white.stdout || '').split(/\r?\n/)) {
+      const finding = line.match(/^(.+):([1-9]\d*): (trailing whitespace|new blank line at EOF|space before tab in indent)\.?$/);
+      if (finding && count++ < 10) fail(safe(finding[1]) + ':' + finding[2] + ': ' + finding[3]);
+    }
+  }
   const names = git(['diff', '--name-only', '-z', '--diff-filter=ACMR', base, merge, '--'], true)
     .toString('utf8').split('\0').filter(Boolean);
   if (names.length > 300) throw new Error('Too many changed files for pilot');
