@@ -113,6 +113,22 @@ function checkLink(source, raw, line) {
   } catch { fail(safe(source) + ': invalid local link ' + safe(target) + at); }
 }
 
+// Deletion-only checks filter out unrelated pre-existing invalid local links.
+// A removed target cannot be realpathSync'd: compare safe, lexical repo paths.
+function refersToDeletedMarkdown(source, raw, deleted) {
+  let link;
+  try { link = destination(raw); } catch { return false; }
+  if (!link || link.startsWith('/') || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(link)) return false;
+  const hash = link.indexOf('#'), query = link.indexOf('?');
+  const end = Math.min(hash < 0 ? link.length : hash, query < 0 ? link.length : query);
+  let filename;
+  try { filename = decodeURIComponent(link.slice(0, end)); } catch { return false; }
+  if (!filename || filename.includes('\0') || filename.includes('\\')) return false;
+  const absolute = path.resolve(root, path.dirname(source), filename);
+  if (!withinRoot(absolute)) return false;
+  return deleted.has(path.relative(root, absolute).split(path.sep).join('/'));
+}
+
 // Convert match offsets to 1-based file lines without rescanning for each link.
 function lineLookup(text) {
   const breaks = [];
@@ -133,7 +149,7 @@ function lineLookup(text) {
   };
 }
 
-function validateMarkdown(filename) {
+function validateMarkdown(filename, deletedTargets = null) {
   let resolved;
   try { resolved = localFile(filename); } catch { fail(safe(filename) + ': missing/unsafe Markdown'); return; }
   const stat = fs.statSync(resolved);
@@ -144,13 +160,19 @@ function validateMarkdown(filename) {
   for (const match of text.matchAll(/^ {0,3}\[([^\]]+)\]:\s*(<[^>]+>|[^\s]+)/gm)) {
     const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
     refs.set(id, match[2]);
-    checkLink(filename, match[2], lineOf(match.index));
+    if (!deletedTargets || refersToDeletedMarkdown(filename, match[2], deletedTargets)) {
+      checkLink(filename, match[2], lineOf(match.index));
+    }
   }
   // Scoped syntax support only; nested/multiline links, HTML href and live URL checks are NOT RUN.
-  for (const match of text.matchAll(/!?\[[^\]\n]*\]\((<[^>\n]*>|[^)\n]*(?:\([^)\n]*\)[^)\n]*)?)\)/g)) checkLink(filename, match[1], lineOf(match.index));
+  for (const match of text.matchAll(/!?\[[^\]\n]*\]\((<[^>\n]*>|[^)\n]*(?:\([^)\n]*\)[^)\n]*)?)\)/g)) {
+    if (!deletedTargets || refersToDeletedMarkdown(filename, match[1], deletedTargets)) {
+      checkLink(filename, match[1], lineOf(match.index));
+    }
+  }
   for (const match of text.matchAll(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g)) {
     const id = (match[2] || match[1]).trim().toLowerCase().replace(/\s+/g, ' ');
-    if (!refs.has(id)) fail(safe(filename) + ': undefined reference label ' + safe(id) + ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
+    if (!deletedTargets && !refs.has(id)) fail(safe(filename) + ': undefined reference label ' + safe(id) + ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
   }
 }
 
@@ -188,9 +210,29 @@ try {
   if (names.length > 300) throw new Error('Too many changed files for pilot');
   const docs = names.filter(name => /\.md$/i.test(name));
   for (const doc of docs) validateMarkdown(doc);
-  if (!docs.length) notices.push('NO DOC FILES: whitespace checked, link check not applicable');
+  // Inbound local links in unchanged Markdown can break when a target is deleted.
+  // Limit work and check only deleted Markdown paths, not every baseline link.
+  const deleted = git(['diff', '--name-only', '-z', '--diff-filter=D', base, merge, '--'], true)
+    .toString('utf8').split('\0').filter(name => /\.md$/i.test(name));
+  if (deleted.length > 100) throw new Error('Too many deleted Markdown targets for bounded pilot');
+  let inboundScanned = 0;
+  if (deleted.length) {
+    const deletedSet = new Set(deleted);
+    const tracked = git(['ls-files', '-z', '--'], true).toString('utf8')
+      .split('\0').filter(name => /\.md$/i.test(name));
+    if (tracked.length > 500) throw new Error('Too many tracked Markdown files for bounded inbound scan');
+    const changedDocs = new Set(docs);
+    for (const file of tracked) {
+      if (changedDocs.has(file)) continue; // Fully checked above.
+      validateMarkdown(file, deletedSet);
+      inboundScanned++;
+    }
+    notices.push('Deleted Markdown target inbound references: scoped scan of surviving unchanged Markdown only');
+  }
+  if (!docs.length && !deleted.length) notices.push('NO DOC FILES: whitespace checked, link check not applicable');
   notices.push('External URLs and advanced/nested Markdown syntax: NOT RUN');
-  console.log('docs-integrity: changed_files=' + names.length + ' markdown_files=' + docs.length);
+  console.log('docs-integrity: changed_files=' + names.length + ' markdown_files=' + docs.length
+    + ' deleted_markdown_files=' + deleted.length + ' inbound_scanned=' + inboundScanned);
 } catch (err) { fail(safe(err.message || String(err))); }
 for (const item of notices) console.log('NOTICE: ' + item);
 // The combined message may contain two bounded paths plus a target. Preserve
