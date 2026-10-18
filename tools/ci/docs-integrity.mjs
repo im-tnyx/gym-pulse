@@ -115,7 +115,13 @@ function checkLink(source, raw, line) {
 // Convert match offsets to 1-based file lines without rescanning for each link.
 function lineLookup(text) {
   const breaks = [];
-  for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) === 10) breaks.push(i);
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charCodeAt(i);
+    if (char === 13) {
+      if (text.charCodeAt(i + 1) === 10) i++; // CRLF is one break.
+      breaks.push(i);
+    } else if (char === 10) breaks.push(i); // LF or standalone CR.
+  }
   return offset => {
     let lo = 0, hi = breaks.length;
     while (lo < hi) {
@@ -164,9 +170,16 @@ try {
     // Only report Git's path, line and known reason. Never log the offending
     // source line from PR data (it could contain secrets or control sequences).
     let count = 0;
-    for (const line of (white.stdout || '').split(/\r?\n/)) {
-      const finding = line.match(/^(.+):([1-9]\d*): (trailing whitespace|new blank line at EOF|space before tab in indent)\.?$/);
-      if (finding && count++ < 10) fail(safe(finding[1]) + ':' + finding[2] + ': ' + finding[3]);
+    const lines = (white.stdout || '').split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const finding = lines[i].match(/^(.+):([1-9]\d*): (trailing whitespace|new blank line at EOF|space before tab in indent)\.?$/);
+      if (!finding) continue;
+      const reason = finding[3];
+      // Git prints the untrusted added source line IMMEDIATELY AFTER each
+      // trailing-whitespace / space-before-tab header. Never interpret or log
+      // that raw payload, even if crafted to resemble another diagnostic.
+      if (reason !== 'new blank line at EOF') i++;
+      if (count++ < 10) fail(safe(finding[1]) + ':' + finding[2] + ': ' + reason);
     }
   }
   const names = git(['diff', '--name-only', '-z', '--diff-filter=ACMR', base, merge, '--'], true)
