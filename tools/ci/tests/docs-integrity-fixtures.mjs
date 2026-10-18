@@ -111,6 +111,16 @@ const fixtures = [
     pass: false, signal: 'docs/consumer.md: invalid local link Target.md#existing [docs/consumer.md:4]', markdownCount: 0 },
   { name: 'deleted Markdown inbound percent encoding rejected', md: null, extra: 'deleted-encoded',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'deleted Markdown numeric-entity destination link rejected', md: null, extra: 'deleted-numeric-entity',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'deleted Markdown named-entity destination link rejected', md: null, extra: 'deleted-named-entity',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'unknown named-entity destination fails closed', md: null, extra: 'deleted-unknown-entity',
+    pass: false, signal: 'Unparseable inbound destination', markdownCount: 0 },
+  { name: 'escaped bracket in inline link label still detects deletion', md: null, extra: 'deleted-escaped-label',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'different file/anchor cache entries never collide', md: null, extra: 'deleted-cache-collision',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -184,6 +194,11 @@ function executeFixture(test) {
       'deleted-inbound': '# Consumer\n[old](Target.md)\n',
       'deleted-reference': '# Consumer\n[old][ref]\n\n[ref]: Target.md#existing\n',
       'deleted-encoded': '# Consumer\n[old](%54arget.md#hello-there)\n',
+      'deleted-numeric-entity': '# Consumer\n[old](Target&#46;md)\n',
+      'deleted-named-entity': '# Consumer\n[old](Target&period;md)\n',
+      'deleted-unknown-entity': '# Consumer\n[old](Target&notSupportedHere;md)\n',
+      'deleted-escaped-label': '# Consumer\n[a\\]b](Target.md)\n',
+      'deleted-cache-collision': '# Consumer\n[invalid](a.md#x.md%23y)\n[valid](a.md%23x.md#y)\n',
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
@@ -257,6 +272,10 @@ function executeFixture(test) {
         throw error;
       }
     }
+    if (test.extra === 'deleted-cache-collision') {
+      fs.writeFileSync(path.join(root, 'docs', 'a.md'), '# Unrelated\n');
+      fs.writeFileSync(path.join(root, 'docs', 'a.md#x.md'), '# y\n');
+    }
     if (test.extra === 'deleted-setext-anchor') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), 'Existing Heading\n===\n');
     }
@@ -273,6 +292,7 @@ function executeFixture(test) {
     if (test.md !== null) fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), test.md);
     if (test.extra === 'modified') fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Changed\n[missing](absent-modified-target.md)\n');
     const deletions = ['deleted-inbound', 'deleted-reference', 'deleted-encoded',
+      'deleted-numeric-entity', 'deleted-named-entity', 'deleted-unknown-entity', 'deleted-escaped-label',
       'deleted-unused', 'deleted-unrelated', 'deleted-fenced',
       'deleted-bad-anchor', 'deleted-duplicate-ref',
       'deleted-invalid-fence', 'deleted-comment-inline', 'deleted-comment-block',
@@ -286,6 +306,10 @@ function executeFixture(test) {
       'deleted-setext-anchor', 'deleted-huge-anchored',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
+    if (test.extra === 'deleted-cache-collision') {
+      fs.rmSync(path.join(root, 'docs', 'a.md'));
+      fs.rmSync(path.join(root, 'docs', 'a.md#x.md'));
+    }
     if (test.extra === 'deleted-symlink-target') fs.rmSync(path.join(root, 'docs', 'Alias.md'));
     if (rawName) fs.rmSync(rawName);
     if (test.extra === 'renamed-inbound') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
