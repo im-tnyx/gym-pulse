@@ -47,25 +47,11 @@ function escapedAt(text, index) {
 }
 
 function removeCode(markdown) {
-  // Mask inline code BEFORE HTML comments: comment markers inside code spans
-  // are literal, not an opener that may swallow active links afterwards.
-  const withoutInline = markdown.replace(/(`+)[^\n]*?\1/g, span =>
-    span.replace(/[^\r\n]/g, ' '));
-  let visible = withoutInline, from = 0, start;
-  while ((start = visible.indexOf('<!--', from)) >= 0) {
-    if (escapedAt(markdown, start)) {
-      from = start + 4; // Continue scanning: a later opener can be real.
-      continue;
-    }
-    let end = visible.indexOf('-->', start + 4);
-    end = end < 0 ? visible.length : end + 3;
-    visible = visible.slice(0, start) +
-      visible.slice(start, end).replace(/[^\r\n]/g, ' ') +
-      visible.slice(end);
-    from = end;
-  }
+  // Recognize fences and indented code on ORIGINAL lines first. Masking inline
+  // spans before detecting indentation can turn visible links into false code.
+  // It can also consume the first two backticks of a triple fence.
   let fenced = null;
-  return visible.split(/\r?\n/).map(line => {
+  const structural = markdown.split(/\r?\n/).map(line => {
     const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (match) {
       const marker = match[1][0], count = match[1].length, rest = match[2];
@@ -81,6 +67,25 @@ function removeCode(markdown) {
     if (fenced || /^( {4}|\t)/.test(line)) return '';
     return line;
   }).join('\n');
+
+  // Mask inline code before recognizing HTML comments. A comment opener inside
+  // a code span or fenced block must never hide a live link outside that code.
+  const withoutInline = structural.replace(/(`+)[^\n]*?\1/g, span =>
+    span.replace(/[^\r\n]/g, ' '));
+  let visible = withoutInline, from = 0, start;
+  while ((start = visible.indexOf('<!--', from)) >= 0) {
+    if (escapedAt(visible, start)) {
+      from = start + 4;
+      continue;
+    }
+    let end = visible.indexOf('-->', start + 4);
+    end = end < 0 ? visible.length : end + 3;
+    visible = visible.slice(0, start) +
+      visible.slice(start, end).replace(/[^\r\n]/g, ' ') +
+      visible.slice(end);
+    from = end;
+  }
+  return visible;
 }
 
 function headingSlug(heading) {
