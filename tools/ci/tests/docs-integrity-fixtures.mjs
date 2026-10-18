@@ -15,10 +15,21 @@ import { spawnSync } from 'node:child_process';
 
 const checker = fileURLToPath(new URL('../docs-integrity.mjs', import.meta.url));
 
+// Git documents these names as local to a repository. Prevent a caller's hook
+// or shell from redirecting fixture commands to another repository.
+const localVarsResult = spawnSync('git', ['rev-parse', '--local-env-vars'], {
+  encoding: 'utf8', timeout: 20000, maxBuffer: 1024 * 1024,
+  env: { ...process.env, GIT_CONFIG: undefined, GIT_CONFIG_COUNT: '0' },
+});
+if (localVarsResult.error || localVarsResult.status !== 0) {
+  throw new Error('Cannot obtain Git repository-local environment variables');
+}
+const localGitVars = localVarsResult.stdout.split(/\r?\n/).filter(Boolean);
+
 function run(bin, args, cwd, expectSuccess = true) {
   // GIT_CONFIG changes where `git config` writes. It must not leak into synthetic repos.
   const env = { ...process.env };
-  delete env.GIT_CONFIG;
+  for (const name of localGitVars) delete env[name];
   const result = spawnSync(bin, args, {
     cwd,
     encoding: 'utf8',
@@ -58,6 +69,9 @@ const fixtures = [
   { name: 'valid reference link', md: '# New\n[Target][one]\n\n[one]: Target.md#existing\n', pass: true },
   { name: 'undefined reference label', md: '# New\n[Target][undefined]\n', pass: false, signal: 'undefined reference label' },
   { name: 'defined reference to missing target', md: '# New\n[Target][broken]\n\n[broken]: no-such-reference-target.md\n', pass: false, signal: 'invalid local link' },
+  { name: 'modified Markdown broken link', md: null, extra: 'modified', pass: false, signal: 'invalid local link', markdownCount: 1 },
+  { name: 'renamed Markdown path', md: null, extra: 'renamed', pass: true, markdownCount: 1 },
+  { name: 'diverged base deletion excluded from diff', md: '# New\n', extra: 'diverged', pass: true, markdownCount: 1 },
   { name: 'fenced-code exclusion', md: '# New\n```md\n[missing](does-not-exist.md)\n```\n', pass: true },
   { name: 'external URL excluded', md: '# New\n[remote](https://example.invalid/blocked)\n', pass: true },
   { name: 'path traversal to existing outside file', md: null, extra: 'traversal', pass: false, signal: 'invalid local link' },
@@ -84,12 +98,14 @@ function executeFixture(test) {
     fs.writeFileSync(path.join(root, 'README.md'), '# Base\n');
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'synthetic baseline');
-    const base = git(root, 'rev-parse', 'HEAD');
+    let base = git(root, 'rev-parse', 'HEAD');
     if (test.extra === 'case' && fs.existsSync(path.join(root, 'docs', 'target.md'))) {
       return { skip: 'case-insensitive filesystem; case-mismatch cannot be asserted' };
     }
     git(root, 'checkout', '-q', '-b', 'pr');
     if (test.md !== null) fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), test.md);
+    if (test.extra === 'modified') fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Changed\n[missing](absent-modified-target.md)\n');
+    if (test.extra === 'renamed') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
     if (test.extra === 'other') fs.writeFileSync(path.join(root, 'other.txt'), 'synthetic non-doc\n');
     if (test.extra === 'other-white') fs.writeFileSync(path.join(root, 'other.txt'), 'synthetic non-doc with trailing spaces  \n');
     if (test.extra === 'spaced') {
@@ -119,8 +135,17 @@ function executeFixture(test) {
     git(root, 'commit', '-q', '-m', 'synthetic PR change');
     const head = git(root, 'rev-parse', 'HEAD');
     git(root, 'checkout', '-q', 'main');
+    if (test.extra === 'diverged') {
+      fs.rmSync(path.join(root, 'docs', 'Target.md'));
+      git(root, 'add', '-A');
+      git(root, 'commit', '-q', '-m', 'base-only removal after PR branch');
+      base = git(root, 'rev-parse', 'HEAD');
+    }
     git(root, 'merge', '-q', '--no-ff', '-m', 'synthetic PR merge', 'pr');
     const merge = git(root, 'rev-parse', 'HEAD');
+    if (test.extra === 'diverged') {
+      assert.ok(!fs.existsSync(path.join(root, 'docs', 'Target.md')), 'base-only deleted Markdown must stay absent in merge');
+    }
     if (test.extra === 'symlink' && !fs.lstatSync(path.join(root, 'docs', 'external-link.txt')).isSymbolicLink()) {
       return { skip: 'Git checkout did not materialize a symlink' };
     }
