@@ -16,13 +16,16 @@ import { spawnSync } from 'node:child_process';
 const checker = fileURLToPath(new URL('../docs-integrity.mjs', import.meta.url));
 
 function run(bin, args, cwd, expectSuccess = true) {
+  // GIT_CONFIG changes where `git config` writes. It must not leak into synthetic repos.
+  const env = { ...process.env };
+  delete env.GIT_CONFIG;
   const result = spawnSync(bin, args, {
     cwd,
     encoding: 'utf8',
     timeout: 20000,
     maxBuffer: 1024 * 1024,
     env: {
-      ...process.env,
+      ...env,
       // Ignore machine/user Git signing, hooks and credential configuration.
       GIT_CONFIG_NOSYSTEM: '1',
       GIT_CONFIG_GLOBAL: os.devNull,
@@ -54,6 +57,7 @@ const fixtures = [
   { name: 'missing Markdown anchor', md: '# New\n[anchor](Target.md#no-such-heading)\n', pass: false, signal: 'invalid local link' },
   { name: 'valid reference link', md: '# New\n[Target][one]\n\n[one]: Target.md#existing\n', pass: true },
   { name: 'undefined reference label', md: '# New\n[Target][undefined]\n', pass: false, signal: 'undefined reference label' },
+  { name: 'defined reference to missing target', md: '# New\n[Target][broken]\n\n[broken]: no-such-reference-target.md\n', pass: false, signal: 'invalid local link' },
   { name: 'fenced-code exclusion', md: '# New\n```md\n[missing](does-not-exist.md)\n```\n', pass: true },
   { name: 'external URL excluded', md: '# New\n[remote](https://example.invalid/blocked)\n', pass: true },
   { name: 'path traversal to existing outside file', md: null, extra: 'traversal', pass: false, signal: 'invalid local link' },
@@ -61,6 +65,7 @@ const fixtures = [
   { name: 'root-absolute path rejected', md: '# New\n[absolute](/etc/passwd)\n', pass: false, signal: 'root-absolute link unsupported' },
   { name: 'wrong merge parent rejected', md: '# New\n[ok](Target.md)\n', pass: false, wrongBase: true, signal: 'Unexpected PR merge commit parents' },
   { name: 'non-doc change classified', md: null, extra: 'other', pass: true, signal: 'NO DOC FILES', markdownCount: 0 },
+  { name: 'non-doc trailing whitespace rejected', md: null, extra: 'other-white', pass: false, signal: 'Changed-line whitespace check failed', markdownCount: 0 },
   { name: 'symlink escape rejected', md: '# New\n[secret](external-link.txt)\n', extra: 'symlink', pass: false, signal: 'invalid local link' },
   // The *only changed Markdown* has a space in its path and a deliberately broken link.
   // A broken NUL-delimited changed-path parser would miss it and incorrectly PASS.
@@ -86,6 +91,7 @@ function executeFixture(test) {
     git(root, 'checkout', '-q', '-b', 'pr');
     if (test.md !== null) fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), test.md);
     if (test.extra === 'other') fs.writeFileSync(path.join(root, 'other.txt'), 'synthetic non-doc\n');
+    if (test.extra === 'other-white') fs.writeFileSync(path.join(root, 'other.txt'), 'synthetic non-doc with trailing spaces  \n');
     if (test.extra === 'spaced') {
       fs.writeFileSync(path.join(root, 'docs', 'space file.md'), '# New\n[missing](absent-spaced-target.md)\n');
     }
@@ -115,6 +121,9 @@ function executeFixture(test) {
     git(root, 'checkout', '-q', 'main');
     git(root, 'merge', '-q', '--no-ff', '-m', 'synthetic PR merge', 'pr');
     const merge = git(root, 'rev-parse', 'HEAD');
+    if (test.extra === 'symlink' && !fs.lstatSync(path.join(root, 'docs', 'external-link.txt')).isSymbolicLink()) {
+      return { skip: 'Git checkout did not materialize a symlink' };
+    }
     const suppliedBase = test.wrongBase ? '0'.repeat(40) : base;
     const result = run(process.execPath, [checker, root, suppliedBase, head, merge], root, false);
     const combined = result.stdout + result.stderr;
