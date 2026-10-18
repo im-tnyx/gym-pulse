@@ -116,7 +116,7 @@ const fixtures = [
   { name: 'deleted Markdown named-entity destination link rejected', md: null, extra: 'deleted-named-entity',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'unknown named-entity destination fails closed', md: null, extra: 'deleted-unknown-entity',
-    pass: false, signal: 'Unparseable inbound destination', markdownCount: 0 },
+    pass: false, signal: 'Unparseable inbound destination' },
   { name: 'escaped bracket in inline link label still detects deletion', md: null, extra: 'deleted-escaped-label',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'different file/anchor cache entries never collide', md: null, extra: 'deleted-cache-collision',
@@ -132,6 +132,8 @@ const fixtures = [
   { name: 'raw HTML script block pseudo-link ignored', md: null, extra: 'deleted-raw-script',
     pass: true, markdownCount: 0 },
   { name: 'link after raw HTML pre block is scanned', md: null, extra: 'deleted-raw-then-link',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'entity in base heading preserves deletion anchor validity', md: null, extra: 'deleted-heading-entity',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
@@ -217,6 +219,7 @@ function executeFixture(test) {
       'deleted-raw-pre': '# Consumer\n<pre>\n[old](Target.md)\n</pre>\n',
       'deleted-raw-script': '# Consumer\n<script>\n[old](Target.md)\n</script>\n',
       'deleted-raw-then-link': '# Consumer\n<pre>\n[old](Target.md)\n</pre>\n[old](Target.md)\n',
+      'deleted-heading-entity': '# Consumer\n[old](Target.md#ab)\n',
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
@@ -294,6 +297,9 @@ function executeFixture(test) {
       fs.writeFileSync(path.join(root, 'docs', 'a.md'), '# Unrelated\n');
       fs.writeFileSync(path.join(root, 'docs', 'a.md#x.md'), '# y\n');
     }
+    if (test.extra === 'deleted-heading-entity') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# A&#66;\n');
+    }
     if (test.extra === 'deleted-setext-anchor') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), 'Existing Heading\n===\n');
     }
@@ -323,7 +329,7 @@ function executeFixture(test) {
       'deleted-comment-multiline-terminator', 'deleted-comment-backtick-fence',
       'deleted-comment-tilde-fence', 'deleted-code-comment', 'deleted-escaped-then-comment',
       'deleted-escaped-link-opener', 'deleted-escaped-ref-opener',
-      'deleted-setext-anchor', 'deleted-huge-anchored',
+      'deleted-setext-anchor', 'deleted-huge-anchored', 'deleted-heading-entity',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'deleted-cache-collision') {
