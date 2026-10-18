@@ -47,9 +47,9 @@ function escapedAt(text, index) {
 }
 
 function removeCode(markdown) {
-  // One-pass line-state masking. A fence marker inside a multiline HTML
-  // comment is inert, and an HTML marker inside a fenced or inline code span
-  // is inert. Keep line breaks/offsets stable for downstream diagnostics.
+  // Parse fences, inline code, and multiline HTML comments in source order.
+  // A fence within an HTML comment and a comment within code are inert.
+  // Preserve original positions and newline counts for diagnostics.
   let fenced = null, comment = false;
   return markdown.split(/\r?\n/).map(line => {
     const fence = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
@@ -63,34 +63,44 @@ function removeCode(markdown) {
       fenced = { marker: fence[1][0], count: fence[1].length };
       return '';
     }
-    // Process code spans before comments, but after detecting real block fences.
-    let visible = line.replace(/(`+)[^\n]*?\1/g, span =>
-      span.replace(/[^\r\n]/g, ' '));
-    let from = 0;
-    if (comment) {
-      const end = visible.indexOf('-->');
-      if (end < 0) return visible.replace(/[^\r\n]/g, ' ');
-      visible = visible.slice(0, end + 3).replace(/[^\r\n]/g, ' ') +
-        visible.slice(end + 3);
-      from = end + 3;
-      comment = false;
-    }
-    let start;
-    while ((start = visible.indexOf('<!--', from)) >= 0) {
-      if (escapedAt(line, start)) {
-        from = start + 4;
+
+    let visible = '', from = 0;
+    const code = /(`+)[^\n]*?\1/g;
+    while (from < line.length) {
+      if (comment) {
+        // Backticks inside an HTML comment are inert. Its raw terminator
+        // must still end the comment, even when surrounded by backticks.
+        const end = line.indexOf('-->', from);
+        if (end < 0) {
+          visible += ' '.repeat(line.length - from);
+          break;
+        }
+        visible += ' '.repeat(end + 3 - from);
+        from = end + 3;
+        comment = false;
         continue;
       }
-      const end = visible.indexOf('-->', start + 4);
-      const stop = end < 0 ? visible.length : end + 3;
-      visible = visible.slice(0, start) +
-        visible.slice(start, stop).replace(/[^\r\n]/g, ' ') +
-        visible.slice(stop);
-      if (end < 0) {
+      code.lastIndex = from;
+      let span = code.exec(line);
+      while (span && escapedAt(line, span.index)) {
+        code.lastIndex = span.index + 1;
+        span = code.exec(line);
+      }
+      let opener = line.indexOf('<!--', from);
+      while (opener >= 0 && escapedAt(line, opener)) {
+        opener = line.indexOf('<!--', opener + 4);
+      }
+      if (span && (opener < 0 || span.index < opener)) {
+        visible += line.slice(from, span.index) + ' '.repeat(span[0].length);
+        from = span.index + span[0].length;
+      } else if (opener >= 0) {
+        visible += line.slice(from, opener);
+        from = opener;
         comment = true;
+      } else {
+        visible += line.slice(from);
         break;
       }
-      from = stop;
     }
     return visible;
   }).join('\n');
