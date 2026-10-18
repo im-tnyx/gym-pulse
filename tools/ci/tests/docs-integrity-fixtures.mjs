@@ -105,6 +105,18 @@ const fixtures = [
   // The *only changed Markdown* has a space in its path and a deliberately broken link.
   // A broken NUL-delimited changed-path parser would miss it and incorrectly PASS.
   { name: 'spaced Markdown filename checked', md: null, extra: 'spaced', pass: false, signal: 'docs/space file.md: invalid local link', markdownCount: 1 },
+  { name: 'deleted Markdown inbound inline link rejected', md: null, extra: 'deleted-inbound',
+    pass: false, signal: 'docs/consumer.md: invalid local link Target.md [docs/consumer.md:2]', markdownCount: 0 },
+  { name: 'deleted Markdown inbound reference definition rejected', md: null, extra: 'deleted-reference',
+    pass: false, signal: 'docs/consumer.md: invalid local link Target.md#existing [docs/consumer.md:4]', markdownCount: 0 },
+  { name: 'deleted Markdown inbound percent encoding rejected', md: null, extra: 'deleted-encoded',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
+    pass: true, markdownCount: 0 },
+  { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
+    pass: true, markdownCount: 0 },
+  { name: 'deleted Markdown fenced-code pseudo link ignored', md: null, extra: 'deleted-fenced',
+    pass: true, markdownCount: 0 },
 ];
 
 function executeFixture(test) {
@@ -117,6 +129,18 @@ function executeFixture(test) {
     fs.mkdirSync(path.join(root, 'docs'));
     fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Hello There\n## Existing\n');
     fs.writeFileSync(path.join(root, 'README.md'), '# Base\n');
+    // Existing consumer documents are unchanged by the synthetic deletion PR.
+    const deletionConsumers = {
+      'deleted-inbound': '# Consumer\n[old](Target.md)\n',
+      'deleted-reference': '# Consumer\n[old][ref]\n\n[ref]: Target.md#existing\n',
+      'deleted-encoded': '# Consumer\n[old](%54arget.md#hello-there)\n',
+      'deleted-unused': '# Consumer\n[existing](../README.md)\n',
+      'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
+      'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
+    };
+    if (Object.hasOwn(deletionConsumers, test.extra)) {
+      fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
+    }
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'synthetic baseline');
     let base = git(root, 'rev-parse', 'HEAD');
@@ -126,6 +150,7 @@ function executeFixture(test) {
     git(root, 'checkout', '-q', '-b', 'pr');
     if (test.md !== null) fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), test.md);
     if (test.extra === 'modified') fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Changed\n[missing](absent-modified-target.md)\n');
+    if (Object.hasOwn(deletionConsumers, test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'oversized') fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), Buffer.alloc(1024 * 1024 + 1, 'X'));
     if (test.extra === 'renamed') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
     if (test.extra === 'other') fs.writeFileSync(path.join(root, 'other.txt'), 'synthetic non-doc\n');
