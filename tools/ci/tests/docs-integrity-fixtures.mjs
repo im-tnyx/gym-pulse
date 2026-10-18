@@ -90,7 +90,7 @@ function executeFixture(test) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'gympulse-docs-fixture-'));
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'gympulse-outside-fixture-'));
   try {
-    git(root, 'init', '-q', '-b', 'main');
+    git(root, 'init', '-q', '-b', 'main', '--object-format=sha1');
     git(root, 'config', 'user.name', 'Synthetic CI Fixture');
     git(root, 'config', 'user.email', 'fixture@example.invalid');
     fs.mkdirSync(path.join(root, 'docs'));
