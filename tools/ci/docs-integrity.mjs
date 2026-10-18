@@ -161,8 +161,18 @@ function removeCode(markdown) {
   }).join('\n');
 }
 
+const UNCERTAIN_HEADING_ENTITY = '\0unknown-heading-entity';
 function headingSlug(heading) {
-  return decodeLinkEntities(heading).replace(/!?\[([^\]]+)\]\([^)]+\)/g, '$1')
+  // Decode supported HTML references, but do not let an unrelated heading
+  // with an unsupported entity abort the scan of an otherwise valid base.
+  // A heading containing an unrecognized entity is conservatively ambiguous.
+  let uncertain = false;
+  const decoded = heading.replace(/&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g, ref => {
+    try { return decodeLinkEntities(ref); }
+    catch { uncertain = true; return ''; }
+  });
+  if (uncertain) return null;
+  return decoded.replace(/!?\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/<[^>]*>/g, '')
     .replace(/[\x60*_~]/g, '')
     .normalize('NFKC').toLowerCase()
@@ -174,6 +184,7 @@ function headingsIn(text) {
   const found = new Set(), occurrences = new Map();
   const addSlug = heading => {
     const slug = headingSlug(heading);
+    if (slug === null) { found.add(UNCERTAIN_HEADING_ENTITY); return; }
     if (!slug) return;
     const old = occurrences.get(slug) || 0;
     found.add(old ? slug + '-' + old : slug);
@@ -201,6 +212,8 @@ const NAMED_DESTINATION_ENTITIES = Object.freeze({
   amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0',
   period: '.', sol: '/', num: '#', colon: ':', semi: ';',
   quest: '?', percnt: '%', equals: '=', lowbar: '_', hyphen: '-',
+  copy: '©', reg: '®', trade: '™', hellip: '…', mdash: '—', ndash: '–',
+  euro: '€', pound: '£', yen: '¥', cent: '¢', bull: '•', times: '×', divide: '÷',
 });
 function decodeLinkEntities(value) {
   return value.replace(/&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g, entity => {
@@ -282,7 +295,12 @@ function baseTargetValid(relative, anchor) {
         // Conservative fail-closed rejection of deletions where base anchors
         // cannot safely be parsed, without reading a huge Git blob.
         valid = blobSize > 1024 * 1024 || (relative.toLowerCase().endsWith('.md') &&
-          headingsIn(removeCode(git(['show', base + ':' + relative], true).toString('utf8'))).has(anchor));
+          (() => {
+             const headings = headingsIn(removeCode(git(['show', base + ':' + relative], true).toString('utf8')));
+             // Unknown but plausible HTML5 entities can make an anchor valid.
+             // Treat uncertain baseline headings as valid (fail-closed on deletion).
+             return headings.has(anchor) || headings.has(UNCERTAIN_HEADING_ENTITY);
+           })());
       }
     } else if (/^120000 blob [0-9a-f]{40}\t/.test(modeEntry)) {
       const blobSize = Number(git(['cat-file', '-s', base + ':' + relative]).trim());
