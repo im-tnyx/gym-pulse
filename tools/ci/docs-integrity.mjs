@@ -9,7 +9,7 @@ const [argRepo, base, head, merge] = process.argv.slice(2);
 const isSha = value => typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
 const errors = [], notices = [];
 const fail = message => errors.push(message);
-const safe = value => String(value).replace(/[^\x20-\x7e]/g, '?').slice(0, 240);
+const safe = (value, max = 240) => String(value).replace(/[^\x20-\x7e]/g, '?').slice(0, max);
 const root = argRepo && path.resolve(argRepo);
 
 function git(args, binary = false) {
@@ -179,7 +179,9 @@ try {
   console.log('docs-integrity: changed_files=' + names.length + ' markdown_files=' + docs.length);
 } catch (err) { fail(safe(err.message || String(err))); }
 for (const item of notices) console.log('NOTICE: ' + item);
-for (const item of errors) console.error('FAIL: ' + safe(item));
+// The combined message may contain two bounded paths plus a target. Preserve
+// the final location/reason suffix while capping each emitted log line.
+for (const item of errors) console.error('FAIL: ' + safe(item, 1024));
 if (errors.length) {
   console.error('docs-integrity: FAIL (' + errors.length + ' findings)');
   process.exitCode = 1;
