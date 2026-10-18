@@ -142,14 +142,39 @@ function headingsFor(filename) {
   return headingsIn(removeCode(fs.readFileSync(filename, 'utf8')));
 }
 
+const NAMED_DESTINATION_ENTITIES = Object.freeze({
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0',
+  period: '.', sol: '/', num: '#', colon: ':', semi: ';',
+  quest: '?', percnt: '%', equals: '=', lowbar: '_', hyphen: '-',
+});
+function decodeLinkEntities(value) {
+  return value.replace(/&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g, entity => {
+    const token = entity.slice(1, -1);
+    if (token[0] === '#') {
+      const hex = token[1] === 'x' || token[1] === 'X';
+      const number = Number.parseInt(token.slice(hex ? 2 : 1), hex ? 16 : 10);
+      if (!Number.isSafeInteger(number) || number < 1 || number > 0x10ffff ||
+          (number >= 0xd800 && number <= 0xdfff)) {
+        throw new Error('Unsupported numeric HTML entity; fail closed');
+      }
+      return String.fromCodePoint(number);
+    }
+    if (!Object.hasOwn(NAMED_DESTINATION_ENTITIES, token)) {
+      throw new Error('Unsupported named HTML entity; fail closed');
+    }
+    return NAMED_DESTINATION_ENTITIES[token];
+  });
+}
+
 function destination(raw) {
   const value = raw.trim();
   if (value.startsWith('<')) {
     const end = value.indexOf('>');
     if (end < 0) throw new Error('Malformed angle-wrapped link');
-    return value.slice(1, end);
+    return decodeLinkEntities(value.slice(1, end));
   }
-  return (value.match(/^(?:\\.|[^\s])+/) || [''])[0].replace(/\\([!-/:-@\[-`{-~ ])/g, '$1');
+  return decodeLinkEntities((value.match(/^(?:\\.|[^\s])+/) || [''])[0]
+    .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1'));
 }
 
 function checkLink(source, raw, line) {
@@ -182,7 +207,7 @@ function checkLink(source, raw, line) {
 const baseTargetCache = new Map();
 const baseTargetInProgress = new Set();
 function baseTargetValid(relative, anchor) {
-  const key = relative + '#' + anchor;
+  const key = JSON.stringify([relative, anchor]);
   if (baseTargetCache.has(key)) return baseTargetCache.get(key);
   if (baseTargetInProgress.has(key)) return false; // Cyclic base symlink: already invalid.
   if (baseTargetCache.size > 1000 || baseTargetInProgress.size >= 8) {
@@ -230,7 +255,7 @@ function baseTargetValid(relative, anchor) {
 
 function refersToDeletedMarkdown(source, raw, deleted) {
   let link;
-  try { link = destination(raw); } catch { return false; }
+  try { link = destination(raw); } catch { throw new Error('Unparseable inbound destination; fail closed'); }
   if (!link || link.startsWith('/') || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(link)) return false;
   const hash = link.indexOf('#'), query = link.indexOf('?');
   const end = Math.min(hash < 0 ? link.length : hash, query < 0 ? link.length : query);
@@ -293,7 +318,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     if (!deletedTargets) checkLink(filename, match[2], lineOf(match.index));
   }
   // Scoped syntax support only; nested/multiline links, HTML href and live URL checks are NOT RUN.
-  for (const match of text.matchAll(/!?\[[^\]\n]*\]\((<[^>\n]*>|[^)\n]*(?:\([^\)\n]*\)[^)\n]*)?)\)/g)) {
+  for (const match of text.matchAll(/!?\[(?:\\.|[^\]\n])*\]\((<[^>\n]*>|[^)\n]*(?:\([^\)\n]*\)[^)\n]*)?)\)/g)) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
     const opener = match.index + (match[0][0] === '!' ? 1 : 0);
     if (escapedAt(text, opener)) continue;
