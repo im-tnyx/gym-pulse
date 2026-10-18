@@ -1,5 +1,29 @@
 # GymPulse: Interim Manual Pull Request Review (Proposal)
 
+## Decision-ready update — 2026-10-18 (review-only; NOT ADOPTED)
+
+**Status stays PROPOSED / MANUAL-ONLY / UNENFORCED.** This dated addendum supersedes only the *current-status* claims in older sections; the 2026-10-17 observations and approval boundaries remain historical evidence. This change does not implement a mandatory rule, waive a human review requirement, authorize a merge or accept residual security risk.
+
+### Current evidence (reverified at main `5181912cc415292c4c5a62cd4e72d86696f76cf0`)
+
+- [Issue #10](https://github.com/im-tnyx/gym-pulse/issues/10) remains **OPEN**. Live `main` branch metadata reports `protected=false`, `protection.enabled=false`, required status-check enforcement `off` and an empty required-check list. Branch-protection details return GitHub integration 403; this is not evidence that protection is enabled.
+- The repository remains **private**. Previous owner-provided screenshots showed GitHub Free; the current subscription/billing interface was **NOT directly verified** by this review. GitHub Rulesets GET returned 403 with an upgrade/public-repository entitlement message. Neither a plan upgrade nor making the repository public is authorized.
+- [PR #14](https://github.com/im-tnyx/gym-pulse/pull/14) is **MERGED**, not still unmerged as described in the dated historical text below. The scoped, read-only [docs-integrity PR workflow](../../.github/workflows/docs-integrity-pilot.yml) is already installed through [Issue #19](https://github.com/im-tnyx/gym-pulse/issues/19), not merely planned. Its trusted-base checker does **not** run untrusted PR-owned scripts, uses `contents: read`, has a five-minute job cap and is not an enforced required check.
+- Real [changed-Markdown positive CI evidence](https://github.com/im-tnyx/gym-pulse/actions/runs/39059347757) exists. After merged [PR #27](https://github.com/im-tnyx/gym-pulse/pull/27) (local 24/24 synthetic fixtures) and [PR #29](https://github.com/im-tnyx/gym-pulse/pull/29) (safe file/line diagnostics), the new trusted checker produced a real [post-merge negative CI run](https://github.com/im-tnyx/gym-pulse/actions/runs/39119487571) with expected `FAIL` / exit 1 for synthetic whitespace and a broken local link. The deliberately broken [PR #30](https://github.com/im-tnyx/gym-pulse/pull/30) is **CLOSED / UNMERGED**.
+- CI execution is a **review signal**, not protection from direct pushes or unauthorized merges. There is still no independent human `APPROVED` review established for this workflow; a Codex bot `COMMENTED` review is not a separate human approval. [Issue #19](https://github.com/im-tnyx/gym-pulse/issues/19) remains OPEN for fork validation, deleted-target inbound link coverage and scope decisions.
+
+### Candidate operating decision — owner action REQUIRED
+
+For **documentation-only and non-production repository work**, the owner may choose to **ADOPT, REVISE or DEFER** the manual steps in Sections 3–6. No option has been selected in the source record.
+
+If the owner chooses **ADOPT**, the proposed voluntary checklist is: issue-linked branch/PR; inspect exact current `main`, latest PR head, changed files, conflicts, sensitive content and all relevant checks; record PASS/FAIL/NOT RUN on that reviewed head; seek a different authorized human reviewer where available; label `INDEPENDENT REVIEW UNAVAILABLE` and escalate otherwise; obtain separate *per-PR* owner merge authorization; retain failures and a revert plan. Record `AUTOMATED GATE NOT ENFORCED` on each handoff.
+
+**ADOPT would not automatically mean acceptance of the remaining security risk.** Explicit, dated, scoped owner disposition is separately needed to tolerate unenforced bypass risk for a specified phase and to name the reviewer/escalation owner. Without that disposition, label the governance gap OPEN and do not call the procedure an equivalent replacement for GitHub-enforced controls.
+
+These voluntary measures are **not** sufficient to authorize sensitive auth, RLS, payment, secrets, infrastructure, destructive changes, production activity, or any Open/Proposed ADR decision. [Issue #10](https://github.com/im-tnyx/gym-pulse/issues/10) stays OPEN until its own enforcement/evidence/owner-decision exit criteria are satisfied.
+
+---
+
 ## Record and authority
 
 | Field | Value |
