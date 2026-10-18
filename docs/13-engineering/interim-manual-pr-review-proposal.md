@@ -1,5 +1,25 @@
 # GymPulse: Interim Manual Pull Request Review (Proposal)
 
+## Owner decision recorded — 2026-10-18: ADOPTED, DOCS-ONLY, MANUAL-ONLY, UNENFORCED
+
+**Current operational status: ADOPTED BY OWNER for documentation-only and non-production pull requests.** The owner explicitly chose ADOPT in [Issue #15's dated decision record](https://github.com/im-tnyx/gym-pulse/issues/15#issuecomment-6252020586). This owner-level choice **supersedes the earlier NOT ADOPTED proposal status below**; preserve those 2026-10-17 and pre-decision 2026-10-18 sections as historical snapshots, not the present operating decision. This file change is part of [PR #31](https://github.com/im-tnyx/gym-pulse/pull/31) and is **NOT merged to main** until separately authorized. The live Issue #15 owner decision governs only its explicitly limited docs/non-production voluntary workflow.
+
+### Operational steps now adopted for eligible PRs
+
+1. **Author/review scope:** Use an issue-linked, bounded branch and reviewable PR. Voluntarily avoid direct `main` pushes, force pushes and branch deletion; these are **not enforced GitHub protections**.
+2. **Evidence at exact HEAD:** Review current `main` and PR head SHAs, diff, sensitive-content scope, mergeability/conflicts, current Codex findings and actual CI. Record `PASS`, `FAIL` or `NOT RUN` with evidence; never treat skipped checks as PASS.
+3. **Designated technical reviewer:** **Codex bot** reviews the exact latest PR head; new commits require review of the new head. Codex is **not an independent human `APPROVED` review**. Record `INDEPENDENT HUMAN REVIEW UNAVAILABLE` when appropriate, plus `AUTOMATED GATE NOT ENFORCED`.
+4. **Owner merge authority:** The owner retains **explicit per-PR merge authorization**, granted only after the reviewed head, CI evidence and risks have been presented. Neither a clean bot verdict, adoption of this procedure, nor generic `go/next` creates permission for a merge.
+5. **Recovery and scope:** Preserve failed review/CI evidence and define a scoped, reviewable revert. Security/auth/RLS/payment/provider/ADR, secret, destructive, infrastructure and production work require their **separate governance and approvals**; this docs-only procedure does not grant them.
+
+### Explicitly unresolved — NOT risk acceptance
+
+**No formal acceptance of missing independent human review, unenforced GitHub required checks, or unprotected-main/direct-push/force-push bypass risk has been given.** Those gaps remain OPEN in [Issue #10](https://github.com/im-tnyx/gym-pulse/issues/10). GitHub `main.protected=false`; workflow CI PASS is a review signal only. Private-fork/inbound-link Stage 1 gaps remain in [Issue #19](https://github.com/im-tnyx/gym-pulse/issues/19). No billing/visibility/settings/ADR/production actions are authorized by this decision, and the Production Gate stays CLOSED.
+
+**Implementation status:** Owner's limited voluntary operational decision is **ADOPTED**; this **documentation synchronization PR #31 remains unmerged** and cannot be merged without a separate PR-specific owner authorization. The former candidate decision text below is historical.
+
+---
+
 ## Decision-ready update — 2026-10-18 (review-only; NOT ADOPTED)
 
 **Status stays PROPOSED / MANUAL-ONLY / UNENFORCED.** This dated addendum supersedes only the *current-status* claims in older sections; the 2026-10-17 observations and approval boundaries remain historical evidence. This change does not implement a mandatory rule, waive a human review requirement, authorize a merge or accept residual security risk.
