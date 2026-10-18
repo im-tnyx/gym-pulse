@@ -55,14 +55,19 @@ function removeCode(markdown) {
   function closingTicks(text, from, count) {
     const runs = /`+/g;
     runs.lastIndex = from;
-    let run;
+    let run, inspected = 0;
     while ((run = runs.exec(text))) {
+      // Avoid quadratic work on hostile Markdown containing many tick runs.
+      if (++inspected > 512) return null; // Conservatively keep ambiguous text visible.
       if (run[0].length === count) return run;
     }
     return null;
   }
   function laterClosingTicks(index, count) {
-    for (let j = index + 1; j < lines.length; j++) {
+    let inspected = 0;
+    for (let j = index + 1; j < lines.length && j - index <= 32; j++) {
+      inspected += lines[j].length + 1;
+      if (inspected > 8192) return false; // Do not suppress uncertain live links.
       // Do not mistake a later fenced code marker for an inline-code closer.
       if (/^ {0,3}(?:`{3,}|~{3,})/.test(lines[j])) return false;
       if (closingTicks(lines[j], 0, count)) return true;
