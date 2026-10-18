@@ -139,6 +139,20 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'unused reference definition to deleted target ignored', md: null, extra: 'deleted-unused-ref',
     pass: true, markdownCount: 0 },
+  { name: 'shortcut reference to deleted Markdown target rejected', md: null, extra: 'deleted-shortcut-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'code span HTML markers do not hide active deleted link', md: null, extra: 'deleted-code-comment',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'escaped HTML opener followed by real comment ignored', md: null, extra: 'deleted-escaped-then-comment',
+    pass: true, markdownCount: 0 },
+  { name: 'escaped literal inline-link opener ignored', md: null, extra: 'deleted-escaped-link-opener',
+    pass: true, markdownCount: 0 },
+  { name: 'escaped literal reference-link opener ignored', md: null, extra: 'deleted-escaped-ref-opener',
+    pass: true, markdownCount: 0 },
+  { name: 'setext base heading anchor is recognized', md: null, extra: 'deleted-setext-anchor',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'huge valid anchored base target fails conservatively', md: null, extra: 'deleted-huge-anchored',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
 ];
 
 function executeFixture(test) {
@@ -172,6 +186,13 @@ function executeFixture(test) {
       'deleted-symlink-target': '# Consumer\n[old](Alias.md)\n',
       'deleted-escaped-comment': '# Consumer\n\\<!-- not a comment: [old](Target.md) -->\n',
       'deleted-unused-ref': '# Consumer\n[unused]: Target.md\n',
+      'deleted-shortcut-ref': '# Consumer\n[old]\n\n[old]: Target.md\n',
+      'deleted-code-comment': '# Consumer\n`<!--` [old](Target.md) `-->`\n',
+      'deleted-escaped-then-comment': '# Consumer\n\\<!-- literal\n<!-- [old](Target.md) -->\n',
+      'deleted-escaped-link-opener': '# Consumer\n\\[old](Target.md)\n',
+      'deleted-escaped-ref-opener': '# Consumer\n\\[old][x]\n\n[x]: Target.md\n',
+      'deleted-setext-anchor': '# Consumer\n[old](Target.md#existing-heading)\n',
+      'deleted-huge-anchored': '# Consumer\n[old](Target.md#existing)\n',
     };
     if (Object.hasOwn(deletionConsumers, test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
@@ -215,6 +236,12 @@ function executeFixture(test) {
         throw error;
       }
     }
+    if (test.extra === 'deleted-setext-anchor') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), 'Existing Heading\n===\n');
+    }
+    if (test.extra === 'deleted-huge-anchored') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '## Existing\n' + 'x'.repeat(9_000_000));
+    }
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'synthetic baseline');
     let base = git(root, 'rev-parse', 'HEAD');
@@ -230,6 +257,9 @@ function executeFixture(test) {
       'deleted-invalid-fence', 'deleted-comment-inline', 'deleted-comment-block',
       'deleted-escaped-inline', 'deleted-escaped-reference', 'deleted-many-links',
       'deleted-large-target', 'deleted-escaped-comment', 'deleted-unused-ref',
+      'deleted-shortcut-ref', 'deleted-code-comment', 'deleted-escaped-then-comment',
+      'deleted-escaped-link-opener', 'deleted-escaped-ref-opener',
+      'deleted-setext-anchor', 'deleted-huge-anchored',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'deleted-symlink-target') fs.rmSync(path.join(root, 'docs', 'Alias.md'));
