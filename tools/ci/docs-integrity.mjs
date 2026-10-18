@@ -47,7 +47,7 @@ function removeCode(markdown) {
       return '';
     }
     if (fenced || /^( {4}|\t)/.test(line)) return '';
-    return line.replace(/(\x60+)[^\n]*?\1/g, '');
+    // Preserve CR separators while masking inline code, so source line offsets remain correct.\n    return line.replace(/(\x60+)[^\n]*?\1/g, span => span.replace(/[^\r\n]/g, ''));
   }).join('\n');
 }
 
