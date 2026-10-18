@@ -42,8 +42,12 @@ function localFile(filename) {
 
 function removeCode(markdown) {
   // HTML comments (single or multiline) are non-rendered Markdown.
-  const visible = markdown.replace(/<!--[\s\S]*?(?:-->|$)/g, comment =>
-    comment.replace(/[^\r\n]/g, ' '));
+  const visible = markdown.replace(/<!--[\s\S]*?(?:-->|$)/g, (comment, offset) => {
+    let slashes = 0;
+    for (let i = offset - 1; i >= 0 && markdown[i] === '\\'; i--) slashes++;
+    // An escaped '<' is literal; odd backslashes defeat the HTML opener.
+    return slashes % 2 ? comment : comment.replace(/[^\r\n]/g, ' ');
+  });
   let fenced = null;
   return visible.split(/\r?\n/).map(line => {
     const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
@@ -132,21 +136,45 @@ function checkLink(source, raw, line) {
 // Resolve surviving directory symlink aliases, never paths outside the checkout.
 // Invalid pre-existing anchors were not introduced by this deletion and are skipped.
 const baseTargetCache = new Map();
+const baseTargetInProgress = new Set();
 function baseTargetValid(relative, anchor) {
   const key = relative + '#' + anchor;
   if (baseTargetCache.has(key)) return baseTargetCache.get(key);
-  if (baseTargetCache.size > 1000) throw new Error('Too many distinct deleted link destinations');
+  if (baseTargetInProgress.has(key)) return false; // Cyclic base symlink is already invalid.
+  if (baseTargetCache.size > 1000 || baseTargetInProgress.size >= 8) {
+    throw new Error('Too many distinct/cyclic deleted link destinations');
+  }
   let valid = false;
+  baseTargetInProgress.add(key);
   try {
     const modeEntry = git(['ls-tree', base, '--', relative]);
     if (/^100(?:644|755) blob [0-9a-f]{40}\t/.test(modeEntry)) {
-      const bytes = git(['show', base + ':' + relative], true);
-      if (bytes.length <= 1024 * 1024) {
-        valid = !anchor || (relative.toLowerCase().endsWith('.md') &&
+      // For a plain link, only base-tree existence matters, not file size.
+      valid = !anchor;
+      if (anchor) {
+        const bytes = git(['show', base + ':' + relative], true);
+        // Huge anchored files cannot be safely parsed in this pilot; reject
+        // deletions conservatively rather than silently missing broken links.
+        valid = bytes.length > 1024 * 1024 ||
+          (relative.toLowerCase().endsWith('.md') &&
           headingsIn(removeCode(bytes.toString('utf8'))).has(anchor));
       }
+    } else if (/^120000 blob [0-9a-f]{40}\t/.test(modeEntry)) {
+      const targetBytes = git(['show', base + ':' + relative], true);
+      if (targetBytes.length > 4096) throw new Error('Oversized base symlink target');
+      const target = targetBytes.toString('utf8');
+      if (!Buffer.from(target, 'utf8').equals(targetBytes)) {
+        throw new Error('Non-UTF8 base symlink target unsupported');
+      }
+      if (target && !path.isAbsolute(target) && !target.includes('\0')) {
+        const resolved = path.resolve(root, path.dirname(relative), target);
+        if (withinRoot(resolved)) {
+          valid = baseTargetValid(path.relative(root, resolved).split(path.sep).join('/'), anchor);
+        }
+      }
     }
-  } catch { valid = false; } // Missing/invalid in base is not a new regression.
+  } catch { valid = false; } // No valid base target -> no newly broken link.
+  finally { baseTargetInProgress.delete(key); }
   baseTargetCache.set(key, valid);
   return valid;
 }
@@ -209,24 +237,35 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const refs = new Map();
   for (const match of text.matchAll(/^ {0,3}\[([^\]]+)\]:\s*(<[^>]+>|[^\s]+)/gm)) {
     const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
-    if (refs.has(id)) continue; // Markdown: first definition of a label wins.
-    refs.set(id, match[2]);
+    if (refs.has(id)) continue; // First definition of each label wins.
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
-    if (!deletedTargets || refersToDeletedMarkdown(filename, match[2], deletedTargets)) {
-      checkLink(filename, match[2], lineOf(match.index));
-    }
+    refs.set(id, { destination: match[2], line: lineOf(match.index) });
+    // Preserve full validation of definitions in actually changed Markdown.
+    if (!deletedTargets) checkLink(filename, match[2], lineOf(match.index));
   }
   // Scoped syntax support only; nested/multiline links, HTML href and live URL checks are NOT RUN.
-  for (const match of text.matchAll(/!?\[[^\]\n]*\]\((<[^>\n]*>|[^)\n]*(?:\([^)\n]*\)[^)\n]*)?)\)/g)) {
+  for (const match of text.matchAll(/!?\[[^\]\n]*\]\((<[^>\n]*>|[^)\n]*(?:\([^\)\n]*\)[^)\n]*)?)\)/g)) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
     if (!deletedTargets || refersToDeletedMarkdown(filename, match[1], deletedTargets)) {
       checkLink(filename, match[1], lineOf(match.index));
     }
   }
+  const used = new Set();
   for (const match of text.matchAll(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g)) {
     const id = (match[2] || match[1]).trim().toLowerCase().replace(/\s+/g, ' ');
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
-    if (!deletedTargets && !refs.has(id)) fail(safe(filename) + ': undefined reference label ' + safe(id) + ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
+    if (deletedTargets) used.add(id);
+    else if (!refs.has(id)) {
+      fail(safe(filename) + ': undefined reference label ' + safe(id) + ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
+    }
+  }
+  if (deletedTargets) {
+    for (const [id, ref] of refs) {
+      if (!used.has(id)) continue; // Unused definitions are not rendered inbound links.
+      if (refersToDeletedMarkdown(filename, ref.destination, deletedTargets)) {
+        checkLink(filename, ref.destination, ref.line);
+      }
+    }
   }
 }
 
