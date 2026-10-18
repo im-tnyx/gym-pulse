@@ -40,14 +40,30 @@ function localFile(filename) {
   return canonical;
 }
 
+function escapedAt(text, index) {
+  let slashes = 0;
+  for (let i = index - 1; i >= 0 && text[i] === '\\'; i--) slashes++;
+  return slashes % 2 === 1;
+}
+
 function removeCode(markdown) {
-  // HTML comments (single or multiline) are non-rendered Markdown.
-  const visible = markdown.replace(/<!--[\s\S]*?(?:-->|$)/g, (comment, offset) => {
-    let slashes = 0;
-    for (let i = offset - 1; i >= 0 && markdown[i] === '\\'; i--) slashes++;
-    // An escaped '<' is literal; odd backslashes defeat the HTML opener.
-    return slashes % 2 ? comment : comment.replace(/[^\r\n]/g, ' ');
-  });
+  // Mask inline code BEFORE HTML comments: comment markers inside code spans
+  // are literal, not an opener that may swallow active links afterwards.
+  const withoutInline = markdown.replace(/(`+)[^\n]*?\1/g, span =>
+    span.replace(/[^\r\n]/g, ' '));
+  let visible = withoutInline, from = 0, start;
+  while ((start = visible.indexOf('<!--', from)) >= 0) {
+    if (escapedAt(markdown, start)) {
+      from = start + 4; // Continue scanning: a later opener can be real.
+      continue;
+    }
+    let end = visible.indexOf('-->', start + 4);
+    end = end < 0 ? visible.length : end + 3;
+    visible = visible.slice(0, start) +
+      visible.slice(start, end).replace(/[^\r\n]/g, ' ') +
+      visible.slice(end);
+    from = end;
+  }
   let fenced = null;
   return visible.split(/\r?\n/).map(line => {
     const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
@@ -63,8 +79,7 @@ function removeCode(markdown) {
       }
     }
     if (fenced || /^( {4}|\t)/.test(line)) return '';
-    // Mask inline code while preserving line offsets.
-    return line.replace(/(`+)[^\n]*?\1/g, span => span.replace(/[^\r\n]/g, ''));
+    return line;
   }).join('\n');
 }
 
@@ -79,15 +94,21 @@ function headingSlug(heading) {
 
 function headingsIn(text) {
   const found = new Set(), occurrences = new Map();
-  for (const line of text.split('\n')) {
-    const match = line.match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
-    if (match) {
-      const slug = headingSlug(match[1]);
-      if (slug) {
-        const old = occurrences.get(slug) || 0;
-        found.add(old ? slug + '-' + old : slug);
-        occurrences.set(slug, old + 1);
-      }
+  const addSlug = heading => {
+    const slug = headingSlug(heading);
+    if (!slug) return;
+    const old = occurrences.get(slug) || 0;
+    found.add(old ? slug + '-' + old : slug);
+    occurrences.set(slug, old + 1);
+  };
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const atx = line.match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
+    if (atx) addSlug(atx[1]);
+    else if (i > 0 && /^ {0,3}(?:=+|-+)\s*$/.test(line)) {
+      const previous = lines[i - 1];
+      if (previous.trim() && !/^ {0,3}[#>]/.test(previous)) addSlug(previous.trim());
     }
     for (const m of line.matchAll(/<(?:a|h[1-6])\s+[^>]*\bid=["']([^"']+)["'][^>]*>/gi)) found.add(m[1]);
   }
@@ -140,7 +161,7 @@ const baseTargetInProgress = new Set();
 function baseTargetValid(relative, anchor) {
   const key = relative + '#' + anchor;
   if (baseTargetCache.has(key)) return baseTargetCache.get(key);
-  if (baseTargetInProgress.has(key)) return false; // Cyclic base symlink is already invalid.
+  if (baseTargetInProgress.has(key)) return false; // Cyclic base symlink: already invalid.
   if (baseTargetCache.size > 1000 || baseTargetInProgress.size >= 8) {
     throw new Error('Too many distinct/cyclic deleted link destinations');
   }
@@ -149,19 +170,23 @@ function baseTargetValid(relative, anchor) {
   try {
     const modeEntry = git(['ls-tree', base, '--', relative]);
     if (/^100(?:644|755) blob [0-9a-f]{40}\t/.test(modeEntry)) {
-      // For a plain link, only base-tree existence matters, not file size.
       valid = !anchor;
       if (anchor) {
-        const bytes = git(['show', base + ':' + relative], true);
-        // Huge anchored files cannot be safely parsed in this pilot; reject
-        // deletions conservatively rather than silently missing broken links.
-        valid = bytes.length > 1024 * 1024 ||
-          (relative.toLowerCase().endsWith('.md') &&
-          headingsIn(removeCode(bytes.toString('utf8'))).has(anchor));
+        const blobSize = Number(git(['cat-file', '-s', base + ':' + relative]).trim());
+        if (!Number.isSafeInteger(blobSize) || blobSize < 0) {
+          throw new Error('Invalid base Markdown target blob size');
+        }
+        // Conservative fail-closed rejection of deletions where base anchors
+        // cannot safely be parsed, without reading a huge Git blob.
+        valid = blobSize > 1024 * 1024 || (relative.toLowerCase().endsWith('.md') &&
+          headingsIn(removeCode(git(['show', base + ':' + relative], true).toString('utf8'))).has(anchor));
       }
     } else if (/^120000 blob [0-9a-f]{40}\t/.test(modeEntry)) {
+      const blobSize = Number(git(['cat-file', '-s', base + ':' + relative]).trim());
+      if (!Number.isSafeInteger(blobSize) || blobSize > 4096) {
+        throw new Error('Oversized or unknown base symlink target; fail closed');
+      }
       const targetBytes = git(['show', base + ':' + relative], true);
-      if (targetBytes.length > 4096) throw new Error('Oversized base symlink target');
       const target = targetBytes.toString('utf8');
       if (!Buffer.from(target, 'utf8').equals(targetBytes)) {
         throw new Error('Non-UTF8 base symlink target unsupported');
@@ -173,8 +198,9 @@ function baseTargetValid(relative, anchor) {
         }
       }
     }
-  } catch { valid = false; } // No valid base target -> no newly broken link.
-  finally { baseTargetInProgress.delete(key); }
+  } finally { baseTargetInProgress.delete(key); }
+  // Do not convert Git inspection failures into "invalid in base": errors
+  // propagate to outer fail-closed checker handler instead of false PASS.
   baseTargetCache.set(key, valid);
   return valid;
 }
@@ -236,32 +262,47 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const lineOf = lineLookup(text);
   const refs = new Map();
   for (const match of text.matchAll(/^ {0,3}\[([^\]]+)\]:\s*(<[^>]+>|[^\s]+)/gm)) {
+    if (escapedAt(text, match.index)) continue;
     const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
     if (refs.has(id)) continue; // First definition of each label wins.
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
     refs.set(id, { destination: match[2], line: lineOf(match.index) });
-    // Preserve full validation of definitions in actually changed Markdown.
     if (!deletedTargets) checkLink(filename, match[2], lineOf(match.index));
   }
   // Scoped syntax support only; nested/multiline links, HTML href and live URL checks are NOT RUN.
   for (const match of text.matchAll(/!?\[[^\]\n]*\]\((<[^>\n]*>|[^)\n]*(?:\([^\)\n]*\)[^)\n]*)?)\)/g)) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
+    const opener = match.index + (match[0][0] === '!' ? 1 : 0);
+    if (escapedAt(text, opener)) continue;
     if (!deletedTargets || refersToDeletedMarkdown(filename, match[1], deletedTargets)) {
       checkLink(filename, match[1], lineOf(match.index));
     }
   }
   const used = new Set();
   for (const match of text.matchAll(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g)) {
-    const id = (match[2] || match[1]).trim().toLowerCase().replace(/\s+/g, ' ');
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
+    const opener = match.index + (match[0][0] === '!' ? 1 : 0);
+    if (escapedAt(text, opener)) continue;
+    const id = (match[2] || match[1]).trim().toLowerCase().replace(/\s+/g, ' ');
     if (deletedTargets) used.add(id);
     else if (!refs.has(id)) {
       fail(safe(filename) + ': undefined reference label ' + safe(id) + ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
     }
   }
   if (deletedTargets) {
+    // Standard shortcut references: [label] or ![alt] when a definition exists.
+    // Ignore definitions, explicit/inline link openers, and backslash literals.
+    for (const match of text.matchAll(/!?\[([^\[\]\n]+)\]/g)) {
+      if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
+      const opener = match.index + (match[0][0] === '!' ? 1 : 0);
+      if (escapedAt(text, opener)) continue;
+      const after = text[match.index + match[0].length] || '';
+      if (after === ':' || after === '[' || after === '(') continue;
+      const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
+      if (refs.has(id)) used.add(id);
+    }
     for (const [id, ref] of refs) {
-      if (!used.has(id)) continue; // Unused definitions are not rendered inbound links.
+      if (!used.has(id)) continue;
       if (refersToDeletedMarkdown(filename, ref.destination, deletedTargets)) {
         checkLink(filename, ref.destination, ref.line);
       }
