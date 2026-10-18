@@ -1,5 +1,5 @@
-# Issue 19 disposable CI negative input
+# Issue 19 disposable wrong-case CI test
 
-This is synthetic documentation only.  
+Synthetic test with no trailing whitespace.
 
-[Broken repository-local reference](missing-issue-19-ci-test-target.md)
+[Wrong-case relative link](Read-only-pr-ci-pilot-plan.md)
