@@ -131,6 +131,14 @@ const fixtures = [
   { name: 'internal directory symlink alias to deleted target', md: null, extra: 'deleted-alias', pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'non-UTF8 deleted path fails closed', md: null, extra: 'deleted-nonutf8', pass: false, signal: 'Non-UTF8 Git deletion path unsupported' },
   { name: 'inbound repeated links emit bounded diagnostics', md: null, extra: 'deleted-many-links', pass: false, signal: 'Too many findings; diagnostics truncated' },
+  { name: 'large base target with unanchored inbound link', md: null, extra: 'deleted-large-target',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'deleted symlink target with formerly valid inbound link', md: null, extra: 'deleted-symlink-target',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'escaped HTML comment opener leaves active deleted link', md: null, extra: 'deleted-escaped-comment',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'unused reference definition to deleted target ignored', md: null, extra: 'deleted-unused-ref',
+    pass: true, markdownCount: 0 },
 ];
 
 function executeFixture(test) {
@@ -160,6 +168,10 @@ function executeFixture(test) {
       'deleted-escaped-reference': '# Consumer\n[old][x]\n\n[x]: Target\\.md\n',
       'renamed-inbound': '# Consumer\n[old](Target.md)\n',
       'deleted-many-links': '# Consumer\n' + '[old](Target.md)\n'.repeat(11000),
+      'deleted-large-target': '# Consumer\n[old](Target.md)\n',
+      'deleted-symlink-target': '# Consumer\n[old](Alias.md)\n',
+      'deleted-escaped-comment': '# Consumer\n\\<!-- not a comment: [old](Target.md) -->\n',
+      'deleted-unused-ref': '# Consumer\n[unused]: Target.md\n',
     };
     if (Object.hasOwn(deletionConsumers, test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
@@ -189,6 +201,20 @@ function executeFixture(test) {
       ? Buffer.concat([Buffer.from(path.join(root, 'docs', 'bad-')), Buffer.from([0xff]), Buffer.from('.md')])
       : null;
     if (rawName) fs.writeFileSync(rawName, '# Synthetic raw-byte file\n');
+    if (test.extra === 'deleted-large-target') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Target\n' + 'x'.repeat(1024 * 1024 + 1));
+    }
+    if (test.extra === 'deleted-symlink-target') {
+      fs.writeFileSync(path.join(root, 'docs', 'Real.md'), '# Real\n');
+      try {
+        fs.symlinkSync('Real.md', path.join(root, 'docs', 'Alias.md'));
+      } catch (error) {
+        if (['EPERM', 'ENOSYS', 'EACCES', 'EOPNOTSUPP', 'ENOTSUP'].includes(error.code)) {
+          return { skip: 'symlink creation unsupported on current host' };
+        }
+        throw error;
+      }
+    }
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'synthetic baseline');
     let base = git(root, 'rev-parse', 'HEAD');
@@ -198,12 +224,15 @@ function executeFixture(test) {
     git(root, 'checkout', '-q', '-b', 'pr');
     if (test.md !== null) fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), test.md);
     if (test.extra === 'modified') fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Changed\n[missing](absent-modified-target.md)\n');
-    if (Object.hasOwn(deletionConsumers, test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
-    const deletions = ['deleted-bad-anchor', 'deleted-duplicate-ref',
+    const deletions = ['deleted-inbound', 'deleted-reference', 'deleted-encoded',
+      'deleted-unused', 'deleted-unrelated', 'deleted-fenced',
+      'deleted-bad-anchor', 'deleted-duplicate-ref',
       'deleted-invalid-fence', 'deleted-comment-inline', 'deleted-comment-block',
       'deleted-escaped-inline', 'deleted-escaped-reference', 'deleted-many-links',
+      'deleted-large-target', 'deleted-escaped-comment', 'deleted-unused-ref',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
+    if (test.extra === 'deleted-symlink-target') fs.rmSync(path.join(root, 'docs', 'Alias.md'));
     if (rawName) fs.rmSync(rawName);
     if (test.extra === 'renamed-inbound') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
     if (test.extra === 'typechange-symlink') {
