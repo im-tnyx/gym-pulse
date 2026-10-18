@@ -47,52 +47,102 @@ function escapedAt(text, index) {
 }
 
 function removeCode(markdown) {
-  // Parse fences, inline code, and multiline HTML comments in source order.
-  // A fence within an HTML comment and a comment within code are inert.
-  // Preserve original positions and newline counts for diagnostics.
-  let fenced = null, comment = false;
-  return markdown.split(/\r?\n/).map(line => {
+  // Bounded, order-sensitive Markdown masking. Preserve newlines and offsets.
+  // Multiline code spans and HTML comments cannot change fence ownership.
+  const lines = markdown.split(/\r?\n/);
+  let fenced = null, comment = false, rawBlock = null, listIndent = null, inlineTicks = 0;
+
+  function closingTicks(text, from, count) {
+    const runs = /`+/g;
+    runs.lastIndex = from;
+    let run;
+    while ((run = runs.exec(text))) {
+      if (run[0].length === count) return run;
+    }
+    return null;
+  }
+  function laterClosingTicks(index, count) {
+    for (let j = index + 1; j < lines.length; j++) {
+      // Do not mistake a later fenced code marker for an inline-code closer.
+      if (/^ {0,3}(?:`{3,}|~{3,})/.test(lines[j])) return false;
+      if (closingTicks(lines[j], 0, count)) return true;
+    }
+    return false;
+  }
+
+  return lines.map((line, lineIndex) => {
     const fence = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (fenced) {
       if (fence && fence[1][0] === fenced.marker &&
           fence[1].length >= fenced.count && !fence[2].trim()) fenced = null;
       return '';
     }
-    if (!comment && /^( {4}|\t)/.test(line)) return '';
-    if (!comment && fence && !(fence[1][0] === '`' && fence[2].includes('`'))) {
+    if (rawBlock) {
+      if (new RegExp('</' + rawBlock + '\\s*>', 'i').test(line)) rawBlock = null;
+      return '';
+    }
+    if (!comment && !inlineTicks && fence &&
+        !(fence[1][0] === '`' && fence[2].includes('`'))) {
       fenced = { marker: fence[1][0], count: fence[1].length };
       return '';
     }
+    if (!comment && !inlineTicks) {
+      const rawOpen = line.match(/^ {0,3}<(pre|script|style|textarea)\b[^>]*>/i);
+      if (rawOpen) {
+        const tag = rawOpen[1].toLowerCase();
+        if (!new RegExp('</' + tag + '\\s*>', 'i').test(line.slice(rawOpen[0].length))) rawBlock = tag;
+        return '';
+      }
+      const list = line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])\s+/);
+      if (list) listIndent = list[0].length;
+      else if (line.trim() && listIndent !== null &&
+          !line.startsWith(' '.repeat(listIndent))) listIndent = null;
+      const indent = (line.match(/^ */) || [''])[0].length;
+      if ((indent >= 4 || line.startsWith('\t')) &&
+          (listIndent === null || indent < listIndent || indent >= listIndent + 4)) return '';
+    }
 
     let visible = '', from = 0;
-    const code = /(`+)[^\n]*?\1/g;
     while (from < line.length) {
       if (comment) {
-        // Backticks inside an HTML comment are inert. Its raw terminator
-        // must still end the comment, even when surrounded by backticks.
         const end = line.indexOf('-->', from);
-        if (end < 0) {
-          visible += ' '.repeat(line.length - from);
-          break;
-        }
+        if (end < 0) { visible += ' '.repeat(line.length - from); break; }
         visible += ' '.repeat(end + 3 - from);
         from = end + 3;
         comment = false;
         continue;
       }
-      code.lastIndex = from;
-      let span = code.exec(line);
-      while (span && escapedAt(line, span.index)) {
-        code.lastIndex = span.index + 1;
-        span = code.exec(line);
+      if (inlineTicks) {
+        const end = closingTicks(line, from, inlineTicks);
+        if (!end) { visible += ' '.repeat(line.length - from); break; }
+        visible += ' '.repeat(end.index + inlineTicks - from);
+        from = end.index + inlineTicks;
+        inlineTicks = 0;
+        continue;
+      }
+      const ticks = /`+/g;
+      ticks.lastIndex = from;
+      let tick = ticks.exec(line);
+      while (tick && escapedAt(line, tick.index)) {
+        ticks.lastIndex = tick.index + tick[0].length;
+        tick = ticks.exec(line);
       }
       let opener = line.indexOf('<!--', from);
-      while (opener >= 0 && escapedAt(line, opener)) {
-        opener = line.indexOf('<!--', opener + 4);
-      }
-      if (span && (opener < 0 || span.index < opener)) {
-        visible += line.slice(from, span.index) + ' '.repeat(span[0].length);
-        from = span.index + span[0].length;
+      while (opener >= 0 && escapedAt(line, opener)) opener = line.indexOf('<!--', opener + 4);
+      if (tick && (opener < 0 || tick.index < opener)) {
+        const closer = closingTicks(line, tick.index + tick[0].length, tick[0].length);
+        if (closer) {
+          visible += line.slice(from, tick.index) +
+            ' '.repeat(closer.index + closer[0].length - tick.index);
+          from = closer.index + closer[0].length;
+        } else if (laterClosingTicks(lineIndex, tick[0].length)) {
+          visible += line.slice(from, tick.index) + ' '.repeat(line.length - tick.index);
+          inlineTicks = tick[0].length;
+          break;
+        } else {
+          visible += line.slice(from, tick.index + tick[0].length);
+          from = tick.index + tick[0].length;
+        }
       } else if (opener >= 0) {
         visible += line.slice(from, opener);
         from = opener;
