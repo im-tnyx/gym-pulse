@@ -117,6 +117,20 @@ const fixtures = [
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown fenced-code pseudo link ignored', md: null, extra: 'deleted-fenced',
     pass: true, markdownCount: 0 },
+  { name: 'deleted target with pre-existing invalid anchor ignored', md: null, extra: 'deleted-bad-anchor', pass: true, markdownCount: 0 },
+  { name: 'duplicate ref label honors first valid definition', md: null, extra: 'deleted-duplicate-ref', pass: true, markdownCount: 0 },
+  { name: 'invalid code-fence opener does not hide deleted link', md: null, extra: 'deleted-invalid-fence', pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'single-line HTML comment does not trigger inbound link', md: null, extra: 'deleted-comment-inline', pass: true, markdownCount: 0 },
+  { name: 'multiline HTML comment does not trigger inbound link', md: null, extra: 'deleted-comment-block', pass: true, markdownCount: 0 },
+  { name: 'escaped punctuation inline link to deleted target', md: null, extra: 'deleted-escaped-inline', pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'escaped punctuation reference to deleted target', md: null, extra: 'deleted-escaped-reference', pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'rename old path with unchanged inbound link', md: null, extra: 'renamed-inbound', pass: false, signal: 'invalid local link', markdownCount: 1 },
+  { name: 'regular Markdown turned into dangling symlink', md: null, extra: 'typechange-symlink', pass: false, signal: 'missing/unsafe Markdown', markdownCount: 1 },
+  { name: 'unchanged internal Markdown symlink source ignored', md: null, extra: 'symlink-source-internal', pass: true, markdownCount: 0 },
+  { name: 'unchanged escaping Markdown symlink source ignored', md: null, extra: 'symlink-source-outside', pass: true, markdownCount: 0 },
+  { name: 'internal directory symlink alias to deleted target', md: null, extra: 'deleted-alias', pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'non-UTF8 deleted path fails closed', md: null, extra: 'deleted-nonutf8', pass: false, signal: 'Non-UTF8 Git deletion path unsupported', markdownCount: 0 },
+  { name: 'inbound repeated links emit bounded diagnostics', md: null, extra: 'deleted-many-links', pass: false, signal: 'Too many findings; diagnostics truncated', markdownCount: 0 },
 ];
 
 function executeFixture(test) {
@@ -137,10 +151,44 @@ function executeFixture(test) {
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
+      'deleted-bad-anchor': '# Consumer\n[old](Target.md#already-missing)\n',
+      'deleted-duplicate-ref': '# Consumer\n[used][x]\n\n[x]: ../README.md\n[x]: Target.md\n',
+      'deleted-invalid-fence': '# Consumer\n```md`no\n[old](Target.md)\n',
+      'deleted-comment-inline': '# Consumer\n<!-- [old](Target.md) -->\n',
+      'deleted-comment-block': '# Consumer\n<!--\n[old](Target.md)\n-->\n',
+      'deleted-escaped-inline': '# Consumer\n[old](Target\\.md)\n',
+      'deleted-escaped-reference': '# Consumer\n[old][x]\n\n[x]: Target\\.md\n',
+      'renamed-inbound': '# Consumer\n[old](Target.md)\n',
+      'deleted-many-links': '# Consumer\n' + '[old](Target.md)\n'.repeat(11000),
     };
     if (Object.hasOwn(deletionConsumers, test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
     }
+    // Some bypass scenarios require additional paths already present in BASE.
+    const specialSymlinks = ['symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
+    if (specialSymlinks.includes(test.extra)) {
+      try {
+        if (test.extra === 'deleted-alias') {
+          fs.symlinkSync('docs', path.join(root, 'alias'), 'dir');
+          fs.writeFileSync(path.join(root, 'README.md'), '# Base\n[old](alias/Target.md)\n');
+        } else {
+          if (test.extra === 'symlink-source-outside') {
+            fs.writeFileSync(path.join(outside, 'consumer.md'), '# Outside\n');
+          }
+          fs.symlinkSync(test.extra === 'symlink-source-internal' ? '../README.md' : path.join(outside, 'consumer.md'),
+            path.join(root, 'docs', 'consumer.md'));
+        }
+      } catch (error) {
+        if (['EPERM', 'ENOSYS', 'EACCES', 'EOPNOTSUPP', 'ENOTSUP'].includes(error.code)) {
+          return { skip: 'symlink creation unsupported on current host' };
+        }
+        throw error;
+      }
+    }
+    const rawName = test.extra === 'deleted-nonutf8'
+      ? Buffer.concat([Buffer.from(path.join(root, 'docs', 'bad-')), Buffer.from([0xff]), Buffer.from('.md')])
+      : null;
+    if (rawName) fs.writeFileSync(rawName, '# Synthetic raw-byte file\n');
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'synthetic baseline');
     let base = git(root, 'rev-parse', 'HEAD');
@@ -151,6 +199,24 @@ function executeFixture(test) {
     if (test.md !== null) fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), test.md);
     if (test.extra === 'modified') fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Changed\n[missing](absent-modified-target.md)\n');
     if (Object.hasOwn(deletionConsumers, test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
+    const deletions = ['deleted-bad-anchor', 'deleted-duplicate-ref',
+      'deleted-invalid-fence', 'deleted-comment-inline', 'deleted-comment-block',
+      'deleted-escaped-inline', 'deleted-escaped-reference', 'deleted-many-links',
+      'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
+    if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
+    if (rawName) fs.rmSync(rawName);
+    if (test.extra === 'renamed-inbound') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
+    if (test.extra === 'typechange-symlink') {
+      fs.rmSync(path.join(root, 'docs', 'Target.md'));
+      try {
+        fs.symlinkSync('not-present.md', path.join(root, 'docs', 'Target.md'));
+      } catch (error) {
+        if (['EPERM', 'ENOSYS', 'EACCES', 'EOPNOTSUPP', 'ENOTSUP'].includes(error.code)) {
+          return { skip: 'symlink creation unsupported on current host' };
+        }
+        throw error;
+      }
+    }
     if (test.extra === 'oversized') fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), Buffer.alloc(1024 * 1024 + 1, 'X'));
     if (test.extra === 'renamed') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
     if (test.extra === 'other') fs.writeFileSync(path.join(root, 'other.txt'), 'synthetic non-doc\n');
