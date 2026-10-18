@@ -47,45 +47,53 @@ function escapedAt(text, index) {
 }
 
 function removeCode(markdown) {
-  // Recognize fences and indented code on ORIGINAL lines first. Masking inline
-  // spans before detecting indentation can turn visible links into false code.
-  // It can also consume the first two backticks of a triple fence.
-  let fenced = null;
-  const structural = markdown.split(/\r?\n/).map(line => {
-    const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
-    if (match) {
-      const marker = match[1][0], count = match[1].length, rest = match[2];
-      if (!fenced && !(marker === '`' && rest.includes('`'))) {
-        fenced = { marker, count };
-        return '';
-      }
-      if (fenced && marker === fenced.marker && count >= fenced.count && !rest.trim()) {
-        fenced = null;
-        return '';
-      }
+  // One-pass line-state masking. A fence marker inside a multiline HTML
+  // comment is inert, and an HTML marker inside a fenced or inline code span
+  // is inert. Keep line breaks/offsets stable for downstream diagnostics.
+  let fenced = null, comment = false;
+  return markdown.split(/\r?\n/).map(line => {
+    const fence = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (fenced) {
+      if (fence && fence[1][0] === fenced.marker &&
+          fence[1].length >= fenced.count && !fence[2].trim()) fenced = null;
+      return '';
     }
-    if (fenced || /^( {4}|\t)/.test(line)) return '';
-    return line;
+    if (!comment && /^( {4}|\t)/.test(line)) return '';
+    if (!comment && fence && !(fence[1][0] === '`' && fence[2].includes('`'))) {
+      fenced = { marker: fence[1][0], count: fence[1].length };
+      return '';
+    }
+    // Process code spans before comments, but after detecting real block fences.
+    let visible = line.replace(/(`+)[^\n]*?\1/g, span =>
+      span.replace(/[^\r\n]/g, ' '));
+    let from = 0;
+    if (comment) {
+      const end = visible.indexOf('-->');
+      if (end < 0) return visible.replace(/[^\r\n]/g, ' ');
+      visible = visible.slice(0, end + 3).replace(/[^\r\n]/g, ' ') +
+        visible.slice(end + 3);
+      from = end + 3;
+      comment = false;
+    }
+    let start;
+    while ((start = visible.indexOf('<!--', from)) >= 0) {
+      if (escapedAt(line, start)) {
+        from = start + 4;
+        continue;
+      }
+      const end = visible.indexOf('-->', start + 4);
+      const stop = end < 0 ? visible.length : end + 3;
+      visible = visible.slice(0, start) +
+        visible.slice(start, stop).replace(/[^\r\n]/g, ' ') +
+        visible.slice(stop);
+      if (end < 0) {
+        comment = true;
+        break;
+      }
+      from = stop;
+    }
+    return visible;
   }).join('\n');
-
-  // Mask inline code before recognizing HTML comments. A comment opener inside
-  // a code span or fenced block must never hide a live link outside that code.
-  const withoutInline = structural.replace(/(`+)[^\n]*?\1/g, span =>
-    span.replace(/[^\r\n]/g, ' '));
-  let visible = withoutInline, from = 0, start;
-  while ((start = visible.indexOf('<!--', from)) >= 0) {
-    if (escapedAt(visible, start)) {
-      from = start + 4;
-      continue;
-    }
-    let end = visible.indexOf('-->', start + 4);
-    end = end < 0 ? visible.length : end + 3;
-    visible = visible.slice(0, start) +
-      visible.slice(start, end).replace(/[^\r\n]/g, ' ') +
-      visible.slice(end);
-    from = end;
-  }
-  return visible;
 }
 
 function headingSlug(heading) {
