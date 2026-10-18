@@ -135,6 +135,18 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'entity in base heading preserves deletion anchor validity', md: null, extra: 'deleted-heading-entity',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'unmatched escaped inline label remains bounded', md: '# New\n[' + '\\\\'.repeat(2048) + '\n',
+    pass: true, markdownCount: 1 },
+  { name: 'deleted target through retargeted base symlink remains rejected', md: null, extra: 'deleted-alias-retarget',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'shortcut immediately after a literal closing bracket remains live', md: null, extra: 'deleted-adjacent-shortcut',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'known HTML copyright heading with valid anchor triggers deletion', md: null, extra: 'deleted-heading-copy-valid',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'known HTML copyright heading with baseline invalid anchor ignored', md: null, extra: 'deleted-heading-copy-invalid',
+    pass: true, markdownCount: 0 },
+  { name: 'unknown heading named entity remains conservative without exception', md: null, extra: 'deleted-heading-uncertain',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -220,6 +232,10 @@ function executeFixture(test) {
       'deleted-raw-script': '# Consumer\n<script>\n[old](Target.md)\n</script>\n',
       'deleted-raw-then-link': '# Consumer\n<pre>\n[old](Target.md)\n</pre>\n[old](Target.md)\n',
       'deleted-heading-entity': '# Consumer\n[old](Target.md#ab)\n',
+      'deleted-adjacent-shortcut': '# Consumer\nliteral][old]\n\n[old]: Target.md\n',
+      'deleted-heading-copy-valid': '# Consumer\n[old](Target.md#a-b)\n',
+      'deleted-heading-copy-invalid': '# Consumer\n[old](Target.md#does-not-exist)\n',
+      'deleted-heading-uncertain': '# Consumer\n[old](Target.md#does-not-exist)\n',
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
@@ -255,10 +271,10 @@ function executeFixture(test) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
     }
     // Some bypass scenarios require additional paths already present in BASE.
-    const specialSymlinks = ['symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
+    const specialSymlinks = ['symlink-source-internal', 'symlink-source-outside', 'deleted-alias', 'deleted-alias-retarget'];
     if (specialSymlinks.includes(test.extra)) {
       try {
-        if (test.extra === 'deleted-alias') {
+        if (test.extra === 'deleted-alias' || test.extra === 'deleted-alias-retarget') {
           fs.symlinkSync('docs', path.join(root, 'alias'), 'dir');
           fs.writeFileSync(path.join(root, 'README.md'), '# Base\n[old](alias/Target.md)\n');
         } else {
@@ -300,6 +316,12 @@ function executeFixture(test) {
     if (test.extra === 'deleted-heading-entity') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# A&#66;\n');
     }
+    if (['deleted-heading-copy-valid', 'deleted-heading-copy-invalid'].includes(test.extra)) {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# A&copy; B\n');
+    }
+    if (test.extra === 'deleted-heading-uncertain') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# A&NonstandardName;\n');
+    }
     if (test.extra === 'deleted-setext-anchor') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), 'Existing Heading\n===\n');
     }
@@ -314,6 +336,12 @@ function executeFixture(test) {
     }
     git(root, 'checkout', '-q', '-b', 'pr');
     if (test.md !== null) fs.writeFileSync(path.join(root, 'docs', 'candidate.md'), test.md);
+    if (test.extra === 'deleted-alias-retarget') {
+      fs.mkdirSync(path.join(root, 'other'));
+      fs.writeFileSync(path.join(root, 'other', 'placeholder.txt'), 'still tracked\n');
+      fs.rmSync(path.join(root, 'alias'));
+      fs.symlinkSync('other', path.join(root, 'alias'), 'dir');
+    }
     if (test.extra === 'modified') fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Changed\n[missing](absent-modified-target.md)\n');
     const deletions = ['deleted-inbound', 'deleted-reference', 'deleted-encoded',
       'deleted-numeric-entity', 'deleted-named-entity', 'deleted-unknown-entity', 'deleted-escaped-label',
@@ -330,6 +358,8 @@ function executeFixture(test) {
       'deleted-comment-tilde-fence', 'deleted-code-comment', 'deleted-escaped-then-comment',
       'deleted-escaped-link-opener', 'deleted-escaped-ref-opener',
       'deleted-setext-anchor', 'deleted-huge-anchored', 'deleted-heading-entity',
+      'deleted-heading-copy-valid', 'deleted-heading-copy-invalid', 'deleted-heading-uncertain',
+      'deleted-adjacent-shortcut', 'deleted-alias-retarget',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'deleted-cache-collision') {
