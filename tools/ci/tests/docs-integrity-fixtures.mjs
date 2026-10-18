@@ -15,11 +15,21 @@ import { spawnSync } from 'node:child_process';
 
 const checker = fileURLToPath(new URL('../docs-integrity.mjs', import.meta.url));
 
+// Isolate even the initial Git environment discovery from hostile user config.
+const discoveryEnv = {
+  ...process.env,
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_CONFIG_GLOBAL: os.devNull,
+  GIT_CONFIG_SYSTEM: os.devNull,
+  GIT_CONFIG_COUNT: '0',
+  GIT_CONFIG_PARAMETERS: '',
+};
+delete discoveryEnv.GIT_CONFIG;
 // Git documents these names as local to a repository. Prevent a caller's hook
 // or shell from redirecting fixture commands to another repository.
 const localVarsResult = spawnSync('git', ['rev-parse', '--local-env-vars'], {
   encoding: 'utf8', timeout: 20000, maxBuffer: 1024 * 1024,
-  env: { ...process.env, GIT_CONFIG: undefined, GIT_CONFIG_COUNT: '0' },
+  env: discoveryEnv,
 });
 if (localVarsResult.error || localVarsResult.status !== 0) {
   throw new Error('Cannot obtain Git repository-local environment variables');
@@ -30,6 +40,11 @@ function run(bin, args, cwd, expectSuccess = true) {
   // GIT_CONFIG changes where `git config` writes. It must not leak into synthetic repos.
   const env = { ...process.env };
   for (const name of localGitVars) delete env[name];
+  // Git author/committer overrides take precedence over local user.name/email.
+  for (const name of [
+    'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_AUTHOR_DATE',
+    'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL', 'GIT_COMMITTER_DATE',
+  ]) delete env[name];
   const result = spawnSync(bin, args, {
     cwd,
     encoding: 'utf8',
@@ -40,6 +55,7 @@ function run(bin, args, cwd, expectSuccess = true) {
       // Ignore machine/user Git signing, hooks and credential configuration.
       GIT_CONFIG_NOSYSTEM: '1',
       GIT_CONFIG_GLOBAL: os.devNull,
+      GIT_CONFIG_SYSTEM: os.devNull,
       GIT_CONFIG_COUNT: '0',
       GIT_CONFIG_PARAMETERS: '',
     },
@@ -78,6 +94,7 @@ const fixtures = [
   { name: 'bad percent encoding', md: '# New\n[bad](file%ZZ.md)\n', pass: false, signal: 'invalid URL encoding' },
   { name: 'root-absolute path rejected', md: '# New\n[absolute](/etc/passwd)\n', pass: false, signal: 'root-absolute link unsupported' },
   { name: 'wrong merge parent rejected', md: '# New\n[ok](Target.md)\n', pass: false, wrongBase: true, signal: 'Unexpected PR merge commit parents' },
+  { name: 'wrong PR head parent rejected', md: '# New\n[ok](Target.md)\n', pass: false, wrongHead: true, signal: 'Unexpected PR merge commit parents' },
   { name: 'non-doc change classified', md: null, extra: 'other', pass: true, signal: 'NO DOC FILES', markdownCount: 0 },
   { name: 'non-doc trailing whitespace rejected', md: null, extra: 'other-white', pass: false, signal: 'Changed-line whitespace check failed', markdownCount: 0 },
   { name: 'symlink escape rejected', md: '# New\n[secret](external-link.txt)\n', extra: 'symlink', pass: false, signal: 'invalid local link' },
@@ -125,7 +142,7 @@ function executeFixture(test) {
       try {
         fs.symlinkSync(target, path.join(root, 'docs', 'external-link.txt'));
       } catch (error) {
-        if (['EPERM', 'ENOSYS', 'EACCES'].includes(error.code)) {
+        if (['EPERM', 'ENOSYS', 'EACCES', 'EOPNOTSUPP', 'ENOTSUP'].includes(error.code)) {
           return { skip: 'symlinks unavailable on this filesystem/user' };
         }
         throw error;
@@ -150,7 +167,8 @@ function executeFixture(test) {
       return { skip: 'Git checkout did not materialize a symlink' };
     }
     const suppliedBase = test.wrongBase ? '0'.repeat(40) : base;
-    const result = run(process.execPath, [checker, root, suppliedBase, head, merge], root, false);
+    const suppliedHead = test.wrongHead ? base : head;
+    const result = run(process.execPath, [checker, root, suppliedBase, suppliedHead, merge], root, false);
     const combined = result.stdout + result.stderr;
     assert.equal(result.status === 0, test.pass, `${test.name}: unexpected checker exit (${result.status})\n${combined}`);
     if (test.signal) assert.ok(combined.includes(test.signal), `${test.name}: missing signal ${test.signal}\n${combined}`);
