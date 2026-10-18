@@ -308,28 +308,40 @@ function baseTargetValid(relative, anchor) {
   return valid;
 }
 
-function resolveMissingParentAliases(parent) {
-  // Deleted last-file targets remove their containing directory from Git's
-  // checkout. Resolve a surviving tracked symlink without dereferencing a
-  // now-missing directory. Never follow aliases outside the checkout.
-  if (!withinRoot(parent)) throw new Error('Unsafe alias path');
+const baseSymlinkCache = new Map();
+function resolveBaseParentAliases(parent) {
+  // The merge checkout can retarget a symlink. Resolve directory aliases
+  // exclusively against BASE tree entries, not PR-controlled filesystem links.
+  if (!withinRoot(parent)) throw new Error('Unsafe base alias path');
   let pending = path.relative(root, parent).split(path.sep).filter(Boolean);
   let current = root, hops = 0, steps = 0;
   while (pending.length) {
-    if (++steps > 128) throw new Error('Alias path exceeds resolution bounds');
+    if (++steps > 128) throw new Error('Base alias path exceeds resolution bounds');
     const next = path.resolve(current, pending.shift());
-    if (!withinRoot(next)) throw new Error('Symlink alias escapes repository');
-    let stat;
-    try { stat = fs.lstatSync(next); }
-    catch (error) {
-      if (error.code !== 'ENOENT') throw error;
-      current = next;
-      continue;
+    if (!withinRoot(next)) throw new Error('Base alias escapes repository');
+    const relative = path.relative(root, next).split(path.sep).join('/');
+    let target = baseSymlinkCache.get(relative);
+    if (target === undefined) {
+      if (baseSymlinkCache.size >= 1000) throw new Error('Too many base alias paths');
+      const entry = git(['ls-tree', base, '--', relative]);
+      if (/^120000 blob [0-9a-f]{40}\t/.test(entry)) {
+        const size = Number(git(['cat-file', '-s', base + ':' + relative]).trim());
+        if (!Number.isSafeInteger(size) || size < 1 || size > 4096) {
+          throw new Error('Oversized or invalid base symlink; fail closed');
+        }
+        const bytes = git(['show', base + ':' + relative], true);
+        target = bytes.toString('utf8');
+        if (!Buffer.from(target, 'utf8').equals(bytes) ||
+            target.includes('\0') || path.isAbsolute(target)) {
+          throw new Error('Unsafe base symlink; fail closed');
+        }
+      } else target = null;
+      baseSymlinkCache.set(relative, target);
     }
-    if (stat.isSymbolicLink()) {
-      if (++hops > 8) throw new Error('Too many symlink aliases');
-      const resolved = path.resolve(path.dirname(next), fs.readlinkSync(next));
-      if (!withinRoot(resolved)) throw new Error('Symlink alias escapes repository');
+    if (target !== null) {
+      if (++hops > 8) throw new Error('Too many base symlink aliases');
+      const resolved = path.resolve(path.dirname(next), target);
+      if (!withinRoot(resolved)) throw new Error('Base symlink escapes repository');
       pending = path.relative(root, resolved).split(path.sep).filter(Boolean).concat(pending);
       current = root;
     } else current = next;
@@ -352,15 +364,10 @@ function refersToDeletedMarkdown(source, raw, deleted) {
   const absolute = path.resolve(root, path.dirname(source), filename);
   if (!withinRoot(absolute)) return false;
   const paths = [absolute];
-  try {
-    // Deleted basename cannot be realpathed, but any symlinked parent can.
-    const parent = fs.realpathSync(path.dirname(absolute));
-    if (withinRoot(parent)) paths.push(path.join(parent, path.basename(absolute)));
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-    const parent = resolveMissingParentAliases(path.dirname(absolute));
-    if (withinRoot(parent)) paths.push(path.join(parent, path.basename(absolute)));
-  }
+  // BASE was the state in which this unchanged source link was valid.
+  // Merge-worktree realpaths are attacker-controlled and may hide old aliases.
+  const parent = resolveBaseParentAliases(path.dirname(absolute));
+  if (withinRoot(parent)) paths.push(path.join(parent, path.basename(absolute)));
   return paths.some(candidate => {
     if (!withinRoot(candidate)) return false;
     const relative = path.relative(root, candidate).split(path.sep).join('/');
