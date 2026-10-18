@@ -414,8 +414,11 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
       checkLink(filename, match[1], lineOf(match.index));
     }
   }
-  const used = new Set();
+  const used = new Set(), referenceSuffixStarts = new Set();
   for (const match of text.matchAll(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g)) {
+    // Consume an explicit reference's second [label] even if its first
+    // bracket is escaped. Other text ending with ']' is not a reference.
+    referenceSuffixStarts.add(match.index + match[0].lastIndexOf('['));
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
     const opener = match.index + (match[0][0] === '!' ? 1 : 0);
     if (escapedAt(text, opener)) continue;
@@ -432,9 +435,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
       if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
       const opener = match.index + (match[0][0] === '!' ? 1 : 0);
       if (escapedAt(text, opener)) continue;
-      // A closing bracket immediately before this token means it is the
-      // suffix of a full/collapsed reference, not an independent shortcut.
-      if (match.index > 0 && text[match.index - 1] === ']') continue;
+      if (referenceSuffixStarts.has(match.index)) continue;
       const after = text[match.index + match[0].length] || '';
       if (after === ':' || after === '[' || after === '(') continue;
       const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
