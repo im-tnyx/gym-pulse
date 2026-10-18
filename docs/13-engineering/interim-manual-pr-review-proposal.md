@@ -2,7 +2,7 @@
 
 ## Owner decision recorded — 2026-10-18: ADOPTED, DOCS-ONLY, MANUAL-ONLY, UNENFORCED
 
-**Current operational status: ADOPTED BY OWNER for documentation-only and non-production pull requests.** The owner explicitly chose ADOPT in [Issue #15's dated decision record](https://github.com/im-tnyx/gym-pulse/issues/15#issuecomment-6252020586). This owner-level choice **supersedes the earlier NOT ADOPTED proposal status below**; preserve those 2026-10-17 and pre-decision 2026-10-18 sections as historical snapshots, not the present operating decision. This file change is part of [PR #31](https://github.com/im-tnyx/gym-pulse/pull/31) and is **NOT merged to main** until separately authorized. The live Issue #15 owner decision governs only its explicitly limited docs/non-production voluntary workflow.
+**Current operational status: ADOPTED BY OWNER for documentation-only and non-production pull requests.** The owner explicitly chose ADOPT in [Issue #15's dated decision record](https://github.com/im-tnyx/gym-pulse/issues/15#issuecomment-6252020586). This owner-level choice **supersedes the earlier NOT ADOPTED proposal status below**; preserve those 2026-10-17 and pre-decision 2026-10-18 sections as historical snapshots, not the present operating decision. The owner separately authorized merging [PR #31](https://github.com/im-tnyx/gym-pulse/pull/31), which **MERGED on 2026-10-18** at commit `50fe73776a038c00d293995889b41ace6fa74044`; the adopted procedure still requires a distinct authorization for every future PR. The live Issue #15 owner decision governs only its explicitly limited docs/non-production voluntary workflow.
 
 ### Operational steps now adopted for eligible PRs
 
@@ -16,7 +16,7 @@
 
 **No formal acceptance of missing independent human review, unenforced GitHub required checks, or unprotected-main/direct-push/force-push bypass risk has been given.** Those gaps remain OPEN in [Issue #10](https://github.com/im-tnyx/gym-pulse/issues/10). GitHub `main.protected=false`; workflow CI PASS is a review signal only. Private-fork/inbound-link Stage 1 gaps remain in [Issue #19](https://github.com/im-tnyx/gym-pulse/issues/19). No billing/visibility/settings/ADR/production actions are authorized by this decision, and the Production Gate stays CLOSED.
 
-**Implementation status:** Owner's limited voluntary operational decision is **ADOPTED**; this **documentation synchronization PR #31 remains unmerged** and cannot be merged without a separate PR-specific owner authorization. The former candidate decision text below is historical.
+**Implementation status:** The owner's limited voluntary operational decision is **ADOPTED**; [PR #31](https://github.com/im-tnyx/gym-pulse/pull/31) **MERGED on 2026-10-18** at `50fe73776a038c00d293995889b41ace6fa74044` after its own explicit owner authorization. This merge does **not** grant authorization for any future PR, formally accept the open governance risks or approve production. The former candidate decision text below is historical.
 
 ---
 
