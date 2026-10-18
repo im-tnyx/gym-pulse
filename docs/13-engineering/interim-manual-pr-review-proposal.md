@@ -12,6 +12,14 @@
 - Real [changed-Markdown positive CI evidence](https://github.com/im-tnyx/gym-pulse/actions/runs/39059347757) exists. After merged [PR #27](https://github.com/im-tnyx/gym-pulse/pull/27) (local 24/24 synthetic fixtures) and [PR #29](https://github.com/im-tnyx/gym-pulse/pull/29) (safe file/line diagnostics), the new trusted checker produced a real [post-merge negative CI run](https://github.com/im-tnyx/gym-pulse/actions/runs/39119487571) with expected `FAIL` / exit 1 for synthetic whitespace and a broken local link. The deliberately broken [PR #30](https://github.com/im-tnyx/gym-pulse/pull/30) is **CLOSED / UNMERGED**.
 - CI execution is a **review signal**, not protection from direct pushes or unauthorized merges. There is still no independent human `APPROVED` review established for this workflow; a Codex bot `COMMENTED` review is not a separate human approval. [Issue #19](https://github.com/im-tnyx/gym-pulse/issues/19) remains OPEN for fork validation, deleted-target inbound link coverage and scope decisions.
 
+### Owner-designated automated technical reviewer — 2026-10-18
+
+The repository owner has explicitly selected **Codex bot as the designated technical reviewer** for the proposed GymPulse PR-review workflow. The bot may inspect each PR's exact latest commit, provide inline findings and request corrections. Record its current-head review as `CODEX_REVIEW_COMPLETE`, `CODEX_FINDINGS_OPEN` or `CODEX_REVIEW_NOT_RUN` using actual evidence; a review of an earlier commit is not approval of a later one. Inspect the exact diff and CI results independently of the bot verdict.
+
+**Role boundary:** Codex is an automated technical reviewer, **not a distinct independent human `APPROVED` reviewer**. Unless another authorized person reviews the PR, record `INDEPENDENT HUMAN REVIEW UNAVAILABLE` and `AUTOMATED GATE NOT ENFORCED`. The owner remains the named **human escalation and per-PR merge-decision authority**, rather than the bot. Codex's clean review neither authorizes a merge nor adopts this policy, approves a security exception, accepts residual risk or unlocks production. Human-review and unprotected-`main` risks need a separate, explicit scoped owner disposition.
+
+For security/auth/RLS/payment/secrets, ADR/provider decisions, destructive operations and production work, **Codex-only review is insufficient**; preserve the applicable separate governance/approval gates. This reviewer designation selects a review workflow role, **not** the `ADOPT` choice below.
+
 ### Candidate operating decision — owner action REQUIRED
 
 For **documentation-only and non-production repository work**, the owner may choose to **ADOPT, REVISE or DEFER** the manual steps in Sections 3–6. No option has been selected in the source record.
