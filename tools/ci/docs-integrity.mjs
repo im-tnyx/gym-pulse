@@ -406,7 +406,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     if (!deletedTargets) checkLink(filename, match[2], lineOf(match.index));
   }
   // Scoped syntax support only; nested/multiline links, HTML href and live URL checks are NOT RUN.
-  for (const match of text.matchAll(/!?\[(?:\\.|[^\]\n])*\]\((<[^>\n]*>|[^)\n]*(?:\([^\)\n]*\)[^)\n]*)?)\)/g)) {
+  for (const match of text.matchAll(/!?\[(?:\\.|[^\]\\\n])*\]\((<[^>\n]*>|[^)\n]*(?:\([^\)\n]*\)[^)\n]*)?)\)/g)) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
     const opener = match.index + (match[0][0] === '!' ? 1 : 0);
     if (escapedAt(text, opener)) continue;
