@@ -849,7 +849,7 @@ function* inlineLinks(text) {
     let angleStart = start;
     while (angleStart < limit && (text[angleStart] === ' ' || text[angleStart] === '\t')) angleStart++;
     let depth = 0, rawEnd = -1, angle = text[angleStart] === '<', angleClosed = false, title = null;
-    let lineEndings = 0;
+    let lineEndings = 0, lastLineEnding = -1;
     let whitespace = false, destinationSeen = false;
     for (let i = start; i < limit; i++) {
       const ch = text[i];
@@ -858,8 +858,10 @@ function* inlineLinks(text) {
         // Never accept blank lines, newline inside an angle destination/title,
         // or unbounded continuation.
         if (angle || title !== null || lineEndings >= 2 ||
-            text[i + 1] === '\n' || (i > start && text[i - 1] === '\n')) break;
+            text[i + 1] === '\n' || (i > start && text[i - 1] === '\n') ||
+            (lastLineEnding >= 0 && !text.slice(lastLineEnding + 1, i).trim())) break;
         lineEndings++;
+        lastLineEnding = i;
         whitespace = true;
         continue;
       }
