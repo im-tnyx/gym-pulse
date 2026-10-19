@@ -187,7 +187,7 @@ function headingSlug(heading) {
     .replace(/<[^>]*>/g, '')
     .replace(/\x01(\d+)\x02/g, (_match, index) => spans[Number(index)] || '')
     .replace(/[\x60*_~]/g, '')
-    .normalize('NFKC').toLowerCase()
+    .toLowerCase()
     .replace(/[^\p{L}\p{N}_\- ]/gu, '')
     .trim().replace(/ +/g, '-');
 }
@@ -476,8 +476,8 @@ function* inlineLinks(text) {
         if (ch === title) title = null;
         continue;
       }
-      if ((ch === '"' || ch === "'") && whitespace && destinationSeen && depth === 0) {
-        title = ch;
+      if ((ch === '"' || ch === "'" || ch === '(') && whitespace && destinationSeen && depth === 0) {
+        title = ch === '(' ? ')' : ch;
         whitespace = false;
         continue;
       }
@@ -485,7 +485,7 @@ function* inlineLinks(text) {
         if (depth === 0) whitespace = true;
         continue;
       }
-      if (whitespace && depth === 0 && ch !== ')') break; // Invalid title syntax.
+      if (whitespace && destinationSeen && depth === 0 && ch !== ')') break; // Invalid trailing title syntax.
       whitespace = false;
       if (ch === '(') { if (++depth > 1) break; }
       else if (ch === ')') {
@@ -508,7 +508,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const text = removeCode(fs.readFileSync(resolved, 'utf8'));
   const lineOf = lineLookup(text);
   const refs = new Map(), definitionLabelOffsets = new Set();
-  for (const match of text.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]+)/gm)) {
+  for (const match of text.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]{1,4096})(?:[ \t]+(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\((?:\\.|[^)\\\n])*\)))?[ \t]*$/gm)) {
     if (escapedAt(text, match.index)) continue;
     definitionLabelOffsets.add(match.index + match[0].indexOf('['));
     const id = referenceLabel(match[1]);
