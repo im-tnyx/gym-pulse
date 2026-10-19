@@ -276,6 +276,16 @@ const fixtures = [
     pass: true, markdownCount: 1 },
   { name: 'regular Markdown replaced by symlink preserves unanchored link', md: null, extra: 'typechange-unanchored',
     pass: true, markdownCount: 1 },
+  { name: 'list item closes paragraph before reference definition', md: null, extra: 'deleted-ref-after-list',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'masked fence definition cannot change base heading anchor', md: null, extra: 'deleted-heading-masked-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'combining mark in GitHub heading anchor is preserved', md: null, extra: 'deleted-combining-anchor',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'generic HTML element id is a valid base anchor', md: null, extra: 'deleted-div-id',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'multiline setext heading includes all paragraph lines', md: null, extra: 'deleted-multiline-setext',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -464,6 +474,11 @@ function executeFixture(test) {
       'deleted-escaped-ref-opener': '# Consumer\n\\[old][x]\n\n[x]: Target.md\n',
       'deleted-setext-anchor': '# Consumer\n[old](Target.md#existing-heading)\n',
       'deleted-huge-anchored': '# Consumer\n[old](Target.md#existing)\n',
+      'deleted-ref-after-list': '# Consumer\n- item\n[x]: Target.md\n\n[x]\n',
+      'deleted-heading-masked-ref': '# Consumer\n[old](Target.md#hellor)\n',
+      'deleted-combining-anchor': '# Consumer\n[old](Target.md#e%CC%81)\n',
+      'deleted-div-id': '# Consumer\n[old](Target.md#kept)\n',
+      'deleted-multiline-setext': '# Consumer\n[old](Target.md#foo-bar)\n',
     };
     if (Object.hasOwn(deletionConsumers, test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
@@ -562,6 +577,19 @@ function executeFixture(test) {
     if (test.extra === 'deleted-heading-uncertain') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# A&NonstandardName;\n');
     }
+    if (test.extra === 'deleted-heading-masked-ref') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'),
+        '# [Hello][r]\n\n```md\n[r]: ../README.md\n```\n');
+    }
+    if (test.extra === 'deleted-combining-anchor') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# e\u0301\n');
+    }
+    if (test.extra === 'deleted-div-id') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '<div id="kept">hi</div>\n');
+    }
+    if (test.extra === 'deleted-multiline-setext') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), 'Foo\nBar\n---\n');
+    }
     if (test.extra === 'deleted-heading-ref') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'),
         '# [Hello][r]\n\n[r]: https://example.invalid\n');
@@ -658,6 +686,8 @@ function executeFixture(test) {
       'deleted-paragraph-interrupted-ref',
       'deleted-heading-ref', 'deleted-heading-ref-undefined',
       'deleted-ref-in-title', 'deleted-full-ref-in-title',
+      'deleted-ref-after-list', 'deleted-heading-masked-ref',
+      'deleted-combining-anchor', 'deleted-div-id', 'deleted-multiline-setext',
       'deleted-html-inline-attr', 'deleted-html-inline-ref',
       'deleted-html-inline-then-active',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
