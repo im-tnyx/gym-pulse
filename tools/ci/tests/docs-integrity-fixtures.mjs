@@ -304,6 +304,14 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'generic HTML close without blank still masks following Markdown', md: null, extra: 'deleted-div-close-no-blank',
     pass: true, markdownCount: 0 },
+  { name: 'global heading collision suffix remains valid before deletion', md: null, extra: 'deleted-heading-global-suffix',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'blockquote heading anchor remains valid before deletion', md: null, extra: 'deleted-blockquote-heading',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'list heading anchor remains valid before deletion', md: null, extra: 'deleted-list-heading',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'escaped HTML-like tag keeps embedded live Markdown link', md: null, extra: 'deleted-escaped-html-tag',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -497,6 +505,10 @@ function executeFixture(test) {
       'deleted-combining-anchor': '# Consumer\n[old](Target.md#e%CC%81)\n',
       'deleted-div-id': '# Consumer\n[old](Target.md#kept)\n',
       'deleted-multiline-setext': '# Consumer\n[old](Target.md#foo-bar)\n',
+      'deleted-heading-global-suffix': '# Consumer\n[old](Target.md#foo-2)\n',
+      'deleted-blockquote-heading': '# Consumer\n[old](Target.md#hello)\n',
+      'deleted-list-heading': '# Consumer\n[old](Target.md#hello)\n',
+      'deleted-escaped-html-tag': '# Consumer\n\\<span title="[old](Target.md)">\n',
       'deleted-unclosed-inline-comment': '# Consumer\nprefix <!-- unclosed\n\n[old](Target.md)\n',
       'deleted-indented-paragraph': '# Consumer\nparagraph\n    [old](Target.md)\n',
       'deleted-div-raw-block': '# Consumer\n<div>\n[old](Target.md)\n</div>\n',
@@ -620,6 +632,15 @@ function executeFixture(test) {
     if (test.extra === 'deleted-multiline-setext') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), 'Foo\nBar\n---\n');
     }
+    if (test.extra === 'deleted-heading-global-suffix') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Foo\n# Foo-1\n# Foo\n');
+    }
+    if (test.extra === 'deleted-blockquote-heading') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '> # Hello\n');
+    }
+    if (test.extra === 'deleted-list-heading') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '- # Hello\n');
+    }
     if (test.extra === 'deleted-heading-ref') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'),
         '# [Hello][r]\n\n[r]: https://example.invalid\n');
@@ -718,6 +739,8 @@ function executeFixture(test) {
       'deleted-ref-in-title', 'deleted-full-ref-in-title',
       'deleted-ref-after-list', 'deleted-heading-masked-ref',
       'deleted-combining-anchor', 'deleted-div-id', 'deleted-multiline-setext',
+      'deleted-heading-global-suffix', 'deleted-blockquote-heading',
+      'deleted-list-heading', 'deleted-escaped-html-tag',
       'deleted-unclosed-inline-comment', 'deleted-indented-paragraph',
       'deleted-div-raw-block', 'deleted-div-block-then-link',
       'deleted-list-fenced', 'deleted-div-block-id',
