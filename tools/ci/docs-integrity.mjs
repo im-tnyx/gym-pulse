@@ -459,6 +459,17 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
   const pattern = path.relative(root, canonical).split(path.sep).join('/');
   // Every encoded unknown is treated as any string; reject when a deleted
   // target has compatible anchored prefix/suffix. No regex from PR data.
+  // Unknown entities may denote a filename reached through a BASE directory
+  // symlink. A lexical pattern may differ from the deleted real path.
+  // Fail closed only when an alias lies on/could occupy that path; ordinary
+  // unrelated links without any plausible alias still remain nonblocking.
+  const firstWildcard = pattern.indexOf('\x01');
+  for (const alias of baseSymlinks()) {
+    if (pattern === alias || pattern.startsWith(alias + '/') ||
+        (firstWildcard >= 0 && alias.startsWith(pattern.slice(0, firstWildcard)))) {
+      return true;
+    }
+  }
   const pieces = pattern.split('\x01');
   for (const target of deleted) {
     let offset = 0, matched = true;
