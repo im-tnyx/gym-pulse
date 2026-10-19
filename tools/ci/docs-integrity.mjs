@@ -57,6 +57,14 @@ function removeCode(markdown) {
     laterCommentCloser[i] = lines[i].includes('-->') || laterCommentCloser[i + 1];
   }
 
+  function idTagsOnly(line) {
+    // Preserve explicit anchors for BASE heading validation even inside
+    // raw HTML blocks. Do not expose Markdown-looking attributes to the
+    // link scanner: tag spans are skipped by htmlTagRanges().
+    return htmlTagRanges(line).map(x => line.slice(x.start, x.end))
+      .filter(tag => /\sid\s*=/.test(tag)).join(' ');
+  }
+
   function closingTicks(text, from, count) {
     const runs = /`+/g;
     runs.lastIndex = from;
@@ -81,7 +89,12 @@ function removeCode(markdown) {
   }
 
   return lines.map((line, lineIndex) => {
-    const fence = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    // A list item's continuation indentation is a container prefix, not
+    // indented code. Match fences after removing that active prefix.
+    const containerLine = listIndent !== null &&
+      line.startsWith(' '.repeat(listIndent))
+      ? line.slice(listIndent) : line;
+    const fence = containerLine.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (fenced) {
       if (fence && fence[1][0] === fenced.marker &&
           fence[1].length >= fenced.count && !fence[2].trim()) fenced = null;
@@ -91,7 +104,7 @@ function removeCode(markdown) {
     if (rawBlock) {
       if (new RegExp('</' + rawBlock + '\\s*>', 'i').test(line)) rawBlock = null;
       paragraphOpen = false;
-      return '';
+      return idTagsOnly(line);
     }
     if (!comment && !inlineTicks && fence &&
         !(fence[1][0] === '`' && fence[2].includes('`'))) {
@@ -100,12 +113,12 @@ function removeCode(markdown) {
       return '';
     }
     if (!comment && !inlineTicks) {
-      const rawOpen = line.match(/^ {0,3}<(pre|script|style|textarea)\b[^>]*>/i);
+      const rawOpen = line.match(/^ {0,3}<(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)\b[^>]*>/i);
       if (rawOpen) {
         const tag = rawOpen[1].toLowerCase();
         if (!new RegExp('</' + tag + '\\s*>', 'i').test(line.slice(rawOpen[0].length))) rawBlock = tag;
         paragraphOpen = false;
-        return '';
+        return idTagsOnly(line);
       }
       const list = line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])\s+/);
       if (list) { listIndent = list[0].length; paragraphOpen = false; }
