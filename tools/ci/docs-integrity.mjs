@@ -102,7 +102,15 @@ function removeCode(markdown) {
       return '';
     }
     if (rawBlock) {
-      if (new RegExp('</' + rawBlock + '\\s*>', 'i').test(line)) rawBlock = null;
+      // CommonMark type 6 blocks end on the next blank line, even when a
+      // closing tag was seen earlier. Type 1 blocks end on a matching tag.
+      if (rawBlock.endOnBlank && !line.trim()) {
+        rawBlock = null;
+        paragraphOpen = false;
+        return '';
+      }
+      if (!rawBlock.endOnBlank &&
+          new RegExp('</' + rawBlock.tag + '\\s*>', 'i').test(line)) rawBlock = null;
       paragraphOpen = false;
       return idTagsOnly(line);
     }
@@ -116,7 +124,11 @@ function removeCode(markdown) {
       const rawOpen = line.match(/^ {0,3}<(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)\b[^>]*>/i);
       if (rawOpen) {
         const tag = rawOpen[1].toLowerCase();
-        if (!new RegExp('</' + tag + '\\s*>', 'i').test(line.slice(rawOpen[0].length))) rawBlock = tag;
+        const endOnBlank = !/^(?:pre|script|style|textarea)$/.test(tag);
+        if (endOnBlank ||
+            !new RegExp('</' + tag + '\\s*>', 'i').test(line.slice(rawOpen[0].length))) {
+          rawBlock = { tag, endOnBlank };
+        }
         paragraphOpen = false;
         return idTagsOnly(line);
       }
