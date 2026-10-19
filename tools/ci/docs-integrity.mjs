@@ -413,6 +413,35 @@ function lineLookup(text) {
   };
 }
 
+function* inlineLinks(text) {
+  // Non-overlapping escape alternatives, bounded labels and linear
+  // destination scanning. Incomplete syntax remains eligible as a shortcut.
+  const labels = /!?\[(?:\\.|[^\]\\\n]){0,512}\]\(/g;
+  for (const candidate of text.matchAll(labels)) {
+    const start = candidate.index + candidate[0].length;
+    const limit = Math.min(text.length, start + 4096);
+    let depth = 0, rawEnd = -1, angle = text[start] === '<';
+    for (let i = start; i < limit; i++) {
+      const ch = text[i];
+      if (ch === '\n') break;
+      if (ch === '\\' && i + 1 < limit) { i++; continue; }
+      if (angle) {
+        if (ch === '>') angle = false;
+        else if (ch === '<' && i !== start) break;
+        continue;
+      }
+      if (ch === '(') { if (++depth > 1) break; }
+      else if (ch === ')') {
+        if (depth) depth--;
+        else { rawEnd = i; break; }
+      }
+    }
+    if (rawEnd < 0) continue;
+    yield { index: candidate.index, opener: candidate.index +
+      (candidate[0][0] === '!' ? 1 : 0), raw: text.slice(start, rawEnd) };
+  }
+}
+
 function validateMarkdown(filename, deletedTargets = null, budget = null) {
   let resolved;
   try { resolved = localFile(filename); } catch { fail(safe(filename) + ': missing/unsafe Markdown'); return; }
@@ -431,13 +460,15 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     refs.set(id, { destination: match[2], line: lineOf(match.index) });
     if (!deletedTargets) checkLink(filename, match[2], lineOf(match.index));
   }
-  // Scoped syntax support only; nested/multiline links, HTML href and live URL checks are NOT RUN.
-  for (const match of text.matchAll(/!?\[(?:\\.|[^\]\\\n])*\]\((<[^>\n]*>|[^)\n]*(?:\([^\)\n]*\)[^)\n]*)?)\)/g)) {
+  // Scoped syntax: one parenthesis nesting level, 512-char link labels,
+  // 4096-char destinations; unsupported advanced Markdown is NOT RUN.
+  const inlineOpeners = new Set();
+  for (const match of inlineLinks(text)) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
-    const opener = match.index + (match[0][0] === '!' ? 1 : 0);
-    if (escapedAt(text, opener)) continue;
-    if (!deletedTargets || refersToDeletedMarkdown(filename, match[1], deletedTargets)) {
-      checkLink(filename, match[1], lineOf(match.index));
+    if (escapedAt(text, match.opener)) continue;
+    inlineOpeners.add(match.opener);
+    if (!deletedTargets || refersToDeletedMarkdown(filename, match.raw, deletedTargets)) {
+      checkLink(filename, match.raw, lineOf(match.index));
     }
   }
   const used = new Set(), referenceSuffixStarts = new Set();
@@ -463,7 +494,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
       if (escapedAt(text, opener)) continue;
       if (referenceSuffixStarts.has(match.index)) continue;
       const after = text[match.index + match[0].length] || '';
-      if (definitionLabelOffsets.has(match.index) || after === '[' || after === '(') continue;
+      if (definitionLabelOffsets.has(match.index) || inlineOpeners.has(opener)) continue;
       const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
       if (refs.has(id)) used.add(id);
     }
