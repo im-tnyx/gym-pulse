@@ -250,6 +250,12 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'unknown base HTML ID entity remains fail-closed', md: null, extra: 'deleted-id-unknown-entity',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'blockquote definition still activates inbound shortcut', md: null, extra: 'deleted-blockquote-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'nested blockquote definition activates inbound shortcut', md: null, extra: 'deleted-nested-blockquote-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'reference definition cannot interrupt a paragraph', md: null, extra: 'deleted-paragraph-interrupted-ref',
+    pass: true, markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -398,6 +404,9 @@ function executeFixture(test) {
       'deleted-nbsp-ref': '# Consumer\n[use][a b]\n\n[a b]: ../README.md\n[a b]: Target.md\n',
       'deleted-id-entity': '# Consumer\n[old](Target.md#a%26b)\n',
       'deleted-id-unknown-entity': '# Consumer\n[old](Target.md#unknown)\n',
+      'deleted-blockquote-ref': '# Consumer\n[old]\n\n> [old]: Target.md\n',
+      'deleted-nested-blockquote-ref': '# Consumer\n[old]\n\n> > [old]: Target.md\n',
+      'deleted-paragraph-interrupted-ref': '# Consumer\nparagraph\n[x]: Target.md\n\n[x]\n',
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
@@ -601,6 +610,8 @@ function executeFixture(test) {
       'deleted-frontmatter-real-anchor',
       'deleted-nested-full-ref', 'deleted-nbsp-ref',
       'deleted-id-entity', 'deleted-id-unknown-entity',
+      'deleted-blockquote-ref', 'deleted-nested-blockquote-ref',
+      'deleted-paragraph-interrupted-ref',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'deleted-many-unrelated') {
