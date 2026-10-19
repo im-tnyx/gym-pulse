@@ -234,7 +234,14 @@ function headingsIn(text, original = text) {
     // A single tag regex avoids overlapping attribute backtracking.
     for (const tag of line.matchAll(/<(?:a|h[1-6])\b[^>\n]*>/gi)) {
       const id = tag[0].match(/\sid\s*=\s*(?:"([^"\n]*)"|'([^'\n]*)'|([^\s"'=<>\x60]+))/i);
-      if (id) found.add(id[1] ?? id[2] ?? id[3]);
+      if (id) {
+        try { found.add(decodeLinkEntities(id[1] ?? id[2] ?? id[3])); }
+        catch {
+          // A valid but unsupported HTML5 reference can still form the
+          // requested anchor. Never dismiss a deletion as baseline-invalid.
+          found.add(UNCERTAIN_HEADING_ENTITY);
+        }
+      }
     }
   }
   return found;
@@ -271,9 +278,23 @@ function decodeLinkEntities(value) {
   });
 }
 
+function hasEscapedAngleDelimiter(raw) {
+  if (!raw.startsWith('<')) return false;
+  // Under CommonMark a backslash-escaped '>' cannot delimit an angle link.
+  for (let i = 1; i < raw.length; i++) {
+    if (raw[i] !== '\\') continue;
+    if (raw[i + 1] === '>') return true;
+    i++;
+  }
+  return false;
+}
+
 function destination(raw) {
   const value = raw.trim();
   if (value.startsWith('<')) {
+    if (hasEscapedAngleDelimiter(value)) {
+      throw new Error('Escaped angle destination delimiter is invalid');
+    }
     let end = -1;
     for (let i = 1; i < value.length; i++) {
       if (value[i] === '\\') { i++; continue; }
@@ -696,8 +717,11 @@ function unicodeCaseFold15_1(input) {
   return result;
 }
 function referenceLabel(raw) {
-  // Preserve backslash escapes as normalized key data; only collapse spaces.
-  return unicodeCaseFold15_1(raw.trim().replace(/\s+/g, ' '));
+  // CommonMark reference-label whitespace is ASCII space, tab, CR and LF.
+  // NBSP and other Unicode whitespace are significant label characters.
+  // Preserve backslash punctuation exactly (distinct keys).
+  return unicodeCaseFold15_1(raw.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '')
+    .replace(/[ \t\r\n]+/g, ' '));
 }
 
 function* inlineLinks(text) {
@@ -715,7 +739,11 @@ function* inlineLinks(text) {
     for (let i = start; i < limit; i++) {
       const ch = text[i];
       if (ch === '\n') break;
-      if (ch === '\\' && i + 1 < limit) { i++; continue; }
+      if (ch === '\\' && i + 1 < limit) {
+        if (angle && text[i + 1] === '>') break; // Invalid escaped delimiter.
+        i++;
+        continue;
+      }
       if (angle) {
         if (ch === '>') { angle = false; destinationSeen = true; }
         else if (ch === '<' && i !== angleStart) break;
@@ -759,6 +787,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const refs = new Map(), definitionLabelOffsets = new Set();
   for (const match of text.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]{1,4096})(?:[ \t]+(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\((?:\\.|[^)\\\n])*\)))?[ \t]*$/gm)) {
     if (escapedAt(text, match.index)) continue;
+    if (hasEscapedAngleDelimiter(match[2])) continue; // Not a valid definition.
     definitionLabelOffsets.add(match.index + match[0].indexOf('['));
     const id = referenceLabel(match[1]);
     if (refs.has(id)) continue; // First definition of each label wins.
@@ -778,7 +807,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     }
   }
   const used = new Set(), referenceSuffixStarts = new Set(), referenceOpeners = new Set();
-  for (const match of text.matchAll(/!?\[((?:\\.|[^\]\\\n]){1,512})\]\[((?:\\.|[^\]\\\n]){0,512})\]/g)) {
+  for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]\[((?:\\.|[^\[\]\\\n]){0,512})\]/g)) {
     // Consume an explicit reference's second [label] even if its first
     // bracket is escaped. Other text ending with ']' is not a reference.
     referenceSuffixStarts.add(match.index + match[0].lastIndexOf('['));
