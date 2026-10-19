@@ -264,6 +264,12 @@ const fixtures = [
     pass: true, markdownCount: 0 },
   { name: 'inline quoted title does not activate full reference', md: null, extra: 'deleted-full-ref-in-title',
     pass: true, markdownCount: 0 },
+  { name: 'raw inline HTML attribute pseudo-link ignored', md: null, extra: 'deleted-html-inline-attr',
+    pass: true, markdownCount: 0 },
+  { name: 'raw inline HTML attribute pseudo-reference ignored', md: null, extra: 'deleted-html-inline-ref',
+    pass: true, markdownCount: 0 },
+  { name: 'live link immediately following inline HTML still rejected', md: null, extra: 'deleted-html-inline-then-active',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -419,6 +425,9 @@ function executeFixture(test) {
       'deleted-heading-ref-undefined': '# Consumer\n[old](Target.md#hello)\n',
       'deleted-ref-in-title': '# Consumer\n[outer](../README.md "[old]")\n\n[old]: Target.md\n',
       'deleted-full-ref-in-title': '# Consumer\n[outer](../README.md "[old][x]")\n\n[x]: Target.md\n',
+      'deleted-html-inline-attr': '# Consumer\n<span title="[old](Target.md)"></span>\n',
+      'deleted-html-inline-ref': '# Consumer\n<span title="[old][x]"></span>\n\n[x]: Target.md\n',
+      'deleted-html-inline-then-active': '# Consumer\n<span title="[old](Target.md)"></span> [old](Target.md)\n',
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
@@ -633,6 +642,8 @@ function executeFixture(test) {
       'deleted-paragraph-interrupted-ref',
       'deleted-heading-ref', 'deleted-heading-ref-undefined',
       'deleted-ref-in-title', 'deleted-full-ref-in-title',
+      'deleted-html-inline-attr', 'deleted-html-inline-ref',
+      'deleted-html-inline-then-active',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'deleted-many-unrelated') {
