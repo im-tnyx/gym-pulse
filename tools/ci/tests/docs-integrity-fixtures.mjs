@@ -354,6 +354,10 @@ const fixtures = [
     pass: true, markdownCount: 1 },
   { name: 'changed Markdown accepts valid multiline reference definition', md: '# New\n[ok][ref]\n\n[ref]:\n  Target.md\n',
     pass: true, markdownCount: 1 },
+  { name: 'spaces-only blank line cannot continue an inline link', md: null, extra: 'deleted-inline-spaces-blank',
+    pass: true, markdownCount: 0 },
+  { name: 'tabs-only blank line cannot continue an inline link', md: null, extra: 'deleted-inline-tabs-blank',
+    pass: true, markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -578,6 +582,8 @@ function executeFixture(test) {
       'deleted-inline-blank-line': '# Consumer\n[old](\n\nTarget.md)\n',
       'deleted-inline-invalid-suffix': '# Consumer\n[old](Target.md\n  suffix)\n',
       'deleted-inline-multiline-code': '# Consumer\n```md\n[old](\n  Target.md)\n```\n',
+      'deleted-inline-spaces-blank': '# Consumer\n[old](\n  \nTarget.md)\n',
+      'deleted-inline-tabs-blank': '# Consumer\n[old](Target.md\n \t\n)\n',
     };
     if (Object.hasOwn(deletionConsumers, test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
@@ -814,6 +820,7 @@ function executeFixture(test) {
       'deleted-inline-next-line-target', 'deleted-inline-next-line-title',
       'deleted-inline-next-line-closer', 'deleted-inline-blank-line',
       'deleted-inline-invalid-suffix', 'deleted-inline-multiline-code',
+      'deleted-inline-spaces-blank', 'deleted-inline-tabs-blank',
       'deleted-unclosed-inline-comment', 'deleted-indented-paragraph',
       'deleted-div-raw-block', 'deleted-div-block-then-link',
       'deleted-list-fenced', 'deleted-div-block-id',
