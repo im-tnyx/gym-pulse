@@ -191,7 +191,7 @@ function headingSlug(heading, definedRefs = new Set()) {
     .replace(/\x01(\d+)\x02/g, (_match, index) => spans[Number(index)] || '')
     .replace(/[\x60*_~]/g, '')
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}_\- ]/gu, '')
+    .replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, '')
     .trim().replace(/ +/g, '-');
 }
 
@@ -203,7 +203,8 @@ function headingsIn(text, original = text) {
   // Only defined reference-style links contribute their rendered link text.
   // Undefined [text][id] remains literal heading text.
   const definedRefs = new Set();
-  for (const ref of original.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*\S/gm)) {
+  // Reference definitions in fenced code or other masked content are not live.
+  for (const ref of text.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*\S/gm)) {
     definedRefs.add(referenceLabel(ref[1]));
   }
   const addSlug = heading => {
@@ -236,12 +237,18 @@ function headingsIn(text, original = text) {
     } else if (i > 0 && /^ {0,3}(?:=+|-+)\s*$/.test(line)) {
       const previous = lines[i - 1];
       if (previous.trim() && !/^ {0,3}[#>]/.test(previous)) {
-        addSlug((originalLines[i - 1] || previous).trim());
+        // A setext heading spans the entire immediately preceding paragraph,
+        // not just the final line above the underline.
+        let begin = i - 1;
+        while (begin > 0 && lines[begin - 1].trim() &&
+          !/^ {0,3}(?:[#>]|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(lines[begin - 1]) &&
+          !/^ {0,3}(?:=+|-+)[ \t]*$/.test(lines[begin - 1])) begin--;
+        addSlug(originalLines.slice(begin, i).map(x => x.trim()).join(' '));
       }
     }
     // Capture complete tag first, then find one valid quoted/unquoted ID.
     // A single tag regex avoids overlapping attribute backtracking.
-    for (const tag of line.matchAll(/<(?:a|h[1-6])\b[^>\n]*>/gi)) {
+    for (const tag of line.matchAll(/<[A-Za-z][A-Za-z0-9-]*\b[^>\n]*>/g)) {
       const id = tag[0].match(/\sid\s*=\s*(?:"([^"\n]*)"|'([^'\n]*)'|([^\s"'=<>\x60]+))/i);
       if (id) {
         try { found.add(decodeLinkEntities(id[1] ?? id[2] ?? id[3])); }
@@ -854,6 +861,9 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '').trim();
     if (!prior) return true;
     if (/^#{1,6}[ \t]+/.test(prior)) return true; // Heading closes a paragraph.
+    if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior) ||
+        /^ {0,3}>/.test(text.slice(start, end))) return true; // Container block.
+    if (/^(?:-{3,}|\*{3,}|_{3,})[ \t]*$/.test(prior)) return true; // Thematic break.
     if (/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior)) return true;
     return false;
   }
