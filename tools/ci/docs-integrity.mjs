@@ -49,7 +49,7 @@ function escapedAt(text, index) {
 function removeCode(markdown) {
   // Bounded, order-sensitive Markdown masking. Preserve newlines and offsets.
   // Multiline code spans and HTML comments cannot change fence ownership.
-  const lines = markdown.split(/\r?\n/);
+  const lines = markdown.split(/\r\n|\n|\r/);
   let fenced = null, comment = false, rawBlock = null, listIndent = null, inlineTicks = 0;
 
   function closingTicks(text, from, count) {
@@ -284,7 +284,7 @@ function baseTargetValid(relative, anchor) {
   let valid = false;
   baseTargetInProgress.add(key);
   try {
-    const modeEntry = git(['ls-tree', base, '--', relative]);
+    const modeEntry = git(['ls-tree', base, '--', ':(literal)' + relative]);
     if (/^100(?:644|755) blob [0-9a-f]{40}\t/.test(modeEntry)) {
       valid = !anchor;
       if (anchor) {
@@ -341,7 +341,7 @@ function resolveBaseParentAliases(parent) {
     let target = baseSymlinkCache.get(relative);
     if (target === undefined) {
       if (baseSymlinkCache.size >= 1000) throw new Error('Too many base alias paths');
-      const entry = git(['ls-tree', base, '--', relative]);
+      const entry = git(['ls-tree', base, '--', ':(literal)' + relative]);
       if (/^120000 blob [0-9a-f]{40}\t/.test(entry)) {
         const size = Number(git(['cat-file', '-s', base + ':' + relative]).trim());
         if (!Number.isSafeInteger(size) || size < 1 || size > 4096) {
@@ -421,9 +421,10 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   if (budget && (budget.bytes -= stat.size) < 0) throw new Error('Inbound Markdown scan byte budget exceeded');
   const text = removeCode(fs.readFileSync(resolved, 'utf8'));
   const lineOf = lineLookup(text);
-  const refs = new Map();
+  const refs = new Map(), definitionLabelOffsets = new Set();
   for (const match of text.matchAll(/^ {0,3}\[([^\]]+)\]:\s*(<[^>]+>|[^\s]+)/gm)) {
     if (escapedAt(text, match.index)) continue;
+    definitionLabelOffsets.add(match.index + match[0].indexOf('['));
     const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
     if (refs.has(id)) continue; // First definition of each label wins.
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
@@ -462,7 +463,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
       if (escapedAt(text, opener)) continue;
       if (referenceSuffixStarts.has(match.index)) continue;
       const after = text[match.index + match[0].length] || '';
-      if (after === ':' || after === '[' || after === '(') continue;
+      if (definitionLabelOffsets.has(match.index) || after === '[' || after === '(') continue;
       const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
       if (refs.has(id)) used.add(id);
     }
