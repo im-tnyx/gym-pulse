@@ -250,9 +250,13 @@ function decodeLinkEntities(value) {
 function destination(raw) {
   const value = raw.trim();
   if (value.startsWith('<')) {
-    const end = value.indexOf('>');
+    let end = -1;
+    for (let i = 1; i < value.length; i++) {
+      if (value[i] === '\\') { i++; continue; }
+      if (value[i] === '>') { end = i; break; }
+    }
     if (end < 0) throw new Error('Malformed angle-wrapped link');
-    return decodeLinkEntities(value.slice(1, end));
+    return decodeLinkEntities(value.slice(1, end).replace(/\\([!-/:-@\[-`{-~ ])/g, '$1'));
   }
   return decodeLinkEntities((value.match(/^(?:\\.|[^\s])+/) || [''])[0]
     .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1'));
@@ -438,25 +442,41 @@ function referenceLabel(raw) {
 function* inlineLinks(text) {
   // Non-overlapping escape alternatives, bounded labels and linear
   // destination scanning. Incomplete syntax remains eligible as a shortcut.
-  const labels = /!?\[(?:\\.|[^\]\\\n]){0,512}\]\(/g;
+  const labels = /!?\[(?:\\.|[^\[\]\\\n]){0,512}\]\(/g;
   for (const candidate of text.matchAll(labels)) {
     const start = candidate.index + candidate[0].length;
     const limit = Math.min(text.length, start + 4096);
-    let depth = 0, rawEnd = -1, angle = text[start] === '<';
+    let depth = 0, rawEnd = -1, angle = text[start] === '<', title = null;
+    let whitespace = false, destinationSeen = false;
     for (let i = start; i < limit; i++) {
       const ch = text[i];
       if (ch === '\n') break;
       if (ch === '\\' && i + 1 < limit) { i++; continue; }
       if (angle) {
-        if (ch === '>') angle = false;
+        if (ch === '>') { angle = false; destinationSeen = true; }
         else if (ch === '<' && i !== start) break;
         continue;
       }
+      if (title !== null) {
+        if (ch === title) title = null;
+        continue;
+      }
+      if ((ch === '"' || ch === "'") && whitespace && destinationSeen && depth === 0) {
+        title = ch;
+        whitespace = false;
+        continue;
+      }
+      if (ch === ' ' || ch === '\t') {
+        if (depth === 0) whitespace = true;
+        continue;
+      }
+      if (whitespace && depth === 0 && ch !== ')') break; // Invalid title syntax.
+      whitespace = false;
       if (ch === '(') { if (++depth > 1) break; }
       else if (ch === ')') {
         if (depth) depth--;
         else { rawEnd = i; break; }
-      }
+      } else destinationSeen = true;
     }
     if (rawEnd < 0) continue;
     yield { index: candidate.index, opener: candidate.index +
@@ -473,7 +493,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const text = removeCode(fs.readFileSync(resolved, 'utf8'));
   const lineOf = lineLookup(text);
   const refs = new Map(), definitionLabelOffsets = new Set();
-  for (const match of text.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<[^>\n]+>|[^\s]+)/gm)) {
+  for (const match of text.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]+)/gm)) {
     if (escapedAt(text, match.index)) continue;
     definitionLabelOffsets.add(match.index + match[0].indexOf('['));
     const id = referenceLabel(match[1]);
