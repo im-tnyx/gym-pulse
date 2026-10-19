@@ -210,6 +210,30 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'fullwidth reference label not equivalent to ASCII', md: null, extra: 'deleted-distinct-fullwidth-ref',
     pass: true, markdownCount: 0 },
+  { name: 'many unrelated Markdown sources do not exhaust base symlink cache', md: null, extra: 'deleted-many-unrelated',
+    pass: true, markdownCount: 0 },
+  { name: 'valid unrelated named HTML5 entity does not block deletion', md: null, extra: 'deleted-unrelated-eacute',
+    pass: true, markdownCount: 0 },
+  { name: 'unknown unrelated entity cannot block unrelated deletion', md: null, extra: 'deleted-unrelated-unknown-entity',
+    pass: true, markdownCount: 0 },
+  { name: 'deleted HTML named-entity target is detected', md: null, extra: 'deleted-eacute-target',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'changed Markdown accepts existing named-entity link', md: '# New\n[ok](cafe&eacute;.md)\n',
+    extra: 'changed-eacute-valid', pass: true, markdownCount: 1 },
+  { name: 'root-absolute inbound deleted Markdown target rejected', md: null, extra: 'deleted-root-absolute',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'root-absolute unrelated link is not rejected', md: null, extra: 'deleted-root-unrelated',
+    pass: true, markdownCount: 0 },
+  { name: 'root-absolute normalized path to deleted target rejected', md: null, extra: 'deleted-root-normalized',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'angle link with leading whitespace detects deletion', md: null, extra: 'deleted-angle-leading',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'angle link with spaced target and leading whitespace detects deletion', md: null, extra: 'deleted-angle-leading-spaced',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'YAML front matter must not create a false setext anchor', md: null, extra: 'deleted-frontmatter-fake-anchor',
+    pass: true, markdownCount: 0 },
+  { name: 'real heading after YAML front matter still rejects deletion', md: null, extra: 'deleted-frontmatter-real-anchor',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -340,6 +364,16 @@ function executeFixture(test) {
       'deleted-valid-ref-title': '# Consumer\n[x]\n\n[x]: Target.md "valid title"\n',
       'deleted-fullwidth-anchor': '# Consumer\n[old](Target.md#%EF%BD%81)\n',
       'deleted-distinct-fullwidth-ref': '# Consumer\n[Ａ]\n\n[A]: Target.md\n',
+      'deleted-unrelated-eacute': '# Consumer\n[u](caf&eacute;.md)\n',
+      'deleted-unrelated-unknown-entity': '# Consumer\n[u](caf&notSupportedHere;.md)\n',
+      'deleted-eacute-target': '# Consumer\n[old](caf&eacute;.md)\n',
+      'deleted-root-absolute': '# Consumer\n[old](/docs/Target.md)\n',
+      'deleted-root-unrelated': '# Consumer\n[ok](/docs/café.md)\n',
+      'deleted-root-normalized': '# Consumer\n[old](/docs/../docs/Target.md)\n',
+      'deleted-angle-leading': '# Consumer\n[old]( <Target.md>)\n',
+      'deleted-angle-leading-spaced': '# Consumer\n[old]( <my guide.md>)\n',
+      'deleted-frontmatter-fake-anchor': '# Consumer\n[old](Target.md#title-x)\n',
+      'deleted-frontmatter-real-anchor': '# Consumer\n[old](Target.md#real-heading)\n',
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
@@ -373,6 +407,27 @@ function executeFixture(test) {
     };
     if (Object.hasOwn(deletionConsumers, test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
+    }
+    if (test.extra === 'deleted-many-unrelated') {
+      // 340 Markdown sources (<500 cap), with >1000 distinct ordinary prefixes.
+      for (let n = 0; n < 340; n++) {
+        const folder = path.join(root, 'docs', 'd' + n, 's');
+        fs.mkdirSync(folder, { recursive: true });
+        fs.writeFileSync(path.join(folder, 'f' + n + '.md'), '# Good\n[ok](../../../README.md)\n');
+      }
+      fs.writeFileSync(path.join(root, 'docs', 'other.md'), '# Unlinked\n');
+    }
+    if (['deleted-unrelated-eacute', 'deleted-root-unrelated', 'deleted-eacute-target'].includes(test.extra)) {
+      fs.writeFileSync(path.join(root, 'docs', 'café.md'), '# Accent\n');
+    }
+    if (test.extra === 'changed-eacute-valid') {
+      fs.writeFileSync(path.join(root, 'docs', 'cafeé.md'), '# Accent\n');
+    }
+    if (test.extra === 'deleted-angle-leading-spaced') {
+      fs.writeFileSync(path.join(root, 'docs', 'my guide.md'), '# Spaced\n');
+    }
+    if (['deleted-frontmatter-fake-anchor', 'deleted-frontmatter-real-anchor'].includes(test.extra)) {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '---\ntitle: x\n---\n# Real Heading\n');
     }
     // Some bypass scenarios require additional paths already present in BASE.
     const specialSymlinks = ['symlink-source-internal', 'symlink-source-outside', 'deleted-alias', 'deleted-alias-retarget', 'deleted-literal-alias', 'deleted-surviving-alias'];
@@ -504,8 +559,21 @@ function executeFixture(test) {
       'deleted-casefold-cyrillic', 'deleted-casefold-cherokee',
       'deleted-malformed-first-def', 'deleted-valid-ref-title',
       'deleted-fullwidth-anchor', 'deleted-distinct-fullwidth-ref',
+      'deleted-unrelated-eacute', 'deleted-unrelated-unknown-entity',
+      'deleted-root-absolute', 'deleted-root-unrelated', 'deleted-root-normalized',
+      'deleted-angle-leading', 'deleted-frontmatter-fake-anchor',
+      'deleted-frontmatter-real-anchor',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
+    if (test.extra === 'deleted-many-unrelated') {
+      fs.rmSync(path.join(root, 'docs', 'other.md'));
+    }
+    if (test.extra === 'deleted-eacute-target') {
+      fs.rmSync(path.join(root, 'docs', 'café.md'));
+    }
+    if (test.extra === 'deleted-angle-leading-spaced') {
+      fs.rmSync(path.join(root, 'docs', 'my guide.md'));
+    }
     if (test.extra === 'deleted-escaped-close-paren') {
       fs.rmSync(path.join(root, 'docs', 'Target).md'));
     }
