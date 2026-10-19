@@ -344,6 +344,20 @@ function checkLink(source, raw, line) {
 // Resolve surviving directory symlink aliases, never paths outside the checkout.
 // Invalid pre-existing anchors were not introduced by this deletion and are skipped.
 const baseTargetCache = new Map();
+const regularToSymlink = new Set();
+function mergeSymlinkTargetValid(relative, anchor) {
+  try {
+    // MERGE is untrusted: localFile() rejects symlinks escaping repository.
+    const resolved = localFile(relative);
+    const stat = fs.statSync(resolved);
+    if (!stat.isFile()) return false;
+    if (!anchor) return true; // A surviving valid path is not deleted.
+    // Only recognize a preserved anchor after bounded Markdown parsing.
+    if (stat.size > 1024 * 1024) return false;
+    const headings = headingsFor(resolved);
+    return headings.has(anchor) || headings.has(UNCERTAIN_HEADING_ENTITY);
+  } catch { return false; } // Missing, dangling, escaping or invalid target.
+}
 const baseTargetInProgress = new Set();
 function baseTargetValid(relative, anchor) {
   const key = JSON.stringify([relative, anchor]);
@@ -552,7 +566,11 @@ function refersToDeletedMarkdown(source, raw, deleted) {
   return paths.some(candidate => {
     if (!withinRoot(candidate)) return false;
     const relative = path.relative(root, candidate).split(path.sep).join('/');
-    return deleted.has(relative) && baseTargetValid(relative, anchor);
+    if (!deleted.has(relative) || !baseTargetValid(relative, anchor)) return false;
+    // A regular Markdown file replaced by a symlink is not a broken link
+    // if the resolved MERGE file still contains the pre-existing anchor.
+    return !regularToSymlink.has(relative) ||
+      !mergeSymlinkTargetValid(relative, anchor);
   });
 }
 
@@ -959,10 +977,24 @@ try {
     throw new Error('Non-UTF8 Git deletion path unsupported; fail closed');
   }
   const deleted = decoded.split('\0').filter(name => /\.md$/i.test(name));
-  if (deleted.length > 100) throw new Error('Too many deleted Markdown targets for bounded pilot');
+  // Git reports regular-blob -> symlink replacement as T rather than D.
+  // Scan unchanged consumers against those old BASE targets as well.
+  const typeBytes = git(['diff', '--name-only', '-z', '--diff-filter=T',
+    base, merge, '--'], true);
+  const typeText = typeBytes.toString('utf8');
+  if (!Buffer.from(typeText, 'utf8').equals(typeBytes)) {
+    throw new Error('Non-UTF8 Git typechange path unsupported; fail closed');
+  }
+  for (const name of typeText.split('\0').filter(x => /\.md$/i.test(x))) {
+    const oldMode = git(['ls-tree', base, '--', ':(literal)' + name]);
+    const newMode = git(['ls-tree', merge, '--', ':(literal)' + name]);
+    if (/^100(?:644|755) blob [0-9a-f]{40}\t/.test(oldMode) &&
+        /^120000 blob [0-9a-f]{40}\t/.test(newMode)) regularToSymlink.add(name);
+  }
+  const deletedSet = new Set([...deleted, ...regularToSymlink]);
+  if (deletedSet.size > 100) throw new Error('Too many removed/retargeted Markdown targets for bounded pilot');
   let inboundScanned = 0;
-  if (deleted.length) {
-    const deletedSet = new Set(deleted);
+  if (deletedSet.size) {
     const indexBytes = git(['ls-files', '--stage', '-z', '--'], true);
     const index = indexBytes.toString('utf8');
     if (!Buffer.from(index, 'utf8').equals(indexBytes)) {
@@ -984,10 +1016,11 @@ try {
     }
     notices.push('Removed/renamed Markdown target inbound references: scoped scan of unchanged Markdown only');
   }
-  if (!docs.length && !deleted.length) notices.push('NO DOC FILES: whitespace checked, link check not applicable');
+  if (!docs.length && !deletedSet.size) notices.push('NO DOC FILES: whitespace checked, link check not applicable');
   notices.push('External URLs and advanced/nested Markdown syntax: NOT RUN');
   console.log('docs-integrity: changed_files=' + names.length + ' markdown_files=' + docs.length
-    + ' deleted_markdown_files=' + deleted.length + ' inbound_scanned=' + inboundScanned);
+    + ' deleted_markdown_files=' + deleted.length + ' typechanged_markdown_files=' + regularToSymlink.size
+    + ' inbound_scanned=' + inboundScanned);
 } catch (err) { fail(safe(err.message || String(err))); }
 for (const item of notices) console.log('NOTICE: ' + item);
 // The combined message may contain two bounded paths plus a target. Preserve
