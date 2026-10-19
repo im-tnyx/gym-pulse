@@ -50,6 +50,17 @@ function removeCode(markdown) {
   // Bounded, order-sensitive Markdown masking. Preserve newlines and offsets.
   // Multiline code spans and HTML comments cannot change fence ownership.
   const lines = markdown.split(/\r\n|\n|\r/);
+  // Front matter is metadata, not inline Markdown. An unmatched opener
+  // remains ordinary text so it cannot hide live links.
+  let frontMatterEnd = -1;
+  if (lines[0]?.trim() === '---') {
+    for (let j = 1; j < lines.length; j++) {
+      if (/^(?:---|\.\.\.)[ \t]*$/.test(lines[j])) {
+        frontMatterEnd = j;
+        break;
+      }
+    }
+  }
   let fenced = null, comment = false, rawBlock = null, listIndent = null, inlineTicks = 0;
   let paragraphOpen = false;
   const laterCommentCloser = new Array(lines.length + 1).fill(false);
@@ -89,6 +100,7 @@ function removeCode(markdown) {
   }
 
   return lines.map((line, lineIndex) => {
+    if (frontMatterEnd >= 0 && lineIndex <= frontMatterEnd) return '';
     // A list item's continuation indentation is a container prefix, not
     // indented code. Match fences after removing that active prefix.
     const containerLine = listIndent !== null &&
@@ -836,7 +848,7 @@ function* inlineLinks(text) {
     // Leading whitespace may precede an angle-wrapped destination.
     let angleStart = start;
     while (angleStart < limit && (text[angleStart] === ' ' || text[angleStart] === '\t')) angleStart++;
-    let depth = 0, rawEnd = -1, angle = text[angleStart] === '<', title = null;
+    let depth = 0, rawEnd = -1, angle = text[angleStart] === '<', angleClosed = false, title = null;
     let whitespace = false, destinationSeen = false;
     for (let i = start; i < limit; i++) {
       const ch = text[i];
@@ -847,7 +859,7 @@ function* inlineLinks(text) {
         continue;
       }
       if (angle) {
-        if (ch === '>') { angle = false; destinationSeen = true; }
+        if (ch === '>') { angle = false; angleClosed = true; destinationSeen = true; }
         else if (ch === '<' && i !== angleStart) break;
         continue;
       }
@@ -855,6 +867,8 @@ function* inlineLinks(text) {
         if (ch === title) title = null;
         continue;
       }
+      // An angle destination cannot have suffix bytes before title/closer.
+      if (angleClosed && !whitespace && ch !== ')' && ch !== ' ' && ch !== '\t') break;
       if ((ch === '"' || ch === "'" || ch === '(') && whitespace && destinationSeen && depth === 0) {
         title = ch === '(' ? ')' : ch;
         whitespace = false;
@@ -916,6 +930,26 @@ function inRanges(ranges, offset) {
   return low > 0 && offset < ranges[low - 1].end;
 }
 
+function uriAutolinkRanges(text) {
+  const ranges = [];
+  for (const match of text.matchAll(/<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*>/g)) {
+    if (!escapedAt(text, match.index)) {
+      ranges.push({ start: match.index, end: match.index + match[0].length });
+    }
+  }
+  return ranges;
+}
+function validBareReferenceDestination(raw) {
+  if (raw.startsWith('<')) return true;
+  let depth = 0;
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === '\\') { i++; continue; }
+    if (raw[i] === '(' && ++depth > 8) return false;
+    if (raw[i] === ')' && --depth < 0) return false;
+  }
+  return depth === 0;
+}
+
 function validateMarkdown(filename, deletedTargets = null, budget = null) {
   let resolved;
   try { resolved = localFile(filename); } catch { fail(safe(filename) + ': missing/unsafe Markdown'); return; }
@@ -925,6 +959,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const text = removeCode(fs.readFileSync(resolved, 'utf8'));
   const lineOf = lineLookup(text);
   const inlineHtmlRanges = htmlTagRanges(text);
+  const autolinkRanges = uriAutolinkRanges(text);
   const refs = new Map(), definitionLabelOffsets = new Set();
   function definitionCanStartAt(offset) {
     // Definitions cannot interrupt an open paragraph. The bounded pilot
@@ -942,9 +977,12 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     return false;
   }
   for (const match of text.matchAll(/^ {0,3}(?:>[ \t]?){0,4}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]{1,4096})(?:[ \t]+(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\((?:\\.|[^)\\\n])*\)))?[ \t]*$/gm)) {
-    if (escapedAt(text, match.index) || inRanges(inlineHtmlRanges, match.index)) continue;
+    if (escapedAt(text, match.index) || inRanges(inlineHtmlRanges, match.index) ||
+        inRanges(autolinkRanges, match.index)) continue;
     if (!definitionCanStartAt(match.index)) continue;
-    if (hasEscapedAngleDelimiter(match[2])) continue; // Not a valid definition.
+    if (match[1].startsWith('^')) continue; // GFM footnote, not URL reference.
+    if (hasEscapedAngleDelimiter(match[2]) ||
+        !validBareReferenceDestination(match[2])) continue;
     definitionLabelOffsets.add(match.index + match[0].indexOf('['));
     const id = referenceLabel(match[1]);
     if (refs.has(id)) continue; // First definition of each label wins.
@@ -957,7 +995,8 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const inlineOpeners = new Set(), inlineRanges = [];
   for (const match of inlineLinks(text)) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
-    if (escapedAt(text, match.opener) || inRanges(inlineHtmlRanges, match.index)) continue;
+    if (escapedAt(text, match.opener) || inRanges(inlineHtmlRanges, match.index) ||
+        inRanges(autolinkRanges, match.index)) continue;
     inlineOpeners.add(match.opener);
     if (inlineRanges.length >= 10000) throw new Error('Inline Markdown range budget exceeded');
     inlineRanges.push({ start: match.index, end: Math.max(match.end,
@@ -979,7 +1018,8 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   }
   const used = new Set(), referenceSuffixStarts = new Set(), referenceOpeners = new Set();
   for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]\[((?:\\.|[^\[\]\\\n]){0,512})\]/g)) {
-    if (insideInline(match.index) || inRanges(inlineHtmlRanges, match.index)) continue;
+    if (insideInline(match.index) || inRanges(inlineHtmlRanges, match.index) ||
+        inRanges(autolinkRanges, match.index)) continue;
     // Consume an explicit reference's second [label] even if its first
     // bracket is escaped. Other text ending with ']' is not a reference.
     referenceSuffixStarts.add(match.index + match[0].lastIndexOf('['));
@@ -997,7 +1037,8 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     // Standard shortcut references: [label] or ![alt] when a definition exists.
     // Ignore definitions, explicit/inline link openers, and backslash literals.
     for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]/g)) {
-      if (insideInline(match.index) || inRanges(inlineHtmlRanges, match.index)) continue;
+      if (insideInline(match.index) || inRanges(inlineHtmlRanges, match.index) ||
+        inRanges(autolinkRanges, match.index)) continue;
       if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
       const opener = match.index + (match[0][0] === '!' ? 1 : 0);
       if (escapedAt(text, opener)) continue;
