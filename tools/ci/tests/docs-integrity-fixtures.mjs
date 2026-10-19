@@ -312,6 +312,20 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'escaped HTML-like tag keeps embedded live Markdown link', md: null, extra: 'deleted-escaped-html-tag',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'URI autolink content is not a local Markdown link', md: null, extra: 'deleted-uri-autolink',
+    pass: true, markdownCount: 0 },
+  { name: 'real Markdown link after URI autolink remains active', md: null, extra: 'deleted-uri-autolink-then-link',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'angle-wrapped link cannot have a garbage suffix', md: null, extra: 'deleted-angle-suffix',
+    pass: true, markdownCount: 0 },
+  { name: 'unbalanced parenthesis invalidates reference definition', md: null, extra: 'deleted-ref-unbalanced',
+    pass: true, markdownCount: 0 },
+  { name: 'YAML front matter pseudo-link is not live', md: null, extra: 'deleted-yaml-link',
+    pass: true, markdownCount: 0 },
+  { name: 'link after completed YAML front matter remains active', md: null, extra: 'deleted-yaml-then-link',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'GFM footnote destination is not reference-style link', md: null, extra: 'deleted-gfm-footnote',
+    pass: true, markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -517,6 +531,13 @@ function executeFixture(test) {
       'deleted-div-block-id': '# Consumer\n[old](Target.md#kept)\n',
       'deleted-div-blank-link': '# Consumer\n<div>\n[hidden](Target.md)\n\n[old](Target.md)\n',
       'deleted-div-close-no-blank': '# Consumer\n<div>\n[hidden](Target.md)\n</div>\n[still-hidden](Target.md)\n',
+      'deleted-uri-autolink': '# Consumer\n<https://example.invalid/[old](Target.md)>\n',
+      'deleted-uri-autolink-then-link': '# Consumer\n<https://example.invalid/[old](Target.md)>\n[old](Target.md)\n',
+      'deleted-angle-suffix': '# Consumer\n[old](<Target.md>garbage)\n',
+      'deleted-ref-unbalanced': '# Consumer\n[x]\n\n[x]: Target).md\n',
+      'deleted-yaml-link': '---\ntitle: "[old](Target.md)"\n---\n# Consumer\n',
+      'deleted-yaml-then-link': '---\ntitle: "[old](Target.md)"\n---\n[old](Target.md)\n',
+      'deleted-gfm-footnote': '# Consumer\nText[^1]\n\n[^1]: Target.md\n',
     };
     if (Object.hasOwn(deletionConsumers, test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
@@ -675,6 +696,9 @@ function executeFixture(test) {
     if (test.extra === 'deleted-unquoted-id') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '<a id=kept></a>\n');
     }
+    if (test.extra === 'deleted-ref-unbalanced') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target).md'), '# Invalid reference target\n');
+    }
     if (test.extra === 'deleted-escaped-close-paren') {
       fs.writeFileSync(path.join(root, 'docs', 'Target).md'), '# Parenthesized target\n');
     }
@@ -741,6 +765,9 @@ function executeFixture(test) {
       'deleted-combining-anchor', 'deleted-div-id', 'deleted-multiline-setext',
       'deleted-heading-global-suffix', 'deleted-blockquote-heading',
       'deleted-list-heading', 'deleted-escaped-html-tag',
+      'deleted-uri-autolink', 'deleted-uri-autolink-then-link',
+      'deleted-angle-suffix', 'deleted-yaml-link', 'deleted-yaml-then-link',
+      'deleted-gfm-footnote',
       'deleted-unclosed-inline-comment', 'deleted-indented-paragraph',
       'deleted-div-raw-block', 'deleted-div-block-then-link',
       'deleted-list-fenced', 'deleted-div-block-id',
@@ -761,6 +788,9 @@ function executeFixture(test) {
     if (['deleted-angle-leading-spaced', 'deleted-angle-leading-tab',
         'deleted-angle-leading-title'].includes(test.extra)) {
       fs.rmSync(path.join(root, 'docs', 'my guide.md'));
+    }
+    if (test.extra === 'deleted-ref-unbalanced') {
+      fs.rmSync(path.join(root, 'docs', 'Target).md'));
     }
     if (test.extra === 'deleted-escaped-close-paren') {
       fs.rmSync(path.join(root, 'docs', 'Target).md'));
