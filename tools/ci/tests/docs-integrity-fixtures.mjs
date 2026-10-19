@@ -256,6 +256,14 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'reference definition cannot interrupt a paragraph', md: null, extra: 'deleted-paragraph-interrupted-ref',
     pass: true, markdownCount: 0 },
+  { name: 'reference-style heading text creates correct anchor', md: null, extra: 'deleted-heading-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'undefined reference-style heading does not invent anchor', md: null, extra: 'deleted-heading-ref-undefined',
+    pass: true, markdownCount: 0 },
+  { name: 'inline quoted title does not activate shortcut reference', md: null, extra: 'deleted-ref-in-title',
+    pass: true, markdownCount: 0 },
+  { name: 'inline quoted title does not activate full reference', md: null, extra: 'deleted-full-ref-in-title',
+    pass: true, markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -407,6 +415,10 @@ function executeFixture(test) {
       'deleted-blockquote-ref': '# Consumer\n[old]\n\n> [old]: Target.md\n',
       'deleted-nested-blockquote-ref': '# Consumer\n[old]\n\n> > [old]: Target.md\n',
       'deleted-paragraph-interrupted-ref': '# Consumer\nparagraph\n[x]: Target.md\n\n[x]\n',
+      'deleted-heading-ref': '# Consumer\n[old](Target.md#hello)\n',
+      'deleted-heading-ref-undefined': '# Consumer\n[old](Target.md#hello)\n',
+      'deleted-ref-in-title': '# Consumer\n[outer](../README.md "[old]")\n\n[old]: Target.md\n',
+      'deleted-full-ref-in-title': '# Consumer\n[outer](../README.md "[old][x]")\n\n[x]: Target.md\n',
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
@@ -525,6 +537,13 @@ function executeFixture(test) {
     if (test.extra === 'deleted-heading-uncertain') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# A&NonstandardName;\n');
     }
+    if (test.extra === 'deleted-heading-ref') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'),
+        '# [Hello][r]\n\n[r]: https://example.invalid\n');
+    }
+    if (test.extra === 'deleted-heading-ref-undefined') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# [Hello][r]\n');
+    }
     if (test.extra === 'deleted-id-entity') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '<a id="a&amp;b"></a>\n');
     }
@@ -612,6 +631,8 @@ function executeFixture(test) {
       'deleted-id-entity', 'deleted-id-unknown-entity',
       'deleted-blockquote-ref', 'deleted-nested-blockquote-ref',
       'deleted-paragraph-interrupted-ref',
+      'deleted-heading-ref', 'deleted-heading-ref-undefined',
+      'deleted-ref-in-title', 'deleted-full-ref-in-title',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'deleted-many-unrelated') {
