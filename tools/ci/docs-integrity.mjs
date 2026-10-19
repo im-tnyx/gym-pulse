@@ -785,8 +785,21 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const text = removeCode(fs.readFileSync(resolved, 'utf8'));
   const lineOf = lineLookup(text);
   const refs = new Map(), definitionLabelOffsets = new Set();
-  for (const match of text.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]{1,4096})(?:[ \t]+(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\((?:\\.|[^)\\\n])*\)))?[ \t]*$/gm)) {
+  function definitionCanStartAt(offset) {
+    // Definitions cannot interrupt an open paragraph. The bounded pilot
+    // supports up to four blockquote markers before a definition.
+    const end = text.lastIndexOf('\n', offset - 1);
+    if (end < 0) return true;
+    const start = text.lastIndexOf('\n', end - 1) + 1;
+    const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '').trim();
+    if (!prior) return true;
+    if (/^#{1,6}[ \t]+/.test(prior)) return true; // Heading closes a paragraph.
+    if (/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior)) return true;
+    return false;
+  }
+  for (const match of text.matchAll(/^ {0,3}(?:>[ \t]?){0,4}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]{1,4096})(?:[ \t]+(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\((?:\\.|[^)\\\n])*\)))?[ \t]*$/gm)) {
     if (escapedAt(text, match.index)) continue;
+    if (!definitionCanStartAt(match.index)) continue;
     if (hasEscapedAngleDelimiter(match[2])) continue; // Not a valid definition.
     definitionLabelOffsets.add(match.index + match[0].indexOf('['));
     const id = referenceLabel(match[1]);
