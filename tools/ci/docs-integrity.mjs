@@ -172,8 +172,20 @@ function headingSlug(heading) {
     catch { uncertain = true; return ''; }
   });
   if (uncertain) return null;
-  return decoded.replace(/!?\[([^\]]+)\]\([^)]+\)/g, '$1')
+  // Protect single-tick code contents from HTML tag removal: a heading
+  // containing `<There>` contributes the rendered word 'There'.
+  const spans = [];
+  const protectedHeading = decoded.replace(/`([^`\n]*)`/g, (_match, inner) => {
+    const index = spans.length;
+    spans.push(inner);
+    return '\x01' + index + '\x02';
+  });
+  // More complex code delimiters are outside this pilot's slug parser.
+  // If they coincide with HTML-like text, avoid a false baseline-invalid.
+  if (protectedHeading.includes('`') && /<[^>]*>/.test(protectedHeading)) return null;
+  return protectedHeading.replace(/!?\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/<[^>]*>/g, '')
+    .replace(/\x01(\d+)\x02/g, (_match, index) => spans[Number(index)] || '')
     .replace(/[\x60*_~]/g, '')
     .normalize('NFKC').toLowerCase()
     .replace(/[^\p{L}\p{N}_\- ]/gu, '')
@@ -209,7 +221,7 @@ function headingsIn(text, original = text) {
     // Capture complete tag first, then find one valid quoted/unquoted ID.
     // A single tag regex avoids overlapping attribute backtracking.
     for (const tag of line.matchAll(/<(?:a|h[1-6])\b[^>\n]*>/gi)) {
-      const id = tag[0].match(/\bid\s*=\s*(?:"([^"\n]*)"|'([^'\n]*)'|([^\s"'=<>\x60]+))/i);
+      const id = tag[0].match(/\sid\s*=\s*(?:"([^"\n]*)"|'([^'\n]*)'|([^\s"'=<>\x60]+))/i);
       if (id) found.add(id[1] ?? id[2] ?? id[3]);
     }
   }
@@ -434,9 +446,12 @@ function lineLookup(text) {
 }
 
 function referenceLabel(raw) {
-  // Match labels after decoding escaped punctuation and normalizing whitespace.
-  return raw.replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
-    .trim().toLowerCase().replace(/\s+/g, ' ');
+  // Preserve escaped punctuation as literal key material; CommonMark does
+  // not decode it when normalizing reference labels. Apply known Unicode
+  // default-casefold expansions (Unicode NFKC handles common ligatures).
+  return raw.trim().replace(/\s+/g, ' ').normalize('NFKC')
+    .toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ')
+    .replace(/\u0345/g, '\u03b9');
 }
 
 function* inlineLinks(text) {
