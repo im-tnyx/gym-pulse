@@ -51,6 +51,11 @@ function removeCode(markdown) {
   // Multiline code spans and HTML comments cannot change fence ownership.
   const lines = markdown.split(/\r\n|\n|\r/);
   let fenced = null, comment = false, rawBlock = null, listIndent = null, inlineTicks = 0;
+  let paragraphOpen = false;
+  const laterCommentCloser = new Array(lines.length + 1).fill(false);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    laterCommentCloser[i] = lines[i].includes('-->') || laterCommentCloser[i + 1];
+  }
 
   function closingTicks(text, from, count) {
     const runs = /`+/g;
@@ -80,15 +85,18 @@ function removeCode(markdown) {
     if (fenced) {
       if (fence && fence[1][0] === fenced.marker &&
           fence[1].length >= fenced.count && !fence[2].trim()) fenced = null;
+      paragraphOpen = false;
       return '';
     }
     if (rawBlock) {
       if (new RegExp('</' + rawBlock + '\\s*>', 'i').test(line)) rawBlock = null;
+      paragraphOpen = false;
       return '';
     }
     if (!comment && !inlineTicks && fence &&
         !(fence[1][0] === '`' && fence[2].includes('`'))) {
       fenced = { marker: fence[1][0], count: fence[1].length };
+      paragraphOpen = false;
       return '';
     }
     if (!comment && !inlineTicks) {
@@ -96,14 +104,15 @@ function removeCode(markdown) {
       if (rawOpen) {
         const tag = rawOpen[1].toLowerCase();
         if (!new RegExp('</' + tag + '\\s*>', 'i').test(line.slice(rawOpen[0].length))) rawBlock = tag;
+        paragraphOpen = false;
         return '';
       }
       const list = line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])\s+/);
-      if (list) listIndent = list[0].length;
+      if (list) { listIndent = list[0].length; paragraphOpen = false; }
       else if (line.trim() && listIndent !== null &&
           !line.startsWith(' '.repeat(listIndent))) listIndent = null;
       const indent = (line.match(/^ */) || [''])[0].length;
-      if ((indent >= 4 || line.startsWith('\t')) &&
+      if ((indent >= 4 || line.startsWith('\t')) && !paragraphOpen &&
           (listIndent === null || indent < listIndent || indent >= listIndent + 4)) return '';
     }
 
@@ -149,6 +158,13 @@ function removeCode(markdown) {
           from = tick.index + tick[0].length;
         }
       } else if (opener >= 0) {
+        const blockStart = opener <= 3 && !line.slice(0, opener).trim();
+        // Unclosed inline opener is literal text; unclosed block opener masks.
+        if (!blockStart && !laterCommentCloser[lineIndex]) {
+          visible += line.slice(from, opener + 4);
+          from = opener + 4;
+          continue;
+        }
         visible += line.slice(from, opener);
         from = opener;
         comment = true;
@@ -157,6 +173,9 @@ function removeCode(markdown) {
         break;
       }
     }
+    if (!line.trim()) paragraphOpen = false;
+    else if (visible.trim() && !/^ {0,3}(?:#{1,6}[ \t]|>|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(line) &&
+             !/^ {0,3}(?:={2,}|-{2,})[ \t]*$/.test(line)) paragraphOpen = true;
     return visible;
   }).join('\n');
 }
@@ -816,12 +835,17 @@ function* inlineLinks(text) {
 // each tag scan so malformed PR input cannot force unbounded work.
 function htmlTagRanges(text) {
   const ranges = [], starts = /<\/?[A-Za-z][A-Za-z0-9-]*/g;
+  let scanned = 0;
+  const maxScanned = Math.min(4 * text.length + 4096, 2 * 1024 * 1024);
   for (const start of text.matchAll(starts)) {
     const begin = start.index, afterName = begin + start[0].length;
     if (!/[\s/>]/.test(text[afterName] || '')) continue;
     if (ranges.length && begin < ranges.at(-1).end) continue;
     let quote = null, end = -1;
     for (let at = afterName; at < Math.min(text.length, begin + 4096); at++) {
+      if (++scanned > maxScanned) {
+        throw new Error('Malformed inline HTML scan budget exceeded; fail closed');
+      }
       const ch = text[at];
       if (ch === '\n') break;
       if (quote) { if (ch === quote) quote = null; }
@@ -975,7 +999,8 @@ try {
     .toString('utf8').split('\0').filter(Boolean);
   if (names.length > 300) throw new Error('Too many changed files for pilot');
   const docs = names.filter(name => /\.md$/i.test(name));
-  for (const doc of docs) validateMarkdown(doc);
+  const changedBudget = { bytes: 32 * 1024 * 1024, links: 10000 };
+  for (const doc of docs) validateMarkdown(doc, null, changedBudget);
   // Inbound local links in unchanged Markdown can break when a target is deleted.
   // Limit work and check only deleted Markdown paths, not every baseline link.
   // --no-renames treats an old rename path as D and the new path as A.
