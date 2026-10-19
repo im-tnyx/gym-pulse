@@ -786,6 +786,37 @@ function* inlineLinks(text) {
   }
 }
 
+// Ignore Markdown-looking candidates inside a parsed inline HTML tag, but
+// leave text BETWEEN tags visible. Respect quotes around attributes and limit
+// each tag scan so malformed PR input cannot force unbounded work.
+function htmlTagRanges(text) {
+  const ranges = [], starts = /<\/?[A-Za-z][A-Za-z0-9-]*/g;
+  for (const start of text.matchAll(starts)) {
+    const begin = start.index, afterName = begin + start[0].length;
+    if (!/[\s/>]/.test(text[afterName] || '')) continue;
+    if (ranges.length && begin < ranges.at(-1).end) continue;
+    let quote = null, end = -1;
+    for (let at = afterName; at < Math.min(text.length, begin + 4096); at++) {
+      const ch = text[at];
+      if (ch === '\n') break;
+      if (quote) { if (ch === quote) quote = null; }
+      else if (ch === '"' || ch === "'") quote = ch;
+      else if (ch === '>') { end = at + 1; break; }
+    }
+    if (end !== -1) ranges.push({ start: begin, end });
+  }
+  return ranges;
+}
+function inRanges(ranges, offset) {
+  let low = 0, high = ranges.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (ranges[mid].start <= offset) low = mid + 1;
+    else high = mid;
+  }
+  return low > 0 && offset < ranges[low - 1].end;
+}
+
 function validateMarkdown(filename, deletedTargets = null, budget = null) {
   let resolved;
   try { resolved = localFile(filename); } catch { fail(safe(filename) + ': missing/unsafe Markdown'); return; }
@@ -794,6 +825,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   if (budget && (budget.bytes -= stat.size) < 0) throw new Error('Inbound Markdown scan byte budget exceeded');
   const text = removeCode(fs.readFileSync(resolved, 'utf8'));
   const lineOf = lineLookup(text);
+  const inlineHtmlRanges = htmlTagRanges(text);
   const refs = new Map(), definitionLabelOffsets = new Set();
   function definitionCanStartAt(offset) {
     // Definitions cannot interrupt an open paragraph. The bounded pilot
@@ -808,7 +840,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     return false;
   }
   for (const match of text.matchAll(/^ {0,3}(?:>[ \t]?){0,4}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]{1,4096})(?:[ \t]+(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\((?:\\.|[^)\\\n])*\)))?[ \t]*$/gm)) {
-    if (escapedAt(text, match.index)) continue;
+    if (escapedAt(text, match.index) || inRanges(inlineHtmlRanges, match.index)) continue;
     if (!definitionCanStartAt(match.index)) continue;
     if (hasEscapedAngleDelimiter(match[2])) continue; // Not a valid definition.
     definitionLabelOffsets.add(match.index + match[0].indexOf('['));
@@ -823,7 +855,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const inlineOpeners = new Set(), inlineRanges = [];
   for (const match of inlineLinks(text)) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
-    if (escapedAt(text, match.opener)) continue;
+    if (escapedAt(text, match.opener) || inRanges(inlineHtmlRanges, match.index)) continue;
     inlineOpeners.add(match.opener);
     if (inlineRanges.length >= 10000) throw new Error('Inline Markdown range budget exceeded');
     inlineRanges.push({ start: match.index, end: Math.max(match.end,
@@ -845,7 +877,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   }
   const used = new Set(), referenceSuffixStarts = new Set(), referenceOpeners = new Set();
   for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]\[((?:\\.|[^\[\]\\\n]){0,512})\]/g)) {
-    if (insideInline(match.index)) continue;
+    if (insideInline(match.index) || inRanges(inlineHtmlRanges, match.index)) continue;
     // Consume an explicit reference's second [label] even if its first
     // bracket is escaped. Other text ending with ']' is not a reference.
     referenceSuffixStarts.add(match.index + match[0].lastIndexOf('['));
@@ -863,7 +895,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     // Standard shortcut references: [label] or ![alt] when a definition exists.
     // Ignore definitions, explicit/inline link openers, and backslash literals.
     for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]/g)) {
-      if (insideInline(match.index)) continue;
+      if (insideInline(match.index) || inRanges(inlineHtmlRanges, match.index)) continue;
       if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
       const opener = match.index + (match[0][0] === '!' ? 1 : 0);
       if (escapedAt(text, opener)) continue;
