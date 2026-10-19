@@ -251,6 +251,21 @@ const fixtures = [
 ];
 
 function executeFixture(test) {
+  // These exact fixture paths cannot exist on native Windows: ':' and '>'
+  // are forbidden filename characters, and the raw 0xff Git pathname is
+  // not representable via Win32 filesystem APIs. Do not count these cases
+  // as PASS or weaken the production checker; execute them on POSIX.
+  if (process.platform === 'win32') {
+    const windowsUnsupported = {
+      'deleted-literal-alias': 'Windows cannot create the colon directory used by this fixture',
+      'deleted-angle-escaped': 'Windows cannot create a filename containing >',
+      'deleted-angle-escaped-ref': 'Windows cannot create a filename containing >',
+      'deleted-nonutf8': 'Windows cannot create raw non-UTF8 filename bytes for this fixture',
+    };
+    if (Object.hasOwn(windowsUnsupported, test.extra)) {
+      return { skip: windowsUnsupported[test.extra] };
+    }
+  }
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'gympulse-docs-fixture-'));
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'gympulse-outside-fixture-'));
   try {
