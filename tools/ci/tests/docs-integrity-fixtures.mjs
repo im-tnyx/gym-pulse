@@ -192,6 +192,24 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'reference escapes remain distinct despite matching case', md: null, extra: 'deleted-distinct-escaped-label',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'leading space before inline destination remains active', md: null, extra: 'deleted-leading-space',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'leading tab before inline destination remains active', md: null, extra: 'deleted-leading-tab',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'parenthesized inline title still detects deleted target', md: null, extra: 'deleted-paren-title',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'Cyrillic extended Unicode full case folding', md: null, extra: 'deleted-casefold-cyrillic',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'Cherokee Unicode full case folding', md: null, extra: 'deleted-casefold-cherokee',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'malformed first reference definition must not shadow valid second', md: null, extra: 'deleted-malformed-first-def',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'valid quoted reference title remains first definition', md: null, extra: 'deleted-valid-ref-title',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'fullwidth heading anchor preserved without compatibility normalization', md: null, extra: 'deleted-fullwidth-anchor',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'fullwidth reference label not equivalent to ASCII', md: null, extra: 'deleted-distinct-fullwidth-ref',
+    pass: true, markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -313,6 +331,15 @@ function executeFixture(test) {
       'deleted-angle-escaped-ref': '# Consumer\n[old][x]\n\n[x]: <Target\\>.md>\n',
       'deleted-escaped-outer': '# Consumer\n\\[[old](Target.md)\n',
       'deleted-distinct-escaped-label': '# Consumer\n[use][foo\\!]\n\n[foo!]: ../README.md\n[foo\\!]: Target.md\n',
+      'deleted-leading-space': '# Consumer\n[old]( Target.md)\n',
+      'deleted-leading-tab': '# Consumer\n[old](\tTarget.md)\n',
+      'deleted-paren-title': '# Consumer\n[old](Target.md (a title))\n',
+      'deleted-casefold-cyrillic': '# Consumer\n[в]\n\n[ᲀ]: Target.md\n',
+      'deleted-casefold-cherokee': '# Consumer\n[ꭰ]\n\n[Ꭰ]: Target.md\n',
+      'deleted-malformed-first-def': '# Consumer\n[x]\n\n[x]: ../README.md garbage\n[x]: Target.md\n',
+      'deleted-valid-ref-title': '# Consumer\n[x]\n\n[x]: Target.md "valid title"\n',
+      'deleted-fullwidth-anchor': '# Consumer\n[old](Target.md#%EF%BD%81)\n',
+      'deleted-distinct-fullwidth-ref': '# Consumer\n[Ａ]\n\n[A]: Target.md\n',
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
@@ -405,6 +432,9 @@ function executeFixture(test) {
     if (test.extra === 'deleted-heading-uncertain') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# A&NonstandardName;\n');
     }
+    if (test.extra === 'deleted-fullwidth-anchor') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Ａ\n');
+    }
     if (test.extra === 'deleted-heading-code-tag') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Hello `<There>`\n');
     }
@@ -470,6 +500,10 @@ function executeFixture(test) {
       'deleted-title-parenthesis', 'deleted-heading-code-tag', 'deleted-id-hyphen',
       'deleted-data-id-only', 'deleted-casefold-ss', 'deleted-escaped-outer',
       'deleted-distinct-escaped-label',
+      'deleted-leading-space', 'deleted-leading-tab', 'deleted-paren-title',
+      'deleted-casefold-cyrillic', 'deleted-casefold-cherokee',
+      'deleted-malformed-first-def', 'deleted-valid-ref-title',
+      'deleted-fullwidth-anchor', 'deleted-distinct-fullwidth-ref',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'deleted-escaped-close-paren') {
