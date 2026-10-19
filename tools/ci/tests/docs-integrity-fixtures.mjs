@@ -167,6 +167,24 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'unquoted HTML id base anchor preserved', md: null, extra: 'deleted-unquoted-id',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'quoted inline title with open paren still detects deletion', md: null, extra: 'deleted-title-parenthesis',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'HTML-shaped code text contributes to heading slug', md: null, extra: 'deleted-heading-code-tag',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'data-id before actual ID must not steal base anchor', md: null, extra: 'deleted-id-hyphen',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'data-id alone must not count as HTML ID anchor', md: null, extra: 'deleted-data-id-only',
+    pass: true, markdownCount: 0 },
+  { name: 'SS Unicode folds to sharp-s reference label', md: null, extra: 'deleted-casefold-ss',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'angle destination escaped closing bracket resolves target', md: null, extra: 'deleted-angle-escaped',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'angle definition escaped closing bracket resolves target', md: null, extra: 'deleted-angle-escaped-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'escaped outer bracket preserves active inner inline link', md: null, extra: 'deleted-escaped-outer',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'reference escapes remain distinct despite matching case', md: null, extra: 'deleted-distinct-escaped-label',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -264,6 +282,15 @@ function executeFixture(test) {
       'deleted-surviving-alias': '# Consumer\n[old](Alias.md)\n',
       'deleted-incomplete-shortcut': '# Consumer\n[old]( retained text\n\n[old]: Target.md\n',
       'deleted-unquoted-id': '# Consumer\n[old](Target.md#kept)\n',
+      'deleted-title-parenthesis': '# Consumer\n[old](Target.md "title (")\n',
+      'deleted-heading-code-tag': '# Consumer\n[old](Target.md#hello-there)\n',
+      'deleted-id-hyphen': '# Consumer\n[old](Target.md#kept)\n',
+      'deleted-data-id-only': '# Consumer\n[old](Target.md#wrong)\n',
+      'deleted-casefold-ss': '# Consumer\n[SS]\n\n[ß]: Target.md\n',
+      'deleted-angle-escaped': '# Consumer\n[old](<Target\\>.md>)\n',
+      'deleted-angle-escaped-ref': '# Consumer\n[old][x]\n\n[x]: <Target\\>.md>\n',
+      'deleted-escaped-outer': '# Consumer\n\\[[old](Target.md)\n',
+      'deleted-distinct-escaped-label': '# Consumer\n[use][foo\\!]\n\n[foo!]: ../README.md\n[foo\\!]: Target.md\n',
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
@@ -356,6 +383,18 @@ function executeFixture(test) {
     if (test.extra === 'deleted-heading-uncertain') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# A&NonstandardName;\n');
     }
+    if (test.extra === 'deleted-heading-code-tag') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Hello `<There>`\n');
+    }
+    if (test.extra === 'deleted-id-hyphen') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '<a data-id=wrong id=kept></a>\n');
+    }
+    if (test.extra === 'deleted-data-id-only') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '<a data-id=wrong></a>\n');
+    }
+    if (['deleted-angle-escaped', 'deleted-angle-escaped-ref'].includes(test.extra)) {
+      fs.writeFileSync(path.join(root, 'docs', 'Target>.md'), '# Angle escaped\n');
+    }
     if (test.extra === 'deleted-heading-inline-code') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Hello `There`\n');
     }
@@ -406,10 +445,16 @@ function executeFixture(test) {
       'deleted-colon-shortcut', 'deleted-cr-raw-block', 'deleted-heading-inline-code',
       'deleted-ref-escaped-label', 'deleted-escaped-close-paren', 'deleted-surviving-alias',
       'deleted-incomplete-shortcut', 'deleted-unquoted-id',
+      'deleted-title-parenthesis', 'deleted-heading-code-tag', 'deleted-id-hyphen',
+      'deleted-data-id-only', 'deleted-casefold-ss', 'deleted-escaped-outer',
+      'deleted-distinct-escaped-label',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'deleted-escaped-close-paren') {
       fs.rmSync(path.join(root, 'docs', 'Target).md'));
+    }
+    if (['deleted-angle-escaped', 'deleted-angle-escaped-ref'].includes(test.extra)) {
+      fs.rmSync(path.join(root, 'docs', 'Target>.md'));
     }
     if (test.extra === 'deleted-cache-collision') {
       fs.rmSync(path.join(root, 'docs', 'a.md'));
