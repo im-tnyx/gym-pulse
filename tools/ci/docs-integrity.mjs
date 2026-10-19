@@ -429,6 +429,12 @@ function lineLookup(text) {
   };
 }
 
+function referenceLabel(raw) {
+  // Match labels after decoding escaped punctuation and normalizing whitespace.
+  return raw.replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
+    .trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 function* inlineLinks(text) {
   // Non-overlapping escape alternatives, bounded labels and linear
   // destination scanning. Incomplete syntax remains eligible as a shortcut.
@@ -467,10 +473,10 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const text = removeCode(fs.readFileSync(resolved, 'utf8'));
   const lineOf = lineLookup(text);
   const refs = new Map(), definitionLabelOffsets = new Set();
-  for (const match of text.matchAll(/^ {0,3}\[([^\]]+)\]:\s*(<[^>]+>|[^\s]+)/gm)) {
+  for (const match of text.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<[^>\n]+>|[^\s]+)/gm)) {
     if (escapedAt(text, match.index)) continue;
     definitionLabelOffsets.add(match.index + match[0].indexOf('['));
-    const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
+    const id = referenceLabel(match[1]);
     if (refs.has(id)) continue; // First definition of each label wins.
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
     refs.set(id, { destination: match[2], line: lineOf(match.index) });
@@ -487,15 +493,16 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
       checkLink(filename, match.raw, lineOf(match.index));
     }
   }
-  const used = new Set(), referenceSuffixStarts = new Set();
-  for (const match of text.matchAll(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g)) {
+  const used = new Set(), referenceSuffixStarts = new Set(), referenceOpeners = new Set();
+  for (const match of text.matchAll(/!?\[((?:\\.|[^\]\\\n]){1,512})\]\[((?:\\.|[^\]\\\n]){0,512})\]/g)) {
     // Consume an explicit reference's second [label] even if its first
     // bracket is escaped. Other text ending with ']' is not a reference.
     referenceSuffixStarts.add(match.index + match[0].lastIndexOf('['));
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
     const opener = match.index + (match[0][0] === '!' ? 1 : 0);
     if (escapedAt(text, opener)) continue;
-    const id = (match[2] || match[1]).trim().toLowerCase().replace(/\s+/g, ' ');
+    referenceOpeners.add(opener);
+    const id = referenceLabel(match[2] || match[1]);
     if (deletedTargets) used.add(id);
     else if (!refs.has(id)) {
       fail(safe(filename) + ': undefined reference label ' + safe(id) + ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
@@ -504,14 +511,14 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   if (deletedTargets) {
     // Standard shortcut references: [label] or ![alt] when a definition exists.
     // Ignore definitions, explicit/inline link openers, and backslash literals.
-    for (const match of text.matchAll(/!?\[([^\[\]\n]+)\]/g)) {
+    for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]/g)) {
       if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
       const opener = match.index + (match[0][0] === '!' ? 1 : 0);
       if (escapedAt(text, opener)) continue;
       if (referenceSuffixStarts.has(match.index)) continue;
       const after = text[match.index + match[0].length] || '';
-      if (definitionLabelOffsets.has(match.index) || inlineOpeners.has(opener)) continue;
-      const id = match[1].trim().toLowerCase().replace(/\s+/g, ' ');
+      if (definitionLabelOffsets.has(match.index) || inlineOpeners.has(opener) || referenceOpeners.has(opener)) continue;
+      const id = referenceLabel(match[1]);
       if (refs.has(id)) used.add(id);
     }
     for (const [id, ref] of refs) {
