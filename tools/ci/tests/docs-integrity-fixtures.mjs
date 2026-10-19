@@ -300,6 +300,10 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'malformed overlapping HTML tags fail fast by scan budget', md: '# Stress\n' + '<a '.repeat(15_000),
     extra: 'changed-html-scan-budget', pass: false, signal: 'Malformed inline HTML scan budget exceeded' },
+  { name: 'generic HTML block blank terminates masking for subsequent Markdown', md: null, extra: 'deleted-div-blank-link',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'generic HTML close without blank still masks following Markdown', md: null, extra: 'deleted-div-close-no-blank',
+    pass: true, markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -499,6 +503,8 @@ function executeFixture(test) {
       'deleted-div-block-then-link': '# Consumer\n<div>\n[old](Target.md)\n</div>\n\n[old](Target.md)\n',
       'deleted-list-fenced': '# Consumer\n-    item\n     ~~~md\n     [old](Target.md)\n     ~~~\n',
       'deleted-div-block-id': '# Consumer\n[old](Target.md#kept)\n',
+      'deleted-div-blank-link': '# Consumer\n<div>\n[hidden](Target.md)\n\n[old](Target.md)\n',
+      'deleted-div-close-no-blank': '# Consumer\n<div>\n[hidden](Target.md)\n</div>\n[still-hidden](Target.md)\n',
     };
     if (Object.hasOwn(deletionConsumers, test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
@@ -715,6 +721,7 @@ function executeFixture(test) {
       'deleted-unclosed-inline-comment', 'deleted-indented-paragraph',
       'deleted-div-raw-block', 'deleted-div-block-then-link',
       'deleted-list-fenced', 'deleted-div-block-id',
+      'deleted-div-blank-link', 'deleted-div-close-no-blank',
       'deleted-html-inline-attr', 'deleted-html-inline-ref',
       'deleted-html-inline-then-active',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
