@@ -184,10 +184,10 @@ const fixtures = [
     pass: true, markdownCount: 0 },
   { name: 'SS Unicode folds to sharp-s reference label', md: null, extra: 'deleted-casefold-ss',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
-  { name: 'angle destination escaped closing bracket resolves target', md: null, extra: 'deleted-angle-escaped',
-    pass: false, signal: 'invalid local link', markdownCount: 0 },
-  { name: 'angle definition escaped closing bracket resolves target', md: null, extra: 'deleted-angle-escaped-ref',
-    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'invalid escaped angle closer is not an inbound link', md: null, extra: 'deleted-angle-escaped',
+    pass: true, markdownCount: 0 },
+  { name: 'invalid escaped angle closer in reference definition ignored', md: null, extra: 'deleted-angle-escaped-ref',
+    pass: true, markdownCount: 0 },
   { name: 'escaped outer bracket preserves active inner inline link', md: null, extra: 'deleted-escaped-outer',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'reference escapes remain distinct despite matching case', md: null, extra: 'deleted-distinct-escaped-label',
@@ -241,6 +241,14 @@ const fixtures = [
   { name: 'YAML front matter must not create a false setext anchor', md: null, extra: 'deleted-frontmatter-fake-anchor',
     pass: true, markdownCount: 0 },
   { name: 'real heading after YAML front matter still rejects deletion', md: null, extra: 'deleted-frontmatter-real-anchor',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'nested opener preserves inner full-reference link', md: null, extra: 'deleted-nested-full-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'NBSP is distinct from ASCII space in reference label', md: null, extra: 'deleted-nbsp-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'base HTML ID entity resolves actual anchor on deletion', md: null, extra: 'deleted-id-entity',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'unknown base HTML ID entity remains fail-closed', md: null, extra: 'deleted-id-unknown-entity',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
@@ -386,6 +394,10 @@ function executeFixture(test) {
       'deleted-entity-alias-unrelated': '# Consumer\n[u](caf&notSupportedHere;.md)\n',
       'deleted-frontmatter-fake-anchor': '# Consumer\n[old](Target.md#title-x)\n',
       'deleted-frontmatter-real-anchor': '# Consumer\n[old](Target.md#real-heading)\n',
+      'deleted-nested-full-ref': '# Consumer\n\\[[old][x]\n\n[x]: Target.md\n',
+      'deleted-nbsp-ref': '# Consumer\n[use][a b]\n\n[a b]: ../README.md\n[a b]: Target.md\n',
+      'deleted-id-entity': '# Consumer\n[old](Target.md#a%26b)\n',
+      'deleted-id-unknown-entity': '# Consumer\n[old](Target.md#unknown)\n',
       'deleted-unused': '# Consumer\n[existing](../README.md)\n',
       'deleted-unrelated': '# Consumer\n[preexisting-broken](never-existed.md)\n',
       'deleted-fenced': '# Consumer\n```md\n[not-a-link](Target.md)\n```\n',
@@ -504,6 +516,12 @@ function executeFixture(test) {
     if (test.extra === 'deleted-heading-uncertain') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# A&NonstandardName;\n');
     }
+    if (test.extra === 'deleted-id-entity') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '<a id="a&amp;b"></a>\n');
+    }
+    if (test.extra === 'deleted-id-unknown-entity') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '<a id="a&NotRecognized;">unknown</a>\n');
+    }
     if (test.extra === 'deleted-fullwidth-anchor') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Ａ\n');
     }
@@ -581,6 +599,8 @@ function executeFixture(test) {
       'deleted-angle-leading', 'deleted-entity-alias-unrelated',
       'deleted-frontmatter-fake-anchor',
       'deleted-frontmatter-real-anchor',
+      'deleted-nested-full-ref', 'deleted-nbsp-ref',
+      'deleted-id-entity', 'deleted-id-unknown-entity',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'deleted-many-unrelated') {
