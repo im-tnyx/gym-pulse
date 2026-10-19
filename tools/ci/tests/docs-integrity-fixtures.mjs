@@ -16,11 +16,16 @@ import { spawnSync } from 'node:child_process';
 const checker = fileURLToPath(new URL('../docs-integrity.mjs', import.meta.url));
 
 // Isolate even the initial Git environment discovery from hostile user config.
+// Git for Windows cannot reliably open Node's '\\\\.\\nul' device path as a
+// config file. Git explicitly documents '/dev/null' as a config skip path,
+// including when invoked from native Windows Node.js.
+const emptyGitConfigPath = process.platform === 'win32' ? '/dev/null' : os.devNull;
+
 const discoveryEnv = {
   ...process.env,
   GIT_CONFIG_NOSYSTEM: '1',
-  GIT_CONFIG_GLOBAL: os.devNull,
-  GIT_CONFIG_SYSTEM: os.devNull,
+  GIT_CONFIG_GLOBAL: emptyGitConfigPath,
+  GIT_CONFIG_SYSTEM: emptyGitConfigPath,
   GIT_CONFIG_COUNT: '0',
   GIT_CONFIG_PARAMETERS: '',
 };
@@ -32,7 +37,9 @@ const localVarsResult = spawnSync('git', ['rev-parse', '--local-env-vars'], {
   env: discoveryEnv,
 });
 if (localVarsResult.error || localVarsResult.status !== 0) {
-  throw new Error('Cannot obtain Git repository-local environment variables');
+  const detail = localVarsResult.error?.message || localVarsResult.stderr?.trim() ||
+    'exit status ' + String(localVarsResult.status);
+  throw new Error('Cannot obtain Git repository-local environment variables: ' + detail.slice(0, 280));
 }
 const localGitVars = localVarsResult.stdout.split(/\r?\n/).filter(Boolean);
 
@@ -56,8 +63,8 @@ function run(bin, args, cwd, expectSuccess = true) {
       ...env,
       // Ignore machine/user Git signing, hooks and credential configuration.
       GIT_CONFIG_NOSYSTEM: '1',
-      GIT_CONFIG_GLOBAL: os.devNull,
-      GIT_CONFIG_SYSTEM: os.devNull,
+      GIT_CONFIG_GLOBAL: emptyGitConfigPath,
+      GIT_CONFIG_SYSTEM: emptyGitConfigPath,
       GIT_CONFIG_COUNT: '0',
       GIT_CONFIG_PARAMETERS: '',
     },
