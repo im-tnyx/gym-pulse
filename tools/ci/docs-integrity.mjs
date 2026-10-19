@@ -849,10 +849,20 @@ function* inlineLinks(text) {
     let angleStart = start;
     while (angleStart < limit && (text[angleStart] === ' ' || text[angleStart] === '\t')) angleStart++;
     let depth = 0, rawEnd = -1, angle = text[angleStart] === '<', angleClosed = false, title = null;
+    let lineEndings = 0;
     let whitespace = false, destinationSeen = false;
     for (let i = start; i < limit; i++) {
       const ch = text[i];
-      if (ch === '\n') break;
+      if (ch === '\n') {
+        // CommonMark permits a line ending BETWEEN link components.
+        // Never accept blank lines, newline inside an angle destination/title,
+        // or unbounded continuation.
+        if (angle || title !== null || lineEndings >= 2 ||
+            text[i + 1] === '\n' || (i > start && text[i - 1] === '\n')) break;
+        lineEndings++;
+        whitespace = true;
+        continue;
+      }
       if (ch === '\\' && i + 1 < limit) {
         if (angle && text[i + 1] === '>') break; // Invalid escaped delimiter.
         i++;
@@ -976,7 +986,11 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     if (/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior)) return true;
     return false;
   }
-  for (const match of text.matchAll(/^ {0,3}(?:>[ \t]?){0,4}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]{1,4096})(?:[ \t]+(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\((?:\\.|[^)\\\n])*\)))?[ \t]*$/gm)) {
+  // A definition can occupy a bounded list container or use ONE line
+  // ending before its destination. The paragraph and first-wins checks below
+  // still apply, and a blank line cannot complete a definition.
+  const definitionPattern = /^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(?:\n[ \t]{0,3})?(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]{1,4096})(?:[ \t]+(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\((?:\\.|[^)\\\n])*\)))?[ \t]*$/gm;
+  for (const match of text.matchAll(definitionPattern)) {
     if (escapedAt(text, match.index) || inRanges(inlineHtmlRanges, match.index) ||
         inRanges(autolinkRanges, match.index)) continue;
     if (!definitionCanStartAt(match.index)) continue;
