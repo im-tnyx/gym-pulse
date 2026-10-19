@@ -239,6 +239,18 @@ function headingSlug(heading, definedRefs = new Set()) {
     .trim().replace(/ +/g, '-');
 }
 
+function headingContainerContent(raw) {
+  // Permit a small, bounded number of legitimate blockquote/list prefixes.
+  // A blockquote/list line with an ATX marker still renders as a heading.
+  let result = raw;
+  for (let hop = 0; hop < 4; hop++) {
+    const next = result.replace(/^ {0,3}>[ \t]?/, '')
+      .replace(/^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+/, '');
+    if (next === result) break;
+    result = next;
+  }
+  return result;
+}
 function headingsIn(text, original = text) {
   // Use masked text to decide which lines are headings, and the original
   // line to retain rendered inline-code text for baseline anchor slugs.
@@ -255,9 +267,19 @@ function headingsIn(text, original = text) {
     const slug = headingSlug(heading, definedRefs);
     if (slug === null) { found.add(UNCERTAIN_HEADING_ENTITY); return; }
     if (!slug) return;
-    const old = occurrences.get(slug) || 0;
-    found.add(old ? slug + '-' + old : slug);
-    occurrences.set(slug, old + 1);
+    // GitHub allocates duplicate suffixes globally. An explicit "foo-1"
+    // can occupy the suffix of a later duplicate "foo".
+    let suffix = occurrences.get(slug) || 0;
+    let candidate = suffix ? slug + '-' + suffix : slug;
+    while (found.has(candidate)) {
+      if (++suffix > 10000) {
+        found.add(UNCERTAIN_HEADING_ENTITY); // Bounded, fail closed.
+        return;
+      }
+      candidate = slug + '-' + suffix;
+    }
+    found.add(candidate);
+    occurrences.set(slug, suffix + 1);
   };
   const lines = text.split('\n');
   // A complete leading YAML front-matter block is metadata, not a setext
@@ -274,9 +296,11 @@ function headingsIn(text, original = text) {
   for (let i = 0; i < lines.length; i++) {
     if (frontMatterEnd >= 0 && i <= frontMatterEnd) continue;
     const line = lines[i];
-    const atx = line.match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
+    const atx = headingContainerContent(line)
+      .match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
     if (atx) {
-      const source = (originalLines[i] || '').match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
+      const source = headingContainerContent(originalLines[i] || '')
+        .match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
       addSlug(source ? source[1] : atx[1]);
     } else if (i > 0 && /^ {0,3}(?:=+|-+)\s*$/.test(line)) {
       const previous = lines[i - 1];
@@ -864,6 +888,7 @@ function htmlTagRanges(text) {
   const maxScanned = Math.min(4 * text.length + 4096, 2 * 1024 * 1024);
   for (const start of text.matchAll(starts)) {
     const begin = start.index, afterName = begin + start[0].length;
+    if (escapedAt(text, begin)) continue; // Escaped '<' is literal prose.
     if (!/[\s/>]/.test(text[afterName] || '')) continue;
     if (ranges.length && begin < ranges.at(-1).end) continue;
     let quote = null, end = -1;
