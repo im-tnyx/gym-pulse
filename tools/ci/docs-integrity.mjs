@@ -206,7 +206,19 @@ function headingsIn(text, original = text) {
     occurrences.set(slug, old + 1);
   };
   const lines = text.split('\n');
+  // A complete leading YAML front-matter block is metadata, not a setext
+  // heading. An unmatched opener is not masked.
+  let frontMatterEnd = -1;
+  if (lines[0]?.trim() === '---') {
+    for (let j = 1; j < lines.length; j++) {
+      if (/^(?:---|\.\.\.)[ \t]*$/.test(lines[j])) {
+        frontMatterEnd = j;
+        break;
+      }
+    }
+  }
   for (let i = 0; i < lines.length; i++) {
+    if (frontMatterEnd >= 0 && i <= frontMatterEnd) continue;
     const line = lines[i];
     const atx = line.match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
     if (atx) {
@@ -237,7 +249,7 @@ const NAMED_DESTINATION_ENTITIES = Object.freeze({
   amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0',
   period: '.', sol: '/', num: '#', colon: ':', semi: ';',
   quest: '?', percnt: '%', equals: '=', lowbar: '_', hyphen: '-',
-  copy: '©', reg: '®', trade: '™', hellip: '…', mdash: '—', ndash: '–',
+  eacute: 'é', Eacute: 'É', copy: '©', reg: '®', trade: '™', hellip: '…', mdash: '—', ndash: '–',
   euro: '€', pound: '£', yen: '¥', cent: '¢', bull: '•', times: '×', divide: '÷',
 });
 function decodeLinkEntities(value) {
@@ -356,11 +368,34 @@ function baseTargetValid(relative, anchor) {
   return valid;
 }
 
-const baseSymlinkCache = new Map();
+// Build the trusted BASE symlink index exactly once. Do NOT cache every
+// ordinary path prefix: a legitimate 500-Markdown-file repository can have
+// thousands of prefixes despite containing no symlinks.
+let baseSymlinkPaths = null;
+const baseSymlinkTargets = new Map();
+function baseSymlinks() {
+  if (baseSymlinkPaths !== null) return baseSymlinkPaths;
+  const treeBytes = git(['ls-tree', '-r', '-z', base], true);
+  const tree = treeBytes.toString('utf8');
+  if (!Buffer.from(tree, 'utf8').equals(treeBytes)) {
+    throw new Error('Non-UTF8 base tree paths unsupported; fail closed');
+  }
+  const paths = new Set();
+  for (const entry of tree.split('\0').filter(Boolean)) {
+    const match = entry.match(/^([0-7]{6}) (?:blob|commit|tree) [0-9a-f]{40}\t(.*)$/s);
+    if (!match) throw new Error('Invalid base tree entry; fail closed');
+    if (match[1] !== '120000') continue;
+    if (paths.size >= 1000) throw new Error('Too many base symlinks to resolve safely');
+    paths.add(match[2]);
+  }
+  baseSymlinkPaths = paths;
+  return paths;
+}
 function resolveBaseParentAliases(parent) {
-  // The merge checkout can retarget a symlink. Resolve directory aliases
-  // exclusively against BASE tree entries, not PR-controlled filesystem links.
+  // Only BASE links are authoritative; changed MERGE symlinks are untrusted.
   if (!withinRoot(parent)) throw new Error('Unsafe base alias path');
+  const symlinks = baseSymlinks();
+  if (!symlinks.size) return parent;
   let pending = path.relative(root, parent).split(path.sep).filter(Boolean);
   let current = root, hops = 0, steps = 0;
   while (pending.length) {
@@ -368,39 +403,92 @@ function resolveBaseParentAliases(parent) {
     const next = path.resolve(current, pending.shift());
     if (!withinRoot(next)) throw new Error('Base alias escapes repository');
     const relative = path.relative(root, next).split(path.sep).join('/');
-    let target = baseSymlinkCache.get(relative);
+    if (!symlinks.has(relative)) { current = next; continue; }
+    if (++hops > 8) throw new Error('Too many base symlink aliases');
+    let target = baseSymlinkTargets.get(relative);
     if (target === undefined) {
-      if (baseSymlinkCache.size >= 1000) throw new Error('Too many base alias paths');
-      const entry = git(['ls-tree', base, '--', ':(literal)' + relative]);
-      if (/^120000 blob [0-9a-f]{40}\t/.test(entry)) {
-        const size = Number(git(['cat-file', '-s', base + ':' + relative]).trim());
-        if (!Number.isSafeInteger(size) || size < 1 || size > 4096) {
-          throw new Error('Oversized or invalid base symlink; fail closed');
-        }
-        const bytes = git(['show', base + ':' + relative], true);
-        target = bytes.toString('utf8');
-        if (!Buffer.from(target, 'utf8').equals(bytes) ||
-            target.includes('\0') || path.isAbsolute(target)) {
-          throw new Error('Unsafe base symlink; fail closed');
-        }
-      } else target = null;
-      baseSymlinkCache.set(relative, target);
+      const size = Number(git(['cat-file', '-s', base + ':' + relative]).trim());
+      if (!Number.isSafeInteger(size) || size < 1 || size > 4096) {
+        throw new Error('Oversized or invalid base symlink; fail closed');
+      }
+      const bytes = git(['show', base + ':' + relative], true);
+      target = bytes.toString('utf8');
+      if (!Buffer.from(target, 'utf8').equals(bytes) ||
+          target.includes('\0') || path.isAbsolute(target)) {
+        throw new Error('Unsafe base symlink; fail closed');
+      }
+      baseSymlinkTargets.set(relative, target);
     }
-    if (target !== null) {
-      if (++hops > 8) throw new Error('Too many base symlink aliases');
-      const resolved = path.resolve(path.dirname(next), target);
-      if (!withinRoot(resolved)) throw new Error('Base symlink escapes repository');
-      pending = path.relative(root, resolved).split(path.sep).filter(Boolean).concat(pending);
-      current = root;
-    } else current = next;
+    const resolved = path.resolve(path.dirname(next), target);
+    if (!withinRoot(resolved)) throw new Error('Base symlink escapes repository');
+    pending = path.relative(root, resolved).split(path.sep).filter(Boolean).concat(pending);
+    current = root;
   }
   return current;
 }
 
+// When a named HTML entity cannot be decoded, treat the expansion as a
+// conservative wildcard *only against deleted paths*. An unrelated link
+// must not abort the entire inbound scan; a plausible deleted one must fail.
+// Mark path-shaping ambiguous entities as possible when we cannot exclude
+// an affected path. This deliberately does not claim full HTML5 parsing.
+function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
+  if (!deleted.size) return false;
+  const value = raw.trim().replace(/^</, '').replace(/>\s*$/, '')
+    .split(/[?#]/, 1)[0];
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value)) return false;
+  const hasUnknown = /&(?:[A-Za-z][A-Za-z0-9]+);/.test(value);
+  if (!hasUnknown) return true; // Malformed or numeric content stays fail-closed.
+  let decoded;
+  try {
+    decoded = value.replace(/\\([!-/:-@\[-`{-~ ])/g, '$1');
+    decoded = decoded.replace(/&([A-Za-z][A-Za-z0-9]+);/g, (entity, token) =>
+      Object.hasOwn(NAMED_DESTINATION_ENTITIES, token)
+        ? NAMED_DESTINATION_ENTITIES[token] : '\x01');
+    decoded = decodeLinkEntities(decoded);
+  } catch { return true; }
+  // Unknown expansions must not enable arbitrary relative path traversal.
+  // If an unknown entity occupies an entire path component or can reshape
+  // dot-components, preserve fail-closed.
+  if (/(?:^|\/)\x01(?:\/|$)/.test(decoded) ||
+      /(?:^|\/)\.\.?\x01|\x01\.\.?\//.test(decoded)) return true;
+  const slash = decoded.startsWith('/');
+  const canonical = slash
+    ? path.resolve(root, '.' + decoded)
+    : path.resolve(root, path.dirname(source), decoded);
+  const pattern = path.relative(root, canonical).split(path.sep).join('/');
+  // Every encoded unknown is treated as any string; reject when a deleted
+  // target has compatible anchored prefix/suffix. No regex from PR data.
+  const pieces = pattern.split('\x01');
+  for (const target of deleted) {
+    let offset = 0, matched = true;
+    if (!target.startsWith(pieces[0])) continue;
+    offset = pieces[0].length;
+    for (let i = 1; i < pieces.length; i++) {
+      const part = pieces[i];
+      if (!part) continue;
+      const at = target.indexOf(part, offset);
+      if (at < 0) { matched = false; break; }
+      offset = at + part.length;
+    }
+    if (matched && target.endsWith(pieces.at(-1))) return true;
+  }
+  return false;
+}
+
 function refersToDeletedMarkdown(source, raw, deleted) {
   let link;
-  try { link = destination(raw); } catch { throw new Error('Unparseable inbound destination; fail closed'); }
-  if (!link || link.startsWith('/') || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(link)) return false;
+  try { link = destination(raw); }
+  catch {
+    // Do not block an unrelated deletion for a pre-existing destination using
+    // a valid but unsupported HTML5 entity. However an unknown expansion that
+    // could name a deleted Markdown file MUST still fail closed.
+    if (couldUnparsedDestinationNameDeleted(source, raw, deleted)) {
+      throw new Error('Unparseable inbound destination; fail closed');
+    }
+    return false;
+  }
+  if (!link || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(link)) return false;
   const hash = link.indexOf('#'), query = link.indexOf('?');
   const end = Math.min(hash < 0 ? link.length : hash, query < 0 ? link.length : query);
   let filename, anchor;
@@ -409,7 +497,9 @@ function refersToDeletedMarkdown(source, raw, deleted) {
     anchor = hash < 0 ? '' : decodeURIComponent(link.slice(hash + 1));
   } catch { return false; }
   if (!filename || filename.includes('\0') || filename.includes('\\')) return false;
-  const absolute = path.resolve(root, path.dirname(source), filename);
+  const absolute = filename.startsWith('/')
+    ? path.resolve(root, '.' + filename)
+    : path.resolve(root, path.dirname(source), filename);
   if (!withinRoot(absolute)) return false;
   const paths = [absolute];
   // BASE was the state in which this unchanged source link was valid.
@@ -606,7 +696,10 @@ function* inlineLinks(text) {
   for (const candidate of text.matchAll(labels)) {
     const start = candidate.index + candidate[0].length;
     const limit = Math.min(text.length, start + 4096);
-    let depth = 0, rawEnd = -1, angle = text[start] === '<', title = null;
+    // Leading whitespace may precede an angle-wrapped destination.
+    let angleStart = start;
+    while (angleStart < limit && (text[angleStart] === ' ' || text[angleStart] === '\t')) angleStart++;
+    let depth = 0, rawEnd = -1, angle = text[angleStart] === '<', title = null;
     let whitespace = false, destinationSeen = false;
     for (let i = start; i < limit; i++) {
       const ch = text[i];
@@ -614,7 +707,7 @@ function* inlineLinks(text) {
       if (ch === '\\' && i + 1 < limit) { i++; continue; }
       if (angle) {
         if (ch === '>') { angle = false; destinationSeen = true; }
-        else if (ch === '<' && i !== start) break;
+        else if (ch === '<' && i !== angleStart) break;
         continue;
       }
       if (title !== null) {
