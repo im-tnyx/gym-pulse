@@ -270,6 +270,12 @@ const fixtures = [
     pass: true, markdownCount: 0 },
   { name: 'live link immediately following inline HTML still rejected', md: null, extra: 'deleted-html-inline-then-active',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'regular Markdown replaced by symlink breaks old anchor', md: null, extra: 'typechange-anchor-broken',
+    pass: false, signal: 'invalid local link', markdownCount: 1 },
+  { name: 'regular Markdown replaced by symlink preserves old anchor', md: null, extra: 'typechange-anchor-preserved',
+    pass: true, markdownCount: 1 },
+  { name: 'regular Markdown replaced by symlink preserves unanchored link', md: null, extra: 'typechange-unanchored',
+    pass: true, markdownCount: 1 },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -484,6 +490,16 @@ function executeFixture(test) {
     if (['deleted-frontmatter-fake-anchor', 'deleted-frontmatter-real-anchor'].includes(test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '---\ntitle: x\n---\n# Real Heading\n');
     }
+    if (['typechange-anchor-broken', 'typechange-anchor-preserved',
+         'typechange-unanchored'].includes(test.extra)) {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Old\n');
+      fs.writeFileSync(path.join(root, 'docs', 'Other.md'),
+        test.extra === 'typechange-anchor-broken' ? '# New\n' : '# Old\n');
+      fs.writeFileSync(path.join(root, 'docs', 'consumer.md'),
+        test.extra === 'typechange-unanchored'
+          ? '# Consumer\n[old](Target.md)\n'
+          : '# Consumer\n[old](Target.md#old)\n');
+    }
     // Some bypass scenarios require additional paths already present in BASE.
     const specialSymlinks = ['symlink-source-internal', 'symlink-source-outside', 'deleted-alias', 'deleted-alias-retarget', 'deleted-literal-alias', 'deleted-surviving-alias', 'deleted-entity-alias', 'deleted-entity-alias-unrelated'];
     if (specialSymlinks.includes(test.extra)) {
@@ -672,6 +688,18 @@ function executeFixture(test) {
     if (test.extra === 'deleted-symlink-target') fs.rmSync(path.join(root, 'docs', 'Alias.md'));
     if (rawName) fs.rmSync(rawName);
     if (test.extra === 'renamed-inbound') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
+    if (['typechange-anchor-broken', 'typechange-anchor-preserved',
+         'typechange-unanchored'].includes(test.extra)) {
+      fs.rmSync(path.join(root, 'docs', 'Target.md'));
+      try {
+        fs.symlinkSync('Other.md', path.join(root, 'docs', 'Target.md'), 'file');
+      } catch (error) {
+        if (['EPERM', 'ENOSYS', 'EACCES', 'EOPNOTSUPP', 'ENOTSUP'].includes(error.code)) {
+          return { skip: 'symlink creation unsupported on current host' };
+        }
+        throw error;
+      }
+    }
     if (test.extra === 'typechange-symlink') {
       fs.rmSync(path.join(root, 'docs', 'Target.md'));
       try {
