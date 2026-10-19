@@ -180,7 +180,10 @@ function headingSlug(heading) {
     .trim().replace(/ +/g, '-');
 }
 
-function headingsIn(text) {
+function headingsIn(text, original = text) {
+  // Use masked text to decide which lines are headings, and the original
+  // line to retain rendered inline-code text for baseline anchor slugs.
+  const originalLines = original.split(/\r\n|\n|\r/);
   const found = new Set(), occurrences = new Map();
   const addSlug = heading => {
     const slug = headingSlug(heading);
@@ -194,18 +197,28 @@ function headingsIn(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const atx = line.match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
-    if (atx) addSlug(atx[1]);
-    else if (i > 0 && /^ {0,3}(?:=+|-+)\s*$/.test(line)) {
+    if (atx) {
+      const source = (originalLines[i] || '').match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
+      addSlug(source ? source[1] : atx[1]);
+    } else if (i > 0 && /^ {0,3}(?:=+|-+)\s*$/.test(line)) {
       const previous = lines[i - 1];
-      if (previous.trim() && !/^ {0,3}[#>]/.test(previous)) addSlug(previous.trim());
+      if (previous.trim() && !/^ {0,3}[#>]/.test(previous)) {
+        addSlug((originalLines[i - 1] || previous).trim());
+      }
     }
-    for (const m of line.matchAll(/<(?:a|h[1-6])\s+[^>]*\bid=["']([^"']+)["'][^>]*>/gi)) found.add(m[1]);
+    // Capture complete tag first, then find one valid quoted/unquoted ID.
+    // A single tag regex avoids overlapping attribute backtracking.
+    for (const tag of line.matchAll(/<(?:a|h[1-6])\b[^>\n]*>/gi)) {
+      const id = tag[0].match(/\bid\s*=\s*(?:"([^"\n]*)"|'([^'\n]*)'|([^\s"'=<>\x60]+))/i);
+      if (id) found.add(id[1] ?? id[2] ?? id[3]);
+    }
   }
   return found;
 }
 
 function headingsFor(filename) {
-  return headingsIn(removeCode(fs.readFileSync(filename, 'utf8')));
+  const original = fs.readFileSync(filename, 'utf8');
+  return headingsIn(removeCode(original), original);
 }
 
 const NAMED_DESTINATION_ENTITIES = Object.freeze({
@@ -296,7 +309,8 @@ function baseTargetValid(relative, anchor) {
         // cannot safely be parsed, without reading a huge Git blob.
         valid = blobSize > 1024 * 1024 || (relative.toLowerCase().endsWith('.md') &&
           (() => {
-             const headings = headingsIn(removeCode(git(['show', base + ':' + relative], true).toString('utf8')));
+             const original = git(['show', base + ':' + relative], true).toString('utf8');
+             const headings = headingsIn(removeCode(original), original);
              // Unknown but plausible HTML5 entities can make an anchor valid.
              // Treat uncertain baseline headings as valid (fail-closed on deletion).
              return headings.has(anchor) || headings.has(UNCERTAIN_HEADING_ENTITY);
@@ -384,8 +398,10 @@ function refersToDeletedMarkdown(source, raw, deleted) {
   const paths = [absolute];
   // BASE was the state in which this unchanged source link was valid.
   // Merge-worktree realpaths are attacker-controlled and may hide old aliases.
-  const parent = resolveBaseParentAliases(path.dirname(absolute));
-  if (withinRoot(parent)) paths.push(path.join(parent, path.basename(absolute)));
+  // Resolve ALL base path components, including a surviving final symlink
+  // whose target Markdown file was removed by the PR.
+  const canonicalBase = resolveBaseParentAliases(absolute);
+  if (withinRoot(canonicalBase)) paths.push(canonicalBase);
   return paths.some(candidate => {
     if (!withinRoot(candidate)) return false;
     const relative = path.relative(root, candidate).split(path.sep).join('/');
