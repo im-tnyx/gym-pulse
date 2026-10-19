@@ -162,7 +162,7 @@ function removeCode(markdown) {
 }
 
 const UNCERTAIN_HEADING_ENTITY = '\0unknown-heading-entity';
-function headingSlug(heading) {
+function headingSlug(heading, definedRefs = new Set()) {
   // Decode supported HTML references, but do not let an unrelated heading
   // with an unsupported entity abort the scan of an otherwise valid base.
   // A heading containing an unrecognized entity is conservatively ambiguous.
@@ -183,7 +183,10 @@ function headingSlug(heading) {
   // More complex code delimiters are outside this pilot's slug parser.
   // If they coincide with HTML-like text, avoid a false baseline-invalid.
   if (protectedHeading.includes('`') && /<[^>]*>/.test(protectedHeading)) return null;
-  return protectedHeading.replace(/!?\[([^\]]+)\]\([^)]+\)/g, '$1')
+  return protectedHeading
+    .replace(/!?\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g, (whole, label, id) =>
+      definedRefs.has(referenceLabel(id || label)) ? label : whole)
     .replace(/<[^>]*>/g, '')
     .replace(/\x01(\d+)\x02/g, (_match, index) => spans[Number(index)] || '')
     .replace(/[\x60*_~]/g, '')
@@ -197,8 +200,14 @@ function headingsIn(text, original = text) {
   // line to retain rendered inline-code text for baseline anchor slugs.
   const originalLines = original.split(/\r\n|\n|\r/);
   const found = new Set(), occurrences = new Map();
+  // Only defined reference-style links contribute their rendered link text.
+  // Undefined [text][id] remains literal heading text.
+  const definedRefs = new Set();
+  for (const ref of original.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*\S/gm)) {
+    definedRefs.add(referenceLabel(ref[1]));
+  }
   const addSlug = heading => {
-    const slug = headingSlug(heading);
+    const slug = headingSlug(heading, definedRefs);
     if (slug === null) { found.add(UNCERTAIN_HEADING_ENTITY); return; }
     if (!slug) return;
     const old = occurrences.get(slug) || 0;
@@ -772,7 +781,8 @@ function* inlineLinks(text) {
     }
     if (rawEnd < 0) continue;
     yield { index: candidate.index, opener: candidate.index +
-      (candidate[0][0] === '!' ? 1 : 0), raw: text.slice(start, rawEnd) };
+      (candidate[0][0] === '!' ? 1 : 0), raw: text.slice(start, rawEnd),
+      end: rawEnd + 1 };
   }
 }
 
@@ -810,17 +820,32 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   }
   // Scoped syntax: one parenthesis nesting level, 512-char link labels,
   // 4096-char destinations; unsupported advanced Markdown is NOT RUN.
-  const inlineOpeners = new Set();
+  const inlineOpeners = new Set(), inlineRanges = [];
   for (const match of inlineLinks(text)) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
     if (escapedAt(text, match.opener)) continue;
     inlineOpeners.add(match.opener);
+    if (inlineRanges.length >= 10000) throw new Error('Inline Markdown range budget exceeded');
+    inlineRanges.push({ start: match.index, end: Math.max(match.end,
+      inlineRanges.at(-1)?.end || 0) });
     if (!deletedTargets || refersToDeletedMarkdown(filename, match.raw, deletedTargets)) {
       checkLink(filename, match.raw, lineOf(match.index));
     }
   }
+  // Reference-shaped text inside a parsed inline destination/title is not
+  // rendered as a reference; avoid false failures on deleted targets.
+  function insideInline(offset) {
+    let low = 0, high = inlineRanges.length;
+    while (low < high) {
+      const mid = (low + high) >>> 1;
+      if (inlineRanges[mid].start <= offset) low = mid + 1;
+      else high = mid;
+    }
+    return low > 0 && offset < inlineRanges[low - 1].end;
+  }
   const used = new Set(), referenceSuffixStarts = new Set(), referenceOpeners = new Set();
   for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]\[((?:\\.|[^\[\]\\\n]){0,512})\]/g)) {
+    if (insideInline(match.index)) continue;
     // Consume an explicit reference's second [label] even if its first
     // bracket is escaped. Other text ending with ']' is not a reference.
     referenceSuffixStarts.add(match.index + match[0].lastIndexOf('['));
@@ -838,6 +863,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     // Standard shortcut references: [label] or ![alt] when a definition exists.
     // Ignore definitions, explicit/inline link openers, and backslash literals.
     for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]/g)) {
+      if (insideInline(match.index)) continue;
       if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
       const opener = match.index + (match[0][0] === '!' ? 1 : 0);
       if (escapedAt(text, opener)) continue;
