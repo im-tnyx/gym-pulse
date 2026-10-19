@@ -286,6 +286,20 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'multiline setext heading includes all paragraph lines', md: null, extra: 'deleted-multiline-setext',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'unclosed inline HTML comment must not conceal an active deletion link', md: null, extra: 'deleted-unclosed-inline-comment',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'indented paragraph continuation retains active deleted link', md: null, extra: 'deleted-indented-paragraph',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'generic HTML block pseudo-link is not live', md: null, extra: 'deleted-div-raw-block',
+    pass: true, markdownCount: 0 },
+  { name: 'active link after generic HTML block is detected', md: null, extra: 'deleted-div-block-then-link',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'list-continuation fenced code hides pseudo-link', md: null, extra: 'deleted-list-fenced',
+    pass: true, markdownCount: 0 },
+  { name: 'raw HTML block id remains a valid deleted target anchor', md: null, extra: 'deleted-div-block-id',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'malformed overlapping HTML tags fail fast by scan budget', md: '# Stress\n' + '<a '.repeat(15_000),
+    extra: 'changed-html-scan-budget', pass: false, signal: 'Malformed inline HTML scan budget exceeded' },
   { name: 'deleted Markdown without inbound links allowed', md: null, extra: 'deleted-unused',
     pass: true, markdownCount: 0 },
   { name: 'deleted Markdown ignores unrelated existing broken links', md: null, extra: 'deleted-unrelated',
@@ -479,6 +493,12 @@ function executeFixture(test) {
       'deleted-combining-anchor': '# Consumer\n[old](Target.md#e%CC%81)\n',
       'deleted-div-id': '# Consumer\n[old](Target.md#kept)\n',
       'deleted-multiline-setext': '# Consumer\n[old](Target.md#foo-bar)\n',
+      'deleted-unclosed-inline-comment': '# Consumer\nprefix <!-- unclosed\n\n[old](Target.md)\n',
+      'deleted-indented-paragraph': '# Consumer\nparagraph\n    [old](Target.md)\n',
+      'deleted-div-raw-block': '# Consumer\n<div>\n[old](Target.md)\n</div>\n',
+      'deleted-div-block-then-link': '# Consumer\n<div>\n[old](Target.md)\n</div>\n\n[old](Target.md)\n',
+      'deleted-list-fenced': '# Consumer\n-    item\n     ~~~md\n     [old](Target.md)\n     ~~~\n',
+      'deleted-div-block-id': '# Consumer\n[old](Target.md#kept)\n',
     };
     if (Object.hasOwn(deletionConsumers, test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
@@ -584,6 +604,10 @@ function executeFixture(test) {
     if (test.extra === 'deleted-combining-anchor') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# e\u0301\n');
     }
+    if (test.extra === 'deleted-div-block-id') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'),
+        '<div id="kept">\ntext\n</div>\n');
+    }
     if (test.extra === 'deleted-div-id') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '<div id="kept">hi</div>\n');
     }
@@ -688,6 +712,9 @@ function executeFixture(test) {
       'deleted-ref-in-title', 'deleted-full-ref-in-title',
       'deleted-ref-after-list', 'deleted-heading-masked-ref',
       'deleted-combining-anchor', 'deleted-div-id', 'deleted-multiline-setext',
+      'deleted-unclosed-inline-comment', 'deleted-indented-paragraph',
+      'deleted-div-raw-block', 'deleted-div-block-then-link',
+      'deleted-list-fenced', 'deleted-div-block-id',
       'deleted-html-inline-attr', 'deleted-html-inline-ref',
       'deleted-html-inline-then-active',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
