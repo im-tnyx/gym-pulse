@@ -154,6 +154,36 @@ function removeCode(markdown) {
     }
 
     let visible = '', from = 0;
+    // Cache the next unescaped backtick run and comment opener. Recomputing
+    // either from every comment would rescan the same suffix repeatedly.
+    let cachedTick, cachedTickFrom = -1, cachedOpener = -1, cachedOpenerFrom = Infinity;
+    function unescapedTick(startAt) {
+      if (cachedTick !== undefined && cachedTickFrom <= startAt &&
+          (cachedTick === null || cachedTick.index >= startAt)) return cachedTick;
+      const runs = /`+/g;
+      runs.lastIndex = startAt;
+      let run;
+      while ((run = runs.exec(line))) {
+        if (!escapedAt(line, run.index)) {
+          cachedTick = run;
+          cachedTickFrom = startAt;
+          return run;
+        }
+      }
+      cachedTick = null;
+      cachedTickFrom = startAt;
+      return null;
+    }
+    function unescapedComment(startAt) {
+      if (cachedOpenerFrom <= startAt && (cachedOpener < 0 || cachedOpener >= startAt)) {
+        return cachedOpener;
+      }
+      let opener = line.indexOf('<!--', startAt);
+      while (opener >= 0 && escapedAt(line, opener)) opener = line.indexOf('<!--', opener + 4);
+      cachedOpener = opener;
+      cachedOpenerFrom = startAt;
+      return opener;
+    }
     while (from < line.length) {
       if (comment) {
         const end = line.indexOf('-->', from);
@@ -171,15 +201,8 @@ function removeCode(markdown) {
         inlineTicks = 0;
         continue;
       }
-      const ticks = /`+/g;
-      ticks.lastIndex = from;
-      let tick = ticks.exec(line);
-      while (tick && escapedAt(line, tick.index)) {
-        ticks.lastIndex = tick.index + tick[0].length;
-        tick = ticks.exec(line);
-      }
-      let opener = line.indexOf('<!--', from);
-      while (opener >= 0 && escapedAt(line, opener)) opener = line.indexOf('<!--', opener + 4);
+      const tick = unescapedTick(from);
+      const opener = unescapedComment(from);
       if (tick && (opener < 0 || tick.index < opener)) {
         const closer = closingTicks(line, tick.index + tick[0].length, tick[0].length);
         if (closer) {
@@ -838,71 +861,272 @@ function referenceLabel(raw) {
     .replace(/[ \t\r\n]+/g, ' '));
 }
 
-function* inlineLinks(text) {
-  // Non-overlapping escape alternatives, bounded labels and linear
-  // destination scanning. Incomplete syntax remains eligible as a shortcut.
-  const labels = /!?\[(?:\\.|[^\[\]\\\n]){0,512}\]\(/g;
-  for (const candidate of text.matchAll(labels)) {
-    const start = candidate.index + candidate[0].length;
-    const limit = Math.min(text.length, start + 4096);
-    // Leading whitespace may precede an angle-wrapped destination.
-    let angleStart = start;
-    while (angleStart < limit && (text[angleStart] === ' ' || text[angleStart] === '\t')) angleStart++;
-    let depth = 0, rawEnd = -1, angle = text[angleStart] === '<', angleClosed = false, title = null;
-    let lineEndings = 0, lastLineEnding = -1;
-    let whitespace = false, destinationSeen = false;
-    for (let i = start; i < limit; i++) {
-      const ch = text[i];
-      if (ch === '\n') {
-        // CommonMark permits a line ending BETWEEN link components.
-        // Never accept blank lines, newline inside an angle destination/title,
-        // or unbounded continuation.
-        if (angle || title !== null || lineEndings >= 2 ||
-            text[i + 1] === '\n' || (i > start && text[i - 1] === '\n') ||
-            (lastLineEnding >= 0 && !text.slice(lastLineEnding + 1, i).trim())) break;
-        lineEndings++;
-        lastLineEnding = i;
-        whitespace = true;
-        continue;
-      }
-      if (ch === '\\' && i + 1 < limit) {
-        if (angle && text[i + 1] === '>') break; // Invalid escaped delimiter.
-        i++;
-        continue;
-      }
-      if (angle) {
-        if (ch === '>') { angle = false; angleClosed = true; destinationSeen = true; }
-        else if (ch === '<' && i !== angleStart) break;
-        continue;
-      }
-      if (title !== null) {
-        if (ch === title) title = null;
-        continue;
-      }
-      // An angle destination cannot have suffix bytes before title/closer.
-      if (angleClosed && !whitespace && ch !== ')' && ch !== ' ' && ch !== '\t') break;
-      if ((ch === '"' || ch === "'" || ch === '(') && whitespace && destinationSeen && depth === 0) {
-        title = ch === '(' ? ')' : ch;
-        whitespace = false;
-        continue;
-      }
-      if (ch === ' ' || ch === '\t') {
-        if (depth === 0) whitespace = true;
-        continue;
-      }
-      if (whitespace && destinationSeen && depth === 0 && ch !== ')') break; // Invalid trailing title syntax.
-      whitespace = false;
-      if (ch === '(') { if (++depth > 1) break; }
-      else if (ch === ')') {
-        if (depth) depth--;
-        else { rawEnd = i; break; }
-      } else destinationSeen = true;
+const PARSER_BOUND = 'Markdown parser bound exceeded; fail closed';
+const LINK_LABEL_LIMIT = 512;
+const LINK_DEST_LIMIT = 4096;
+const MAX_DEST_DEPTH = 3;
+const MAX_BRACKET_DEPTH = 32;
+
+function failParserBound() {
+  throw new Error(PARSER_BOUND);
+}
+
+function destinationWindow(text, start) {
+  return Math.min(text.length, start + LINK_DEST_LIMIT);
+}
+
+function separatorExceeded(index, limit, text) {
+  if (index >= limit && limit < text.length) failParserBound();
+}
+
+// Spaces, tabs, and at most one line ending. A blank line rejects the link.
+function skipLinkSeparator(text, index, limit) {
+  const origin = index;
+  let sawBreak = false;
+  while (index < limit) {
+    const ch = text[index];
+    if (ch === ' ' || ch === '\t') { index++; continue; }
+    if (ch === '\n') {
+      if (sawBreak) return null;
+      let probe = index + 1;
+      while (probe < limit && (text[probe] === ' ' || text[probe] === '\t')) probe++;
+      if (probe < limit && text[probe] === '\n') return null;
+      if (probe >= limit && limit < text.length) failParserBound();
+      sawBreak = true;
+      index++;
+      continue;
     }
-    if (rawEnd < 0) continue;
-    yield { index: candidate.index, opener: candidate.index +
-      (candidate[0][0] === '!' ? 1 : 0), raw: text.slice(start, rawEnd),
-      end: rawEnd + 1 };
+    break;
   }
+  separatorExceeded(index, limit, text);
+  return { index, consumed: index > origin };
+}
+
+function readAngleDestination(text, index, limit) {
+  const start = index;
+  index++;
+  while (index < limit) {
+    if (text[index] === '\\') {
+      if (index + 1 >= limit) {
+        separatorExceeded(index + 1, limit, text);
+        return null;
+      }
+      if (text[index + 1] === '>') return null;
+      index += 2;
+      continue;
+    }
+    if (text[index] === '\n' || text[index] === '<') return null;
+    if (text[index] === '>') return { raw: text.slice(start, index + 1), end: index + 1 };
+    index++;
+  }
+  separatorExceeded(index, limit, text);
+  return null;
+}
+
+function readBareDestination(text, index, limit) {
+  const start = index;
+  let depth = 0;
+  while (index < limit) {
+    const ch = text[index];
+    if (ch === '\\') {
+      if (index + 1 >= limit) {
+        separatorExceeded(index + 1, limit, text);
+        return null;
+      }
+      index += 2;
+      continue;
+    }
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch < ' ') break;
+    if (ch === '(') {
+      if (++depth > MAX_DEST_DEPTH) failParserBound();
+    } else if (ch === ')') {
+      if (depth === 0) break;
+      depth--;
+    }
+    index++;
+  }
+  if (index === start) return null;
+  if (depth !== 0) {
+    separatorExceeded(index, limit, text);
+    return null;
+  }
+  separatorExceeded(index, limit, text);
+  return { raw: text.slice(start, index), end: index };
+}
+
+function readLinkTitle(text, index, limit) {
+  const opener = text[index];
+  const closer = opener === '(' ? ')' : opener;
+  index++;
+  while (index < limit) {
+    if (text[index] === '\\') {
+      if (index + 1 >= limit) {
+        separatorExceeded(index + 1, limit, text);
+        return null;
+      }
+      index += 2;
+      continue;
+    }
+    if (text[index] === '\n') {
+      let probe = index + 1;
+      while (probe < limit && (text[probe] === ' ' || text[probe] === '\t')) probe++;
+      if (probe >= limit || text[probe] === '\n') {
+        separatorExceeded(probe, limit, text);
+        return null;
+      }
+      index++;
+      continue;
+    }
+    if (text[index] === closer) return { end: index + 1 };
+    index++;
+  }
+  separatorExceeded(index, limit, text);
+  return null;
+}
+
+function readDestinationAt(text, index, limit) {
+  if (index >= limit) {
+    separatorExceeded(index, limit, text);
+    return null;
+  }
+  if (text[index] === '<') return readAngleDestination(text, index, limit);
+  return readBareDestination(text, index, limit);
+}
+
+// Inline link tail begins at the '(' immediately after link text.
+// Returns null for malformed syntax so an incomplete opener can stay a shortcut.
+function parseInlineTail(text, parenIndex) {
+  const start = parenIndex + 1;
+  const limit = destinationWindow(text, start);
+  const lead = skipLinkSeparator(text, start, limit);
+  if (!lead) return null;
+  let index = lead.index;
+  if (text[index] === ')') return { raw: text.slice(start, index), end: index + 1 };
+  const dest = readDestinationAt(text, index, limit);
+  if (!dest) return null;
+  index = dest.end;
+  const afterDest = skipLinkSeparator(text, index, limit);
+  if (!afterDest) return null;
+  index = afterDest.index;
+  if (afterDest.consumed && (text[index] === '"' || text[index] === "'" || text[index] === '(')) {
+    const title = readLinkTitle(text, index, limit);
+    if (!title) return null;
+    const afterTitle = skipLinkSeparator(text, title.end, limit);
+    if (!afterTitle) return null;
+    index = afterTitle.index;
+  }
+  if (text[index] !== ')') {
+    separatorExceeded(index, limit, text);
+    return null;
+  }
+  return { raw: text.slice(start, index), end: index + 1 };
+}
+
+function parseReferenceLabelAt(text, bracketIndex) {
+  if (text[bracketIndex] !== '[') return null;
+  const start = bracketIndex + 1;
+  let index = start;
+  while (index < text.length) {
+    if (text[index] === '\\') { index += 2; continue; }
+    if (text[index] === '\n' || text[index] === '[') return null;
+    if (text[index] === ']') {
+      const label = text.slice(start, index);
+      if (label.length > LINK_LABEL_LIMIT) failParserBound();
+      if (label.length && !/[^ \t]/.test(label)) return null;
+      return { label, end: index + 1 };
+    }
+    index++;
+    if (index - start > LINK_LABEL_LIMIT) failParserBound();
+  }
+  return null;
+}
+
+// One forward pass. Images do not deactivate an enclosing link, so a badge
+// wrapped in a link reports both destinations. A nested link keeps the inner
+// destination and leaves the outer brackets inactive.
+function scanBracketLinks(text) {
+  const inlines = [], fullRefs = [];
+  const stack = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '\\') { i++; continue; }
+    if (text[i] === '[') {
+      if (stack.length >= MAX_BRACKET_DEPTH) failParserBound();
+      stack.push({ index: i, active: true });
+      continue;
+    }
+    if (text[i] !== ']' || !stack.length) continue;
+    const opener = stack.pop();
+    if (!opener.active) continue;
+    if (i - opener.index - 1 > LINK_LABEL_LIMIT) failParserBound();
+    const image = opener.index > 0 && text[opener.index - 1] === '!' &&
+      !escapedAt(text, opener.index - 1);
+    const index = image ? opener.index - 1 : opener.index;
+    if (text[i + 1] === '(') {
+      const parsed = parseInlineTail(text, i + 1);
+      if (parsed) {
+        inlines.push({ index, opener: opener.index, raw: parsed.raw, end: parsed.end });
+        if (!image) for (const item of stack) item.active = false;
+        i = parsed.end - 1;
+      }
+      continue;
+    }
+    if (text[i + 1] === '[') {
+      const ref = parseReferenceLabelAt(text, i + 1);
+      if (ref) {
+        const textLabel = text.slice(opener.index + 1, i);
+        fullRefs.push({
+          index, opener: opener.index,
+          label: ref.label.length ? ref.label : textLabel,
+          end: ref.end, suffixStart: i + 1,
+        });
+        if (!image) for (const item of stack) item.active = false;
+        i = ref.end - 1;
+      }
+    }
+  }
+  return { inlines, fullRefs };
+}
+
+function finishReferenceLine(text, index) {
+  while (text[index] === ' ' || text[index] === '\t') index++;
+  if (index < text.length && text[index] !== '\n') return null;
+  return index < text.length ? index + 1 : index;
+}
+
+function parseReferenceDefinition(text, bracketIndex) {
+  const start = bracketIndex + 1;
+  let index = start;
+  while (index < text.length && text[index] !== ']' && text[index] !== '\n' && text[index] !== '[') {
+    if (text[index] === '\\') { index += 2; continue; }
+    index++;
+  }
+  if (text[index] !== ']' || text[index + 1] !== ':') {
+    if (index - start > LINK_LABEL_LIMIT && text[index] === ']') failParserBound();
+    return null;
+  }
+  if (index - start > LINK_LABEL_LIMIT) failParserBound();
+  const label = text.slice(start, index);
+  if (!label || !/[^ \t]/.test(label)) return null;
+  index += 2;
+  const limit = destinationWindow(text, index);
+  const lead = skipLinkSeparator(text, index, limit);
+  if (!lead) return null;
+  const dest = readDestinationAt(text, lead.index, limit);
+  if (!dest) return null;
+  // A following line is part of the definition only when it continues a title.
+  // Otherwise the definition ends on the destination line, even if the next
+  // line is blank or is another definition.
+  const afterDest = skipLinkSeparator(text, dest.end, limit);
+  let tail = dest.end;
+  if (afterDest && afterDest.consumed &&
+      (text[afterDest.index] === '"' || text[afterDest.index] === "'" || text[afterDest.index] === '(')) {
+    const title = readLinkTitle(text, afterDest.index, limit);
+    if (!title) return null;
+    tail = title.end;
+  }
+  const lineEnd = finishReferenceLine(text, tail);
+  if (lineEnd === null) return null;
+  return { label, destination: dest.raw, end: lineEnd };
 }
 
 // Ignore Markdown-looking candidates inside a parsed inline HTML tag, but
@@ -912,25 +1136,96 @@ function htmlTagRanges(text) {
   const ranges = [], starts = /<\/?[A-Za-z][A-Za-z0-9-]*/g;
   let scanned = 0;
   const maxScanned = Math.min(4 * text.length + 4096, 2 * 1024 * 1024);
-  for (const start of text.matchAll(starts)) {
-    const begin = start.index, afterName = begin + start[0].length;
-    if (escapedAt(text, begin)) continue; // Escaped '<' is literal prose.
-    if (!/[\s/>]/.test(text[afterName] || '')) continue;
-    if (ranges.length && begin < ranges.at(-1).end) continue;
-    let quote = null, end = -1;
-    for (let at = afterName; at < Math.min(text.length, begin + 4096); at++) {
-      if (++scanned > maxScanned) {
-        throw new Error('Malformed inline HTML scan budget exceeded; fail closed');
-      }
-      const ch = text[at];
-      if (ch === '\n') break;
-      if (quote) { if (ch === quote) quote = null; }
-      else if (ch === '"' || ch === "'") quote = ch;
-      else if (ch === '>') { end = at + 1; break; }
+  const tick = () => {
+    if (++scanned > maxScanned) {
+      throw new Error('Malformed inline HTML scan budget exceeded; fail closed');
     }
-    if (end !== -1) ranges.push({ start: begin, end });
+  };
+  for (const start of text.matchAll(starts)) {
+    const begin = start.index;
+    if (escapedAt(text, begin)) continue; // Escaped '<' is literal prose.
+    if (!/[\s/>]/.test(text[begin + start[0].length] || '')) continue;
+    if (ranges.length && begin < ranges.at(-1).end) continue;
+    const end = parseHtmlTagEnd(text, begin, start[0].length, tick);
+    if (end > begin) ranges.push({ start: begin, end });
   }
   return ranges;
+}
+
+// CommonMark open/close tags only mask links after attribute grammar succeeds.
+// An invalid tag is not a tag: its interior stays visible to the link scanner.
+// Characters are still counted toward the scan budget so hostile input fails closed.
+function parseHtmlTagEnd(text, begin, nameLength, tick) {
+  const limit = Math.min(text.length, begin + 4096);
+  let index = begin + nameLength;
+  const closing = text[begin + 1] === '/';
+  function invalidate() {
+    while (index < limit) {
+      tick();
+      const ch = text[index++];
+      if (ch === '\n' || ch === '>') return -1;
+    }
+    return -1;
+  }
+  function skipAttrSpace() {
+    let sawBreak = false, consumed = false;
+    while (index < limit) {
+      const ch = text[index];
+      if (ch === ' ' || ch === '\t') { tick(); index++; consumed = true; continue; }
+      if (ch === '\n' && !sawBreak) { tick(); index++; sawBreak = true; consumed = true; continue; }
+      return consumed;
+    }
+    return consumed;
+  }
+  if (closing) {
+    skipAttrSpace();
+    if (index >= limit) {
+      if (limit < text.length) failParserBound();
+      return -1;
+    }
+    tick();
+    return text[index] === '>' ? index + 1 : invalidate();
+  }
+  for (;;) {
+    const beforeSpace = index;
+    const consumed = skipAttrSpace();
+    if (index >= limit) {
+      if (limit < text.length) failParserBound();
+      return -1;
+    }
+    if (text[index] === '>') { tick(); return index + 1; }
+    if (text[index] === '/' && text[index + 1] === '>') { tick(); return index + 2; }
+    if (!consumed || index === beforeSpace) return invalidate();
+    if (!/[A-Za-z_:]/.test(text[index] || '')) return invalidate();
+    tick();
+    index++;
+    while (index < limit && /[A-Za-z0-9_.:-]/.test(text[index])) { tick(); index++; }
+    if (index >= limit) {
+      if (limit < text.length) failParserBound();
+      return invalidate();
+    }
+    const afterName = index;
+    skipAttrSpace();
+    if (text[index] !== '=') { index = afterName; continue; }
+    tick();
+    index++;
+    if (index >= limit) return invalidate();
+    skipAttrSpace();
+    if (index >= limit) return invalidate();
+    const quote = text[index];
+    if (quote === '"' || quote === "'") {
+      tick();
+      index++;
+      while (index < limit && text[index] !== quote) { tick(); index++; }
+      if (text[index] !== quote) return invalidate();
+      tick();
+      index++;
+      continue;
+    }
+    const valueStart = index;
+    while (index < limit && !/[\t\n\r "'=<>`]/.test(text[index])) { tick(); index++; }
+    if (index === valueStart) return invalidate();
+  }
 }
 function inRanges(ranges, offset) {
   let low = 0, high = ranges.length;
@@ -951,17 +1246,6 @@ function uriAutolinkRanges(text) {
   }
   return ranges;
 }
-function validBareReferenceDestination(raw) {
-  if (raw.startsWith('<')) return true;
-  let depth = 0;
-  for (let i = 0; i < raw.length; i++) {
-    if (raw[i] === '\\') { i++; continue; }
-    if (raw[i] === '(' && ++depth > 8) return false;
-    if (raw[i] === ')' && --depth < 0) return false;
-  }
-  return depth === 0;
-}
-
 function validateMarkdown(filename, deletedTargets = null, budget = null) {
   let resolved;
   try { resolved = localFile(filename); } catch { fail(safe(filename) + ': missing/unsafe Markdown'); return; }
@@ -972,13 +1256,14 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   const lineOf = lineLookup(text);
   const inlineHtmlRanges = htmlTagRanges(text);
   const autolinkRanges = uriAutolinkRanges(text);
-  const refs = new Map(), definitionLabelOffsets = new Set();
+  const refs = new Map(), definitionLabelOffsets = new Set(), definitionRanges = [];
   function definitionCanStartAt(offset) {
     // Definitions cannot interrupt an open paragraph. The bounded pilot
     // supports up to four blockquote markers before a definition.
     const end = text.lastIndexOf('\n', offset - 1);
     if (end < 0) return true;
     const start = text.lastIndexOf('\n', end - 1) + 1;
+    if (definitionRanges.some(([from, to]) => start >= from && end <= to)) return true;
     const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '').trim();
     if (!prior) return true;
     if (/^#{1,6}[ \t]+/.test(prior)) return true; // Heading closes a paragraph.
@@ -988,28 +1273,41 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     if (/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior)) return true;
     return false;
   }
-  // A definition can occupy a bounded list container or use ONE line
-  // ending before its destination. The paragraph and first-wins checks below
-  // still apply, and a blank line cannot complete a definition.
-  const definitionPattern = /^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*(?:\n[ \t]{0,3})?(<(?:\\.|[^\\>\n]){1,4096}>|[^\s]{1,4096})(?:[ \t]+(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\((?:\\.|[^)\\\n])*\)))?[ \t]*$/gm;
-  for (const match of text.matchAll(definitionPattern)) {
-    if (escapedAt(text, match.index) || inRanges(inlineHtmlRanges, match.index) ||
-        inRanges(autolinkRanges, match.index)) continue;
-    if (!definitionCanStartAt(match.index)) continue;
-    if (match[1].startsWith('^')) continue; // GFM footnote, not URL reference.
-    if (hasEscapedAngleDelimiter(match[2]) ||
-        !validBareReferenceDestination(match[2])) continue;
-    definitionLabelOffsets.add(match.index + match[0].indexOf('['));
-    const id = referenceLabel(match[1]);
-    if (refs.has(id)) continue; // First definition of each label wins.
-    if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
-    refs.set(id, { destination: match[2], line: lineOf(match.index) });
-    if (!deletedTargets) checkLink(filename, match[2], lineOf(match.index));
+  // Definitions may place a destination or title on the following line.
+  // Paragraph and first-definition rules still apply. A blank line or a
+  // suffix after the title means this line is not a definition.
+  const definitionPrefix = /^( {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
+  let scanAt = 0;
+  while (scanAt < text.length) {
+    const lineBreak = text.indexOf('\n', scanAt);
+    const lineLimit = lineBreak < 0 ? text.length : lineBreak;
+    const prefix = definitionPrefix.exec(text.slice(scanAt, lineLimit));
+    const bracket = scanAt + (prefix ? prefix[0].length : 0);
+    let advanced = false;
+    if (prefix && text[bracket] === '[' && !escapedAt(text, bracket) &&
+        !inRanges(inlineHtmlRanges, scanAt) && !inRanges(autolinkRanges, scanAt) &&
+        definitionCanStartAt(scanAt)) {
+      const parsed = parseReferenceDefinition(text, bracket);
+      if (parsed && !parsed.label.startsWith('^')) { // GFM footnote, not URL reference.
+        definitionRanges.push([scanAt, parsed.end]);
+        definitionLabelOffsets.add(bracket);
+        const id = referenceLabel(parsed.label);
+        if (!refs.has(id)) { // First definition of each label wins.
+          if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
+          refs.set(id, { destination: parsed.destination, line: lineOf(scanAt) });
+          if (!deletedTargets) checkLink(filename, parsed.destination, lineOf(scanAt));
+        }
+        scanAt = parsed.end;
+        advanced = true;
+      }
+    }
+    if (!advanced) scanAt = lineBreak < 0 ? text.length : lineBreak + 1;
   }
-  // Scoped syntax: one parenthesis nesting level, 512-char link labels,
-  // 4096-char destinations; unsupported advanced Markdown is NOT RUN.
+  // Labels are capped at 512, destinations at 4096, and parenthesis nesting
+  // at three levels. Exceeding a cap fails closed instead of ignoring a link.
+  const structures = scanBracketLinks(text);
   const inlineOpeners = new Set(), inlineRanges = [];
-  for (const match of inlineLinks(text)) {
+  for (const match of structures.inlines) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
     if (escapedAt(text, match.opener) || inRanges(inlineHtmlRanges, match.index) ||
         inRanges(autolinkRanges, match.index)) continue;
@@ -1020,6 +1318,12 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     if (!deletedTargets || refersToDeletedMarkdown(filename, match.raw, deletedTargets)) {
       checkLink(filename, match.raw, lineOf(match.index));
     }
+  }
+  inlineRanges.sort((a, b) => a.start - b.start || a.end - b.end);
+  let coveredUntil = 0;
+  for (const range of inlineRanges) {
+    coveredUntil = Math.max(coveredUntil, range.end);
+    range.end = coveredUntil;
   }
   // Reference-shaped text inside a parsed inline destination/title is not
   // rendered as a reference; avoid false failures on deleted targets.
@@ -1033,21 +1337,25 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     return low > 0 && offset < inlineRanges[low - 1].end;
   }
   const used = new Set(), referenceSuffixStarts = new Set(), referenceOpeners = new Set();
-  for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]\[((?:\\.|[^\[\]\\\n]){0,512})\]/g)) {
+  for (const match of structures.fullRefs) {
     if (insideInline(match.index) || inRanges(inlineHtmlRanges, match.index) ||
         inRanges(autolinkRanges, match.index)) continue;
     // Consume an explicit reference's second [label] even if its first
     // bracket is escaped. Other text ending with ']' is not a reference.
-    referenceSuffixStarts.add(match.index + match[0].lastIndexOf('['));
+    referenceSuffixStarts.add(match.suffixStart);
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
-    const opener = match.index + (match[0][0] === '!' ? 1 : 0);
-    if (escapedAt(text, opener)) continue;
-    referenceOpeners.add(opener);
-    const id = referenceLabel(match[2] || match[1]);
+    if (escapedAt(text, match.opener)) continue;
+    referenceOpeners.add(match.opener);
+    const id = referenceLabel(match.label);
     if (deletedTargets) used.add(id);
     else if (!refs.has(id)) {
       fail(safe(filename) + ': undefined reference label ' + safe(id) + ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
     }
+  }
+  // An escaped '[' is not a reference opener, but it still consumes the
+  // following full-reference label so that label is not a shortcut.
+  for (const match of text.matchAll(/\\\[(?:\\.|[^\[\]\\\n]){0,512}\]\[/g)) {
+    referenceSuffixStarts.add(match.index + match[0].length - 1);
   }
   if (deletedTargets) {
     // Standard shortcut references: [label] or ![alt] when a definition exists.

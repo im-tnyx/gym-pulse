@@ -43,7 +43,7 @@ if (localVarsResult.error || localVarsResult.status !== 0) {
 }
 const localGitVars = localVarsResult.stdout.split(/\r?\n/).filter(Boolean);
 
-function run(bin, args, cwd, expectSuccess = true) {
+function run(bin, args, cwd, expectSuccess = true, timeout = 20000) {
   // GIT_CONFIG changes where `git config` writes. It must not leak into synthetic repos.
   const env = { ...process.env };
   for (const name of localGitVars) delete env[name];
@@ -57,7 +57,7 @@ function run(bin, args, cwd, expectSuccess = true) {
   const result = spawnSync(bin, args, {
     cwd,
     encoding: 'utf8',
-    timeout: 20000,
+    timeout,
     maxBuffer: 1024 * 1024,
     env: {
       ...env,
@@ -161,7 +161,7 @@ const fixtures = [
   { name: 'standalone CR raw HTML masking resumes after block close', md: null, extra: 'deleted-cr-raw-block',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'unclosed inline parenthesis destination scanning remains bounded', md: '# New\n[x](' + '('.repeat(65_536) + '\n',
-    pass: true, markdownCount: 1 },
+    pass: false, signal: 'Markdown parser bound exceeded' },
   { name: 'base heading inline code remains part of anchor', md: null, extra: 'deleted-heading-inline-code',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'escaped bracket in shortcut and reference definition', md: null, extra: 'deleted-ref-escaped-label',
@@ -414,6 +414,47 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'huge valid anchored base target fails conservatively', md: null, extra: 'deleted-huge-anchored',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'newline before spaced angle destination detects deletion', md: null, extra: 'deleted-angle-newline',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'newline before spaced angle reference detects deletion', md: null, extra: 'deleted-angle-newline-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'multiline inline title detects deletion', md: null, extra: 'deleted-title-multiline',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'line ending between each inline link component detects deletion', md: null, extra: 'deleted-inline-component-breaks',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'multiline reference title detects deletion', md: null, extra: 'deleted-ref-title-multiline',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'blank line inside a title is not a link', md: null, extra: 'deleted-title-blank',
+    pass: true, markdownCount: 0 },
+  { name: 'invalid HTML attribute does not mask a live link', md: null, extra: 'deleted-html-attr-invalid',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'valid multiline HTML attribute masks a pseudo-link', md: null, extra: 'deleted-html-attr-multiline',
+    pass: true, markdownCount: 0 },
+  { name: 'malformed title suffix is not an inline link', md: null, extra: 'deleted-title-suffix',
+    pass: true, markdownCount: 0 },
+  { name: 'malformed parenthesized title suffix is not an inline link', md: null, extra: 'deleted-title-paren-suffix',
+    pass: true, markdownCount: 0 },
+  { name: 'image badge wrapped in a link detects deletion', md: null, extra: 'deleted-image-badge',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'balanced brackets in link text detect deletion', md: null, extra: 'deleted-nested-brackets',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'nested link keeps the inner destination', md: null, extra: 'deleted-nested-inner',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'inactive outer link is not a deleted-target reference', md: null, extra: 'deleted-nested-outer-inactive',
+    pass: true, markdownCount: 0 },
+  { name: 'image badge full reference detects deletion', md: null, extra: 'deleted-image-badge-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'three nested destination parentheses remain a link', md: null, extra: 'deleted-dest-depth-3',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'link label past the parser cap fails closed', md: '# New\n[' + 'a'.repeat(513) + '](Target.md)\n',
+    pass: false, signal: 'Markdown parser bound exceeded' },
+  { name: 'destination past the parser cap fails closed', md: '# New\n[ok](' + 'a'.repeat(4096) + ')\n',
+    pass: false, signal: 'Markdown parser bound exceeded' },
+  { name: 'fourth destination parenthesis level fails closed', md: '# New\n[ok](a(b(c(d(e)))))\n',
+    pass: false, signal: 'Markdown parser bound exceeded' },
+  { name: 'bounded inline-comment scan remains within the time limit',
+    md: '<!--x-->'.repeat(50000) + '\n[ok](Target.md)\n',
+    pass: true, markdownCount: 1, checkerTimeout: 2000 },
 ];
 
 function executeFixture(test) {
@@ -584,6 +625,22 @@ function executeFixture(test) {
       'deleted-inline-multiline-code': '# Consumer\n```md\n[old](\n  Target.md)\n```\n',
       'deleted-inline-spaces-blank': '# Consumer\n[old](\n  \nTarget.md)\n',
       'deleted-inline-tabs-blank': '# Consumer\n[old](Target.md\n \t\n)\n',
+      'deleted-angle-newline': '# Consumer\n[old](\n<my guide.md>)\n',
+      'deleted-angle-newline-ref': '# Consumer\n[old][ref]\n\n[ref]:\n<my guide.md>\n',
+      'deleted-title-multiline': '# Consumer\n[old](Target.md "title\ncontinued")\n',
+      'deleted-inline-component-breaks': '# Consumer\n[old](\nTarget.md\n"title"\n)\n',
+      'deleted-ref-title-multiline': '# Consumer\n[old][ref]\n\n[ref]: Target.md \'\ntitle\nline\n\'\n',
+      'deleted-title-blank': '# Consumer\n[old](Target.md "title\n\ncontinued")\n',
+      'deleted-html-attr-invalid': '# Consumer\n<span title="[old](Target.md)" id=>\n',
+      'deleted-html-attr-multiline': '# Consumer\n<b2\ndata="[old](Target.md)" >\n',
+      'deleted-title-suffix': '# Consumer\n[old](Target.md "title"extra)\n',
+      'deleted-title-paren-suffix': '# Consumer\n[old](Target.md (title)extra)\n',
+      'deleted-image-badge': '# Consumer\n[![badge](https://example.invalid/badge.png)](Target.md)\n',
+      'deleted-nested-brackets': '# Consumer\n[link [foo [bar]]](Target.md)\n',
+      'deleted-nested-inner': '# Consumer\n[[inner](Target.md)](../README.md)\n',
+      'deleted-nested-outer-inactive': '# Consumer\n[[inner](../README.md)](Target.md)\n',
+      'deleted-image-badge-ref': '# Consumer\n[![badge](https://example.invalid/badge.png)][ref]\n\n[ref]: Target.md\n',
+      'deleted-dest-depth-3': '# Consumer\n[old](a(b(c(d))).md)\n',
     };
     if (Object.hasOwn(deletionConsumers, test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), deletionConsumers[test.extra]);
@@ -604,8 +661,12 @@ function executeFixture(test) {
       fs.writeFileSync(path.join(root, 'docs', 'cafeé.md'), '# Accent\n');
     }
     if (['deleted-angle-leading-spaced', 'deleted-angle-leading-tab',
-        'deleted-angle-leading-title'].includes(test.extra)) {
+        'deleted-angle-leading-title', 'deleted-angle-newline',
+        'deleted-angle-newline-ref'].includes(test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'my guide.md'), '# Spaced\n');
+    }
+    if (test.extra === 'deleted-dest-depth-3') {
+      fs.writeFileSync(path.join(root, 'docs', 'a(b(c(d))).md'), '# Nested parentheses\n');
     }
     if (['deleted-frontmatter-fake-anchor', 'deleted-frontmatter-real-anchor'].includes(test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '---\ntitle: x\n---\n# Real Heading\n');
@@ -821,6 +882,14 @@ function executeFixture(test) {
       'deleted-inline-next-line-closer', 'deleted-inline-blank-line',
       'deleted-inline-invalid-suffix', 'deleted-inline-multiline-code',
       'deleted-inline-spaces-blank', 'deleted-inline-tabs-blank',
+      'deleted-angle-newline', 'deleted-angle-newline-ref',
+      'deleted-title-multiline', 'deleted-inline-component-breaks',
+      'deleted-ref-title-multiline', 'deleted-title-blank',
+      'deleted-html-attr-invalid', 'deleted-html-attr-multiline',
+      'deleted-title-suffix', 'deleted-title-paren-suffix',
+      'deleted-image-badge', 'deleted-nested-brackets',
+      'deleted-nested-inner', 'deleted-nested-outer-inactive',
+      'deleted-image-badge-ref', 'deleted-dest-depth-3',
       'deleted-unclosed-inline-comment', 'deleted-indented-paragraph',
       'deleted-div-raw-block', 'deleted-div-block-then-link',
       'deleted-list-fenced', 'deleted-div-block-id',
@@ -839,8 +908,12 @@ function executeFixture(test) {
       fs.rmSync(path.join(root, 'docs', 'real', 'Á.md'));
     }
     if (['deleted-angle-leading-spaced', 'deleted-angle-leading-tab',
-        'deleted-angle-leading-title'].includes(test.extra)) {
+        'deleted-angle-leading-title', 'deleted-angle-newline',
+        'deleted-angle-newline-ref'].includes(test.extra)) {
       fs.rmSync(path.join(root, 'docs', 'my guide.md'));
+    }
+    if (test.extra === 'deleted-dest-depth-3') {
+      fs.rmSync(path.join(root, 'docs', 'a(b(c(d))).md'));
     }
     if (test.extra === 'deleted-ref-unbalanced') {
       fs.rmSync(path.join(root, 'docs', 'Target).md'));
@@ -937,7 +1010,7 @@ function executeFixture(test) {
     }
     const suppliedBase = test.wrongBase ? '0'.repeat(40) : base;
     const suppliedHead = test.wrongHead ? base : head;
-    const result = run(process.execPath, [checker, root, suppliedBase, suppliedHead, merge], root, false);
+    const result = run(process.execPath, [checker, root, suppliedBase, suppliedHead, merge], root, false, test.checkerTimeout || 20000);
     const combined = result.stdout + result.stderr;
     assert.equal(result.status === 0, test.pass, `${test.name}: unexpected checker exit (${result.status})\n${combined}`);
     if (test.signal) assert.ok(combined.includes(test.signal), `${test.name}: missing signal ${test.signal}\n${combined}`);
