@@ -53,7 +53,7 @@ function removeCode(markdown) {
   // Front matter is metadata, not inline Markdown. An unmatched opener
   // remains ordinary text so it cannot hide live links.
   let frontMatterEnd = -1;
-  if (lines[0]?.trim() === '---') {
+  if (lines[0] === '---') {
     for (let j = 1; j < lines.length; j++) {
       if (/^(?:---|\.\.\.)[ \t]*$/.test(lines[j])) {
         frontMatterEnd = j;
@@ -121,7 +121,8 @@ function removeCode(markdown) {
         paragraphOpen = false;
         return '';
       }
-      if (!rawBlock.endOnBlank &&
+      if (rawBlock.terminator && line.includes(rawBlock.terminator)) rawBlock = null;
+      else if (!rawBlock.endOnBlank && !rawBlock.terminator &&
           new RegExp('</' + rawBlock.tag + '\\s*>', 'i').test(line)) rawBlock = null;
       paragraphOpen = false;
       return idTagsOnly(line);
@@ -133,6 +134,13 @@ function removeCode(markdown) {
       return '';
     }
     if (!comment && !inlineTicks) {
+      const special = /^ {0,3}(<\?|<!\[CDATA\[|<![A-Z])/.exec(line);
+      if (special) {
+        const terminator = special[1] === '<?' ? '?>' : special[1] === '<![CDATA[' ? ']]>' : '>';
+        if (!line.includes(terminator, special[0].length)) rawBlock = { terminator };
+        paragraphOpen = false;
+        return '';
+      }
       const rawOpen = line.match(/^ {0,3}<(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)/i);
       if (rawOpen) {
         const tag = rawOpen[1].toLowerCase();
@@ -262,8 +270,16 @@ function headingSlug(heading, definedRefs = new Set()) {
   // More complex code delimiters are outside this pilot's slug parser.
   // If they coincide with HTML-like text, avoid a false baseline-invalid.
   if (protectedHeading.includes('`') && /<[^>]*>/.test(protectedHeading)) return null;
-  return protectedHeading
-    .replace(/!?\[([^\]]+)\]\([^)]+\)/g, '$1')
+  const linkSyntax = scanBracketLinks(protectedHeading, htmlTagRanges(protectedHeading)).inlines
+    .flatMap(link => [{ start: link.opener, end: link.opener + 1 },
+      { start: link.labelEnd, end: link.end }]).sort((a, b) => a.start - b.start);
+  let rendered = '', cursor = 0;
+  for (const range of linkSyntax) {
+    if (range.start > cursor) rendered += protectedHeading.slice(cursor, range.start);
+    cursor = Math.max(cursor, range.end);
+  }
+  rendered += protectedHeading.slice(cursor);
+  return rendered
     .replace(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g, (whole, label, id) =>
       definedRefs.has(referenceLabel(id || label)) ? label : whole)
     .replace(/<[^>]*>/g, '')
@@ -331,7 +347,7 @@ function headingsIn(text, original = text) {
   // A complete leading YAML front-matter block is metadata, not a setext
   // heading. An unmatched opener is not masked.
   let frontMatterEnd = -1;
-  if (lines[0]?.trim() === '---') {
+  if (lines[0] === '---') {
     for (let j = 1; j < lines.length; j++) {
       if (/^(?:---|\.\.\.)[ \t]*$/.test(lines[j])) {
         frontMatterEnd = j;
@@ -348,7 +364,7 @@ function headingsIn(text, original = text) {
       const source = headingContainerContent(originalLines[i] || '')
         .match(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/);
       addSlug(source ? source[1] : atx[1]);
-    } else if (i > 0 && /^ {0,3}(?:=+|-+)\s*$/.test(line)) {
+    } else if (i > 0 && /^ {0,3}(?:=+|-+)[ \t]*$/.test(line)) {
       const previous = lines[i - 1];
       if (previous.trim() && !/^ {0,3}[#>]/.test(previous)) {
         // A setext heading spans the entire immediately preceding paragraph,
@@ -468,6 +484,7 @@ function checkLink(source, raw, line) {
 // Resolve surviving directory symlink aliases, never paths outside the checkout.
 // Invalid pre-existing anchors were not introduced by this deletion and are skipped.
 const baseTargetCache = new Map();
+const baseHeadingCache = new Map();
 const regularToSymlink = new Set();
 function mergeSymlinkTargetValid(relative, anchor) {
   try {
@@ -490,6 +507,12 @@ function baseTargetValid(relative, anchor) {
   if (baseTargetCache.size > 1000 || baseTargetInProgress.size >= 8) {
     throw new Error('Too many distinct/cyclic deleted link destinations');
   }
+  if (anchor && baseHeadingCache.has(relative)) {
+    const headings = baseHeadingCache.get(relative);
+    const valid = headings.has(anchor) || headings.has(UNCERTAIN_HEADING_ENTITY);
+    baseTargetCache.set(key, valid);
+    return valid;
+  }
   let valid = false;
   baseTargetInProgress.add(key);
   try {
@@ -505,8 +528,12 @@ function baseTargetValid(relative, anchor) {
         // cannot safely be parsed, without reading a huge Git blob.
         valid = blobSize > 1024 * 1024 || (relative.toLowerCase().endsWith('.md') &&
           (() => {
-             const original = git(['show', base + ':' + relative], true).toString('utf8');
-             const headings = headingsIn(removeCode(original), original);
+             let headings = baseHeadingCache.get(relative);
+             if (!headings) {
+               const original = git(['show', base + ':' + relative], true).toString('utf8');
+               headings = headingsIn(removeCode(original), original);
+               baseHeadingCache.set(relative, headings);
+             }
              // Unknown but plausible HTML5 entities can make an anchor valid.
              // Treat uncertain baseline headings as valid (fail-closed on deletion).
              return headings.has(anchor) || headings.has(UNCERTAIN_HEADING_ENTITY);
@@ -1065,6 +1092,9 @@ function scanBracketLinks(text, masks = []) {
   const stack = [];
   for (let i = 0; i < text.length; i++) {
     if (inRanges(masks, i)) continue;
+    if (text[i] === '\n' && /^[ \t]*\n/.test(text.slice(i + 1))) {
+      stack.length = 0; // Link labels cannot cross a paragraph boundary.
+    }
     if (text[i] === '\\') { i++; continue; }
     if (text[i] === '[') {
       if (stack.length >= MAX_BRACKET_DEPTH) failParserBound();
@@ -1082,7 +1112,7 @@ function scanBracketLinks(text, masks = []) {
     if (text[i + 1] === '(') {
       const parsed = parseInlineTail(text, i + 1);
       if (parsed) {
-        inlines.push({ index, opener: opener.index, raw: parsed.raw, end: parsed.end });
+        inlines.push({ index, opener: opener.index, labelEnd: i, raw: parsed.raw, end: parsed.end });
         if (!image) for (const item of stack) if (!item.image) item.active = false;
         i = parsed.end - 1;
       }
