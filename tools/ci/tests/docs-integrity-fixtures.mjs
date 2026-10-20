@@ -86,6 +86,35 @@ function git(cwd, ...args) {
 }
 
 const fixtures = [
+  ...[
+    ['HTML bracket in outer link', '[outer <span title="]">](Target.md)', false],
+    ['blockquote continuation destination', '[old][ref]\n\n> [ref]:\n> Target.md', false],
+    ['wrapped full-reference label', '[old][ref\nlabel]\n\n[ref label]: Target.md', false],
+    ['wrapped definition label', '[old][ref label]\n\n[ref\nlabel]: Target.md', false],
+    ['blank wrapped label stays inactive', '[old][ref\n\nlabel]\n\n[ref label]: Target.md', true],
+    ['nested image stays active', '![[inner](https://example.invalid)](Target.md)', false],
+    ['invalid nested parenthesized title', '[old](Target.md (foo(bar))', true],
+    ['reference title shortcut stays inactive', '[x]: ../README.md "[old]"\n[old]: Target.md', true],
+    ['reference title full reference stays inactive', '[x]: ../README.md "[old][ref]"\n[ref]: Target.md', true],
+    ['deep container fails closed', '[old][ref]\n\n> > > > > [ref]: Target.md', false, null, 'parser'],
+    ['duplicate definition budget', '[x]:a\n'.repeat(140000), false, null, 'parser'],
+    ['bad next-line title retains definition', '[old]\n\n[old]: Target.md\n"unclosed', false],
+    ['next-line title garbage retains definition', '[old]\n\n[old]: Target.md\n"title" garbage', false],
+    ['blank line terminates inline HTML', 'prefix <span title="x\n\n[old](Target.md)\n">', false],
+    ['incomplete div opener masks block', '<div\n[old](Target.md)', true],
+    ['incomplete pre opener masks block', '<pre\n[old](Target.md)\n</pre>', true],
+    ['NBSP is not heading separator', '[old](Target.md#foo)', true, '#\u00a0Foo\n'],
+    ['quoted fake id does not hide real id', '[old](Target.md#real)', false, '<span title=\' id="fake"\' id="real">\n'],
+    ['quoted fake id is not an anchor', '[old](Target.md#fake)', true, '<span title=\' id="fake"\' id="real">\n'],
+    ['multiline HTML id', '[old](Target.md#real)', false, '<span\nid="real">\n'],
+    ['heading uses multiline definition', '[old](Target.md#hello)', false, '# [Hello][ref]\n\n[ref]:\nhttps://example.invalid\n'],
+    ['heading uses blockquote definition', '[old](Target.md#hello)', false, '# [Hello][ref]\n\n> [ref]: https://example.invalid\n'],
+    ['NBSP destination retained', '[old](Target\u00a0name.md)', false, null, null, 'Target\u00a0name.md'],
+  ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
+    name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
+    signal: pass ? undefined : signal === 'parser' ? 'parser' : 'invalid local link',
+    markdownCount: signal === 'parser' ? undefined : 0,
+  })),
   { name: 'valid local link and anchor', md: '# New\n[ok](Target.md#hello-there)\n', pass: true },
   { name: 'trailing whitespace', md: '# Header  \n', pass: false, signal: 'Changed-line whitespace check failed' },
   { name: 'missing local file', md: '# New\n[missing](no-such-file.md)\n', pass: false, signal: 'invalid local link' },
@@ -482,6 +511,11 @@ function executeFixture(test) {
     fs.mkdirSync(path.join(root, 'docs'));
     fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Hello There\n## Existing\n');
     fs.writeFileSync(path.join(root, 'README.md'), '# Base\n');
+    if (test.extra === 'review-regression') {
+      fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), test.consumer + '\n');
+      if (test.baseTarget) fs.writeFileSync(path.join(root, 'docs', 'Target.md'), test.baseTarget);
+      if (test.deletedName) fs.writeFileSync(path.join(root, 'docs', test.deletedName), '# Target\n');
+    }
     // Existing consumer documents are unchanged by the synthetic deletion PR.
     const deletionConsumers = {
       'deleted-inbound': '# Consumer\n[old](Target.md)\n',
@@ -898,6 +932,7 @@ function executeFixture(test) {
       'deleted-html-inline-then-active',
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
+    if (test.extra === 'review-regression') fs.rmSync(path.join(root, 'docs', test.deletedName || 'Target.md'));
     if (test.extra === 'deleted-many-unrelated') {
       fs.rmSync(path.join(root, 'docs', 'other.md'));
     }

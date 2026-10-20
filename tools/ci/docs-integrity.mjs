@@ -133,7 +133,7 @@ function removeCode(markdown) {
       return '';
     }
     if (!comment && !inlineTicks) {
-      const rawOpen = line.match(/^ {0,3}<(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)\b[^>]*>/i);
+      const rawOpen = line.match(/^ {0,3}<(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)/i);
       if (rawOpen) {
         const tag = rawOpen[1].toLowerCase();
         const endOnBlank = !/^(?:pre|script|style|textarea)$/.test(tag);
@@ -295,8 +295,19 @@ function headingsIn(text, original = text) {
   // Undefined [text][id] remains literal heading text.
   const definedRefs = new Set();
   // Reference definitions in fenced code or other masked content are not live.
-  for (const ref of text.matchAll(/^ {0,3}\[((?:\\.|[^\]\\\n]){1,512})\]:[ \t]*\S/gm)) {
-    definedRefs.add(referenceLabel(ref[1]));
+  const definitionText = normalizeReferenceContainers(text);
+  const lastDefinitionClose = definitionText.lastIndexOf(']:');
+  let priorDefinition = null, definitionCount = 0;
+  for (const ref of text.matchAll(/^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/gm)) {
+    if (priorDefinition && ref.index < priorDefinition.end) continue;
+    if (!referenceDefinitionCanStart(text, ref.index, priorDefinition)) continue;
+    const bracket = ref.index + ref[0].length - 1;
+    const parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose);
+    if (parsed) {
+      if (++definitionCount > 10000) failParserBound();
+      priorDefinition = { start: ref.index, end: parsed.end };
+      definedRefs.add(referenceLabel(parsed.label));
+    }
   }
   const addSlug = heading => {
     const slug = headingSlug(heading, definedRefs);
@@ -332,10 +343,10 @@ function headingsIn(text, original = text) {
     if (frontMatterEnd >= 0 && i <= frontMatterEnd) continue;
     const line = lines[i];
     const atx = headingContainerContent(line)
-      .match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
+      .match(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/);
     if (atx) {
       const source = headingContainerContent(originalLines[i] || '')
-        .match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+\s*)?$/);
+        .match(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/);
       addSlug(source ? source[1] : atx[1]);
     } else if (i > 0 && /^ {0,3}(?:=+|-+)\s*$/.test(line)) {
       const previous = lines[i - 1];
@@ -351,16 +362,19 @@ function headingsIn(text, original = text) {
     }
     // Capture complete tag first, then find one valid quoted/unquoted ID.
     // A single tag regex avoids overlapping attribute backtracking.
-    for (const tag of line.matchAll(/<[A-Za-z][A-Za-z0-9-]*\b[^>\n]*>/g)) {
-      const id = tag[0].match(/\sid\s*=\s*(?:"([^"\n]*)"|'([^'\n]*)'|([^\s"'=<>\x60]+))/i);
-      if (id) {
-        try { found.add(decodeLinkEntities(id[1] ?? id[2] ?? id[3])); }
-        catch {
-          // A valid but unsupported HTML5 reference can still form the
-          // requested anchor. Never dismiss a deletion as baseline-invalid.
-          found.add(UNCERTAIN_HEADING_ENTITY);
-        }
-      }
+  }
+  // Parse real attributes, including multiline tags; quoted values cannot
+  // introduce a fake id attribute. Code/comment masks remain authoritative.
+  for (const range of htmlTagRanges(text)) {
+    const tag = text.slice(range.start, range.end);
+    const attrs = /([A-Za-z_:][A-Za-z0-9_.:-]*)(?:[ \t\r\n]*=[ \t\r\n]*(?:"([^"]*)"|'([^']*)'|([^\t\r\n "'=<>`]+)))?/g;
+    attrs.lastIndex = /^<\/?[A-Za-z][A-Za-z0-9-]*/.exec(tag)[0].length;
+    let attr;
+    while ((attr = attrs.exec(tag))) {
+      if (attr[1].toLowerCase() !== 'id') continue;
+      try { found.add(decodeLinkEntities(attr[2] ?? attr[3] ?? attr[4] ?? '')); }
+      catch { found.add(UNCERTAIN_HEADING_ENTITY); }
+      break; // HTML uses the first attribute with a given name.
     }
   }
   return found;
@@ -409,7 +423,7 @@ function hasEscapedAngleDelimiter(raw) {
 }
 
 function destination(raw) {
-  const value = raw.trim();
+  const value = raw.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '');
   if (value.startsWith('<')) {
     if (hasEscapedAngleDelimiter(value)) {
       throw new Error('Escaped angle destination delimiter is invalid');
@@ -422,7 +436,7 @@ function destination(raw) {
     if (end < 0) throw new Error('Malformed angle-wrapped link');
     return decodeLinkEntities(value.slice(1, end).replace(/\\([!-/:-@\[-`{-~ ])/g, '$1'));
   }
-  return decodeLinkEntities((value.match(/^(?:\\.|[^\s])+/) || [''])[0]
+  return decodeLinkEntities((value.match(/^(?:\\.|[^\x00-\x20\x7f])+/) || [''])[0]
     .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1'));
 }
 
@@ -977,6 +991,7 @@ function readLinkTitle(text, index, limit) {
       index++;
       continue;
     }
+    if (opener === '(' && text[index] === '(') return null;
     if (text[index] === closer) return { end: index + 1 };
     index++;
   }
@@ -1028,11 +1043,12 @@ function parseReferenceLabelAt(text, bracketIndex) {
   let index = start;
   while (index < text.length) {
     if (text[index] === '\\') { index += 2; continue; }
-    if (text[index] === '\n' || text[index] === '[') return null;
+    if (text[index] === '[' || (text[index] === '\n' &&
+        /^[ \t]*\n/.test(text.slice(index + 1)))) return null;
     if (text[index] === ']') {
       const label = text.slice(start, index);
       if (label.length > LINK_LABEL_LIMIT) failParserBound();
-      if (label.length && !/[^ \t]/.test(label)) return null;
+      if (label.length && !/[^ \t\r\n]/.test(label)) return null;
       return { label, end: index + 1 };
     }
     index++;
@@ -1044,14 +1060,16 @@ function parseReferenceLabelAt(text, bracketIndex) {
 // One forward pass. Images do not deactivate an enclosing link, so a badge
 // wrapped in a link reports both destinations. A nested link keeps the inner
 // destination and leaves the outer brackets inactive.
-function scanBracketLinks(text) {
+function scanBracketLinks(text, masks = []) {
   const inlines = [], fullRefs = [];
   const stack = [];
   for (let i = 0; i < text.length; i++) {
+    if (inRanges(masks, i)) continue;
     if (text[i] === '\\') { i++; continue; }
     if (text[i] === '[') {
       if (stack.length >= MAX_BRACKET_DEPTH) failParserBound();
-      stack.push({ index: i, active: true });
+      stack.push({ index: i, active: true,
+        image: i > 0 && text[i - 1] === '!' && !escapedAt(text, i - 1) });
       continue;
     }
     if (text[i] !== ']' || !stack.length) continue;
@@ -1065,7 +1083,7 @@ function scanBracketLinks(text) {
       const parsed = parseInlineTail(text, i + 1);
       if (parsed) {
         inlines.push({ index, opener: opener.index, raw: parsed.raw, end: parsed.end });
-        if (!image) for (const item of stack) item.active = false;
+        if (!image) for (const item of stack) if (!item.image) item.active = false;
         i = parsed.end - 1;
       }
       continue;
@@ -1079,7 +1097,7 @@ function scanBracketLinks(text) {
           label: ref.label.length ? ref.label : textLabel,
           end: ref.end, suffixStart: i + 1,
         });
-        if (!image) for (const item of stack) item.active = false;
+        if (!image) for (const item of stack) if (!item.image) item.active = false;
         i = ref.end - 1;
       }
     }
@@ -1093,21 +1111,14 @@ function finishReferenceLine(text, index) {
   return index < text.length ? index + 1 : index;
 }
 
-function parseReferenceDefinition(text, bracketIndex) {
+function parseReferenceDefinition(text, bracketIndex, lastClose) {
   const start = bracketIndex + 1;
-  let index = start;
-  while (index < text.length && text[index] !== ']' && text[index] !== '\n' && text[index] !== '[') {
-    if (text[index] === '\\') { index += 2; continue; }
-    index++;
-  }
-  if (text[index] !== ']' || text[index + 1] !== ':') {
-    if (index - start > LINK_LABEL_LIMIT && text[index] === ']') failParserBound();
-    return null;
-  }
-  if (index - start > LINK_LABEL_LIMIT) failParserBound();
-  const label = text.slice(start, index);
-  if (!label || !/[^ \t]/.test(label)) return null;
-  index += 2;
+  // A bare unmatched opener is prose, including long escaped stress input.
+  if (lastClose < start) return null;
+  const parsedLabel = parseReferenceLabelAt(text, bracketIndex);
+  if (!parsedLabel || !parsedLabel.label || text[parsedLabel.end] !== ':') return null;
+  const label = parsedLabel.label;
+  let index = parsedLabel.end + 1;
   const limit = destinationWindow(text, index);
   const lead = skipLinkSeparator(text, index, limit);
   if (!lead) return null;
@@ -1121,12 +1132,32 @@ function parseReferenceDefinition(text, bracketIndex) {
   if (afterDest && afterDest.consumed &&
       (text[afterDest.index] === '"' || text[afterDest.index] === "'" || text[afterDest.index] === '(')) {
     const title = readLinkTitle(text, afterDest.index, limit);
-    if (!title) return null;
-    tail = title.end;
+    if (!title || finishReferenceLine(text, title.end) === null) {
+      // A malformed title on a later line does not erase a complete definition.
+      if (!text.slice(dest.end, afterDest.index).includes('\n')) return null;
+    } else tail = title.end;
   }
   const lineEnd = finishReferenceLine(text, tail);
   if (lineEnd === null) return null;
   return { label, destination: dest.raw, end: lineEnd };
+}
+
+function normalizeReferenceContainers(text) {
+  // Preserve offsets and line counts while removing blockquote prefixes from
+  // continuation destinations, titles and wrapped labels.
+  return text.replace(/^ {0,3}(?:>[ \t]?){1,4}/gm, prefix => ' '.repeat(prefix.length));
+}
+
+function referenceDefinitionCanStart(text, offset, last) {
+  const end = text.lastIndexOf('\n', offset - 1);
+  if (end < 0) return true;
+  const start = text.lastIndexOf('\n', end - 1) + 1;
+  if (last && start >= last.start && end <= last.end) return true;
+  const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '').trim();
+  if (!prior || /^#{1,6}[ \t]+/.test(prior)) return true;
+  if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior) || /^ {0,3}>/.test(text.slice(start, end))) return true;
+  if (/^(?:-{3,}|\*{3,}|_{3,})[ \t]*$/.test(prior)) return true;
+  return /^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior);
 }
 
 // Ignore Markdown-looking candidates inside a parsed inline HTML tag, but
@@ -1216,7 +1247,10 @@ function parseHtmlTagEnd(text, begin, nameLength, tick) {
     if (quote === '"' || quote === "'") {
       tick();
       index++;
-      while (index < limit && text[index] !== quote) { tick(); index++; }
+      while (index < limit && text[index] !== quote) {
+        if (text[index] === '\n' && /^[ \t]*\n/.test(text.slice(index + 1))) return -1;
+        tick(); index++;
+      }
       if (text[index] !== quote) return invalidate();
       tick();
       index++;
@@ -1253,6 +1287,8 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   if (!stat.isFile() || stat.size > 1024 * 1024) { fail(safe(filename) + ': unsupported file or >1MiB'); return; }
   if (budget && (budget.bytes -= stat.size) < 0) throw new Error('Inbound Markdown scan byte budget exceeded');
   const text = removeCode(fs.readFileSync(resolved, 'utf8'));
+  const definitionText = normalizeReferenceContainers(text);
+  const lastDefinitionClose = definitionText.lastIndexOf(']:');
   const lineOf = lineLookup(text);
   const inlineHtmlRanges = htmlTagRanges(text);
   const autolinkRanges = uriAutolinkRanges(text);
@@ -1260,18 +1296,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   function definitionCanStartAt(offset) {
     // Definitions cannot interrupt an open paragraph. The bounded pilot
     // supports up to four blockquote markers before a definition.
-    const end = text.lastIndexOf('\n', offset - 1);
-    if (end < 0) return true;
-    const start = text.lastIndexOf('\n', end - 1) + 1;
-    if (definitionRanges.some(([from, to]) => start >= from && end <= to)) return true;
-    const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '').trim();
-    if (!prior) return true;
-    if (/^#{1,6}[ \t]+/.test(prior)) return true; // Heading closes a paragraph.
-    if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior) ||
-        /^ {0,3}>/.test(text.slice(start, end))) return true; // Container block.
-    if (/^(?:-{3,}|\*{3,}|_{3,})[ \t]*$/.test(prior)) return true; // Thematic break.
-    if (/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior)) return true;
-    return false;
+    return referenceDefinitionCanStart(text, offset, definitionRanges.at(-1));
   }
   // Definitions may place a destination or title on the following line.
   // Paragraph and first-definition rules still apply. A blank line or a
@@ -1283,13 +1308,15 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     const lineLimit = lineBreak < 0 ? text.length : lineBreak;
     const prefix = definitionPrefix.exec(text.slice(scanAt, lineLimit));
     const bracket = scanAt + (prefix ? prefix[0].length : 0);
+    if (prefix && /^ {0,3}>/.test(text.slice(bracket, lineLimit))) failParserBound();
     let advanced = false;
     if (prefix && text[bracket] === '[' && !escapedAt(text, bracket) &&
         !inRanges(inlineHtmlRanges, scanAt) && !inRanges(autolinkRanges, scanAt) &&
         definitionCanStartAt(scanAt)) {
-      const parsed = parseReferenceDefinition(text, bracket);
+      const parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose);
       if (parsed && !parsed.label.startsWith('^')) { // GFM footnote, not URL reference.
-        definitionRanges.push([scanAt, parsed.end]);
+        if (definitionRanges.length >= 10000) failParserBound();
+        definitionRanges.push({ start: scanAt, end: parsed.end });
         definitionLabelOffsets.add(bracket);
         const id = referenceLabel(parsed.label);
         if (!refs.has(id)) { // First definition of each label wins.
@@ -1305,7 +1332,11 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   }
   // Labels are capped at 512, destinations at 4096, and parenthesis nesting
   // at three levels. Exceeding a cap fails closed instead of ignoring a link.
-  const structures = scanBracketLinks(text);
+  const masks = [...inlineHtmlRanges, ...autolinkRanges, ...definitionRanges]
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+  let maskEnd = 0;
+  for (const range of masks) { maskEnd = Math.max(maskEnd, range.end); range.end = maskEnd; }
+  const structures = scanBracketLinks(text, masks);
   const inlineOpeners = new Set(), inlineRanges = [];
   for (const match of structures.inlines) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
@@ -1361,7 +1392,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     // Standard shortcut references: [label] or ![alt] when a definition exists.
     // Ignore definitions, explicit/inline link openers, and backslash literals.
     for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]/g)) {
-      if (insideInline(match.index) || inRanges(inlineHtmlRanges, match.index) ||
+      if (inRanges(definitionRanges, match.index) || insideInline(match.index) || inRanges(inlineHtmlRanges, match.index) ||
         inRanges(autolinkRanges, match.index)) continue;
       if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
       const opener = match.index + (match[0][0] === '!' ? 1 : 0);
