@@ -134,7 +134,8 @@ function removeCode(markdown) {
       return '';
     }
     if (!comment && !inlineTicks) {
-      const special = /^ {0,3}(<\?|<!\[CDATA\[|<![A-Z])/.exec(line);
+      const special = /^ {0,3}(<\?|<!\[CDATA\[|<![A-Z])/.exec(
+        headingContainerContent(containerLine));
       if (special) {
         const terminator = special[1] === '<?' ? '?>' : special[1] === '<![CDATA[' ? ']]>' : '>';
         if (!line.includes(terminator, special[0].length)) rawBlock = { terminator };
@@ -250,19 +251,10 @@ function removeCode(markdown) {
 
 const UNCERTAIN_HEADING_ENTITY = '\0unknown-heading-entity';
 function headingSlug(heading, definedRefs = new Set()) {
-  // Decode supported HTML references, but do not let an unrelated heading
-  // with an unsupported entity abort the scan of an otherwise valid base.
-  // A heading containing an unrecognized entity is conservatively ambiguous.
-  let uncertain = false;
-  const decoded = heading.replace(/&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g, ref => {
-    try { return decodeLinkEntities(ref); }
-    catch { uncertain = true; return ''; }
-  });
-  if (uncertain) return null;
-  // Protect single-tick code contents from HTML tag removal: a heading
-  // containing `<There>` contributes the rendered word 'There'.
+  // Parse markup before decoding entities: encoded brackets and angle signs
+  // are rendered text, never structural link or HTML delimiters.
   const spans = [];
-  const protectedHeading = decoded.replace(/`([^`\n]*)`/g, (_match, inner) => {
+  const protectedHeading = heading.replace(/`([^`\n]*)`/g, (_match, inner) => {
     const index = spans.length;
     spans.push(inner);
     return '\x01' + index + '\x02';
@@ -270,20 +262,33 @@ function headingSlug(heading, definedRefs = new Set()) {
   // More complex code delimiters are outside this pilot's slug parser.
   // If they coincide with HTML-like text, avoid a false baseline-invalid.
   if (protectedHeading.includes('`') && /<[^>]*>/.test(protectedHeading)) return null;
-  const linkSyntax = scanBracketLinks(protectedHeading, htmlTagRanges(protectedHeading)).inlines
+  let withoutTags = '', tagEnd = 0;
+  for (const tag of htmlTagRanges(protectedHeading)) {
+    withoutTags += protectedHeading.slice(tagEnd, tag.start);
+    tagEnd = tag.end;
+  }
+  withoutTags += protectedHeading.slice(tagEnd);
+  const linkSyntax = scanBracketLinks(withoutTags).inlines
     .flatMap(link => [{ start: link.opener, end: link.opener + 1 },
       { start: link.labelEnd, end: link.end }]).sort((a, b) => a.start - b.start);
   let rendered = '', cursor = 0;
   for (const range of linkSyntax) {
-    if (range.start > cursor) rendered += protectedHeading.slice(cursor, range.start);
+    if (range.start > cursor) rendered += withoutTags.slice(cursor, range.start);
     cursor = Math.max(cursor, range.end);
   }
-  rendered += protectedHeading.slice(cursor);
-  return rendered
+  rendered += withoutTags.slice(cursor);
+  rendered = rendered
     .replace(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g, (whole, label, id) =>
       definedRefs.has(referenceLabel(id || label)) ? label : whole)
-    .replace(/<[^>]*>/g, '')
-    .replace(/\x01(\d+)\x02/g, (_match, index) => spans[Number(index)] || '')
+    .replace(/\x01(\d+)\x02/g, (_match, index) => spans[Number(index)] || '');
+  let uncertain = false;
+  rendered = rendered.replace(/&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g, ref => {
+    try { return decodeLinkEntities(ref); }
+    catch { uncertain = true; return ''; }
+  });
+  if (uncertain) return null;
+  return rendered
+    .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
     .replace(/[\x60*_~]/g, '')
     .toLowerCase()
     .replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, '')
@@ -485,6 +490,7 @@ function checkLink(source, raw, line) {
 // Invalid pre-existing anchors were not introduced by this deletion and are skipped.
 const baseTargetCache = new Map();
 const baseHeadingCache = new Map();
+const MAX_BASE_HEADING_CACHE_FILES = 2;
 const regularToSymlink = new Set();
 function mergeSymlinkTargetValid(relative, anchor) {
   try {
@@ -532,6 +538,9 @@ function baseTargetValid(relative, anchor) {
              if (!headings) {
                const original = git(['show', base + ':' + relative], true).toString('utf8');
                headings = headingsIn(removeCode(original), original);
+               if (baseHeadingCache.size >= MAX_BASE_HEADING_CACHE_FILES) {
+                 baseHeadingCache.delete(baseHeadingCache.keys().next().value);
+               }
                baseHeadingCache.set(relative, headings);
              }
              // Unknown but plausible HTML5 entities can make an anchor valid.
@@ -645,6 +654,9 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
   // Unknown expansions must not enable arbitrary relative path traversal.
   // If an unknown entity occupies an entire path component or can reshape
   // dot-components, preserve fail-closed.
+  if (decoded.includes('\x01') &&
+      (/(?:^|[\/\x01])\.\.(?:[\/\x01]|$)/.test(decoded) ||
+       /%(?:2e|2f|5c)/i.test(decoded))) return true;
   if (/(?:^|\/)\x01(?:\/|$)/.test(decoded) ||
       /(?:^|\/)\.\.?\x01|\x01\.\.?\//.test(decoded)) return true;
   const slash = decoded.startsWith('/');
