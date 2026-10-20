@@ -103,9 +103,8 @@ function removeCode(markdown) {
     if (frontMatterEnd >= 0 && lineIndex <= frontMatterEnd) return '';
     // A list item's continuation indentation is a container prefix, not
     // indented code. Match fences after removing that active prefix.
-    const containerLine = listIndent !== null &&
-      line.startsWith(' '.repeat(listIndent))
-      ? line.slice(listIndent) : line;
+    const lineInList = listIndent !== null && line.startsWith(' '.repeat(listIndent));
+    const containerLine = lineInList ? line.slice(listIndent) : line;
     const fence = containerLine.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (fenced) {
       if (fence && fence[1][0] === fenced.marker &&
@@ -114,18 +113,33 @@ function removeCode(markdown) {
       return '';
     }
     if (rawBlock) {
-      // CommonMark type 6 blocks end on the next blank line, even when a
-      // closing tag was seen earlier. Type 1 blocks end on a matching tag.
-      if (rawBlock.endOnBlank && !line.trim()) {
-        rawBlock = null;
-        paragraphOpen = false;
-        return '';
+      // A block opened inside a blockquote/list ends when that container
+      // ends. Never mask a live link on the first line outside it.
+      let blockLine = containerLine;
+      let continues = !rawBlock.outerListIndent || lineInList;
+      for (let depth = 0; continues && depth < rawBlock.quoteDepth; depth++) {
+        const prefix = /^ {0,3}>[ \t]?/.exec(blockLine);
+        if (!prefix) continues = false;
+        else blockLine = blockLine.slice(prefix[0].length);
       }
-      if (rawBlock.terminator && line.includes(rawBlock.terminator)) rawBlock = null;
-      else if (!rawBlock.endOnBlank && !rawBlock.terminator &&
-          new RegExp('</' + rawBlock.tag + '\\s*>', 'i').test(line)) rawBlock = null;
-      paragraphOpen = false;
-      return idTagsOnly(line);
+      if (continues && rawBlock.listIndent) {
+        if (!blockLine.startsWith(' '.repeat(rawBlock.listIndent))) continues = false;
+        else blockLine = blockLine.slice(rawBlock.listIndent);
+      }
+      if (!continues) rawBlock = null;
+      else {
+        // Type 6 ends on a blank line; type 1 ends on its closing tag.
+        if (rawBlock.endOnBlank && /^[ \t]*$/.test(blockLine)) {
+          rawBlock = null;
+          paragraphOpen = false;
+          return '';
+        }
+        if (rawBlock.terminator && blockLine.includes(rawBlock.terminator)) rawBlock = null;
+        else if (!rawBlock.endOnBlank && !rawBlock.terminator &&
+            new RegExp('</' + rawBlock.tag + '\\s*>', 'i').test(blockLine)) rawBlock = null;
+        paragraphOpen = false;
+        return idTagsOnly(line);
+      }
     }
     if (!comment && !inlineTicks && fence &&
         !(fence[1][0] === '`' && fence[2].includes('`'))) {
@@ -134,21 +148,26 @@ function removeCode(markdown) {
       return '';
     }
     if (!comment && !inlineTicks) {
+      const container = markdownContainer(containerLine);
       const special = /^ {0,3}(<\?|<!\[CDATA\[|<![A-Z])/.exec(
-        headingContainerContent(containerLine));
+        container.content);
       if (special) {
         const terminator = special[1] === '<?' ? '?>' : special[1] === '<![CDATA[' ? ']]>' : '>';
-        if (!line.includes(terminator, special[0].length)) rawBlock = { terminator };
+        if (!container.content.includes(terminator, special[0].length)) {
+          rawBlock = { terminator, quoteDepth: container.quoteDepth,
+            listIndent: container.listIndent, outerListIndent: listIndent };
+        }
         paragraphOpen = false;
         return '';
       }
-      const rawOpen = line.match(/^ {0,3}<(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)/i);
+      const rawOpen = container.content.match(/^ {0,3}<(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)/i);
       if (rawOpen) {
         const tag = rawOpen[1].toLowerCase();
         const endOnBlank = !/^(?:pre|script|style|textarea)$/.test(tag);
         if (endOnBlank ||
-            !new RegExp('</' + tag + '\\s*>', 'i').test(line.slice(rawOpen[0].length))) {
-          rawBlock = { tag, endOnBlank };
+            !new RegExp('</' + tag + '\\s*>', 'i').test(container.content.slice(rawOpen[0].length))) {
+          rawBlock = { tag, endOnBlank, quoteDepth: container.quoteDepth,
+            listIndent: container.listIndent, outerListIndent: listIndent };
         }
         paragraphOpen = false;
         return idTagsOnly(line);
@@ -295,17 +314,23 @@ function headingSlug(heading, definedRefs = new Set()) {
     .trim().replace(/ +/g, '-');
 }
 
-function headingContainerContent(raw) {
-  // Permit a small, bounded number of legitimate blockquote/list prefixes.
-  // A blockquote/list line with an ATX marker still renders as a heading.
-  let result = raw;
+function markdownContainer(raw) {
+  // Keep the opening container shape so HTML blocks stop masking when their
+  // blockquote/list ends. Deep nesting exceeds this pilot's parser bound.
+  let content = raw, quoteDepth = 0, listIndent = 0;
   for (let hop = 0; hop < 4; hop++) {
-    const next = result.replace(/^ {0,3}>[ \t]?/, '')
-      .replace(/^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+/, '');
-    if (next === result) break;
-    result = next;
+    const before = content;
+    const quote = /^ {0,3}>[ \t]?/.exec(content);
+    if (quote) { quoteDepth++; content = content.slice(quote[0].length); }
+    const list = /^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+/.exec(content);
+    if (list) { listIndent += list[0].length; content = content.slice(list[0].length); }
+    if (content === before) break;
   }
-  return result;
+  if (/^ {0,3}(?:>|(?:[-+*]|\d{1,9}[.)])[ \t]+)/.test(content)) failParserBound();
+  return { content, quoteDepth, listIndent };
+}
+function headingContainerContent(raw) {
+  return markdownContainer(raw).content;
 }
 function headingsIn(text, original = text) {
   // Use masked text to decide which lines are headings, and the original
@@ -491,6 +516,9 @@ function checkLink(source, raw, line) {
 const baseTargetCache = new Map();
 const baseHeadingCache = new Map();
 const MAX_BASE_HEADING_CACHE_FILES = 2;
+const MAX_BASE_HEADING_PARSES = 64;
+const MAX_BASE_HEADING_PARSE_BYTES = 16 * 1024 * 1024;
+let baseHeadingParses = 0, baseHeadingParsedBytes = 0;
 const regularToSymlink = new Set();
 function mergeSymlinkTargetValid(relative, anchor) {
   try {
@@ -536,6 +564,14 @@ function baseTargetValid(relative, anchor) {
           (() => {
              let headings = baseHeadingCache.get(relative);
              if (!headings) {
+               // Eviction bounds retained memory, while this cumulative budget
+               // bounds repeated Git reads and parses after cache misses.
+               if (baseHeadingParses >= MAX_BASE_HEADING_PARSES ||
+                   baseHeadingParsedBytes + blobSize > MAX_BASE_HEADING_PARSE_BYTES) {
+                 throw new Error('Base heading parse budget exceeded; fail closed');
+               }
+               baseHeadingParses++;
+               baseHeadingParsedBytes += blobSize;
                const original = git(['show', base + ':' + relative], true).toString('utf8');
                headings = headingsIn(removeCode(original), original);
                if (baseHeadingCache.size >= MAX_BASE_HEADING_CACHE_FILES) {
@@ -986,7 +1022,9 @@ function readBareDestination(text, index, limit) {
         separatorExceeded(index + 1, limit, text);
         return null;
       }
-      index += 2;
+      // CommonMark escapes only ASCII punctuation. A backslash cannot turn
+      // a bare destination's space into a path character.
+      index += /[!-/:-@\[-`{-~]/.test(text[index + 1]) ? 2 : 1;
       continue;
     }
     if (ch === ' ' || ch === '\t' || ch === '\n' || ch < ' ') break;
@@ -1099,8 +1137,8 @@ function parseReferenceLabelAt(text, bracketIndex) {
 // One forward pass. Images do not deactivate an enclosing link, so a badge
 // wrapped in a link reports both destinations. A nested link keeps the inner
 // destination and leaves the outer brackets inactive.
-function scanBracketLinks(text, masks = []) {
-  const inlines = [], fullRefs = [];
+function scanBracketLinks(text, masks = [], collectShortcuts = false) {
+  const inlines = [], fullRefs = [], shortcuts = [];
   const stack = [];
   for (let i = 0; i < text.length; i++) {
     if (inRanges(masks, i)) continue;
@@ -1127,8 +1165,8 @@ function scanBracketLinks(text, masks = []) {
         inlines.push({ index, opener: opener.index, labelEnd: i, raw: parsed.raw, end: parsed.end });
         if (!image) for (const item of stack) if (!item.image) item.active = false;
         i = parsed.end - 1;
+        continue;
       }
-      continue;
     }
     if (text[i + 1] === '[') {
       const ref = parseReferenceLabelAt(text, i + 1);
@@ -1141,10 +1179,18 @@ function scanBracketLinks(text, masks = []) {
         });
         if (!image) for (const item of stack) if (!item.image) item.active = false;
         i = ref.end - 1;
+        continue;
+      }
+    }
+    if (collectShortcuts) {
+      const shortcut = parseReferenceLabelAt(text, opener.index);
+      if (shortcut?.end === i + 1) {
+        if (shortcuts.length >= 10000) failParserBound();
+        shortcuts.push({ index, opener: opener.index, label: shortcut.label, end: i + 1 });
       }
     }
   }
-  return { inlines, fullRefs };
+  return { inlines, fullRefs, shortcuts };
 }
 
 function finishReferenceLine(text, index) {
@@ -1195,8 +1241,9 @@ function referenceDefinitionCanStart(text, offset, last) {
   if (end < 0) return true;
   const start = text.lastIndexOf('\n', end - 1) + 1;
   if (last && start >= last.start && end <= last.end) return true;
-  const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '').trim();
-  if (!prior || /^#{1,6}[ \t]+/.test(prior)) return true;
+  const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '');
+  // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
+  if (/^[ \t]*$/.test(prior) || /^#{1,6}[ \t]+/.test(prior)) return true;
   if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior) || /^ {0,3}>/.test(text.slice(start, end))) return true;
   if (/^(?:-{3,}|\*{3,}|_{3,})[ \t]*$/.test(prior)) return true;
   return /^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior);
@@ -1378,7 +1425,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     .sort((a, b) => a.start - b.start || a.end - b.end);
   let maskEnd = 0;
   for (const range of masks) { maskEnd = Math.max(maskEnd, range.end); range.end = maskEnd; }
-  const structures = scanBracketLinks(text, masks);
+  const structures = scanBracketLinks(text, masks, Boolean(deletedTargets));
   const inlineOpeners = new Set(), inlineRanges = [];
   for (const match of structures.inlines) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
@@ -1433,16 +1480,15 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   if (deletedTargets) {
     // Standard shortcut references: [label] or ![alt] when a definition exists.
     // Ignore definitions, explicit/inline link openers, and backslash literals.
-    for (const match of text.matchAll(/!?\[((?:\\.|[^\[\]\\\n]){1,512})\]/g)) {
+    for (const match of structures.shortcuts) {
       if (inRanges(definitionRanges, match.index) || insideInline(match.index) || inRanges(inlineHtmlRanges, match.index) ||
         inRanges(autolinkRanges, match.index)) continue;
       if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
-      const opener = match.index + (match[0][0] === '!' ? 1 : 0);
-      if (escapedAt(text, opener)) continue;
+      if (escapedAt(text, match.opener)) continue;
       if (referenceSuffixStarts.has(match.index)) continue;
-      const after = text[match.index + match[0].length] || '';
-      if (definitionLabelOffsets.has(match.index) || inlineOpeners.has(opener) || referenceOpeners.has(opener)) continue;
-      const id = referenceLabel(match[1]);
+      if (definitionLabelOffsets.has(match.index) || inlineOpeners.has(match.opener) ||
+          referenceOpeners.has(match.opener)) continue;
+      const id = referenceLabel(match.label);
       if (refs.has(id)) used.add(id);
     }
     for (const [id, ref] of refs) {

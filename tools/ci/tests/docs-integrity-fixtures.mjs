@@ -87,6 +87,23 @@ function git(cwd, ...args) {
 
 const fixtures = [
   ...[
+    ['special HTML block ends with its blockquote', '> <?xml\n[old](Target.md)', false],
+    ['standard HTML block stays masked in blockquote',
+      '> <script>\n> [old](Target.md)\n> </script>', true],
+    ['standard HTML block ends with its blockquote',
+      '> <script>\n[old](Target.md)', false],
+    ['standard HTML block stays masked in list',
+      '- <script>\n  [old](Target.md)\n  </script>', true],
+    ['standard HTML block ends with its list',
+      '- <script>\n[old](Target.md)', false],
+    ['fifth heading container fails closed', '[old](Target.md#hello)', false,
+      '> > > > > # Hello\n', 'parser'],
+    ['NBSP paragraph cannot be interrupted by reference definition',
+      '\u00a0\n[x]: Target.md\n\n[x]', true],
+    ['bare destination cannot escape a space', '[old](Target\\ md.md)', true,
+      null, null, 'Target md.md'],
+    ['multiline shortcut reference detects deletion',
+      '[ref\nlabel]\n\n[ref label]: Target.md', false],
     ['encoded angle heading text remains in slug', '[old](Target.md#hello-world)', false,
       '# &lt;Hello&gt; World\n'],
     ['escaped angle heading text remains in slug', '[old](Target.md#hello-world)', false,
@@ -526,6 +543,12 @@ const fixtures = [
   { name: 'bounded inline-comment scan remains within the time limit',
     md: '<!--x-->'.repeat(50000) + '\n[ok](Target.md)\n',
     pass: true, markdownCount: 1, checkerTimeout: 2000 },
+  { name: 'interleaved distinct base anchors fail at cumulative parse budget',
+    md: null, extra: 'deleted-heading-thrash', pass: false,
+    signal: 'Base heading parse budget exceeded', checkerTimeout: 20000 },
+  { name: 'shortcut candidates stop at the inbound parser bound',
+    md: null, extra: 'deleted-many-shortcuts', pass: false,
+    signal: 'Markdown parser bound exceeded' },
 ];
 
 function executeFixture(test) {
@@ -557,6 +580,15 @@ function executeFixture(test) {
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'), test.consumer + '\n');
       if (test.baseTarget) fs.writeFileSync(path.join(root, 'docs', 'Target.md'), test.baseTarget);
       if (test.deletedName) fs.writeFileSync(path.join(root, 'docs', test.deletedName), '# Target\n');
+    }
+    if (test.extra === 'deleted-heading-thrash') {
+      const headings = Array.from({ length: 80 }, (_, i) => `# Heading ${i}\n`).join('');
+      for (let n = 0; n < 3; n++) {
+        fs.writeFileSync(path.join(root, 'docs', `Target-${n}.md`), headings);
+      }
+      fs.writeFileSync(path.join(root, 'docs', 'consumer.md'),
+        Array.from({ length: 80 }, (_, i) =>
+          `[old](Target-${i % 3}.md#heading-${i})`).join('\n') + '\n');
     }
     // Existing consumer documents are unchanged by the synthetic deletion PR.
     const deletionConsumers = {
@@ -645,6 +677,7 @@ function executeFixture(test) {
       'deleted-escaped-reference': '# Consumer\n[old][x]\n\n[x]: Target\\.md\n',
       'renamed-inbound': '# Consumer\n[old](Target.md)\n',
       'deleted-many-links': '# Consumer\n' + '[old](Target.md)\n'.repeat(11000),
+      'deleted-many-shortcuts': '# Consumer\n' + '[old]\n'.repeat(11000) + '\n[old]: Target.md\n',
       'deleted-large-target': '# Consumer\n[old](Target.md)\n',
       'deleted-symlink-target': '# Consumer\n[old](Alias.md)\n',
       'deleted-escaped-comment': '# Consumer\n\\<!-- not a comment: [old](Target.md) -->\n',
@@ -914,6 +947,7 @@ function executeFixture(test) {
       'deleted-bad-anchor', 'deleted-duplicate-ref',
       'deleted-invalid-fence', 'deleted-comment-inline', 'deleted-comment-block',
       'deleted-escaped-inline', 'deleted-escaped-reference', 'deleted-many-links',
+      'deleted-many-shortcuts',
       'deleted-large-target', 'deleted-escaped-comment', 'deleted-unused-ref',
       'deleted-shortcut-ref', 'deleted-comment-then-active', 'deleted-inline-code-prefix',
       'deleted-fenced-fake-comment', 'deleted-comment-backtick-terminator',
@@ -975,6 +1009,9 @@ function executeFixture(test) {
       'symlink-source-internal', 'symlink-source-outside', 'deleted-alias'];
     if (deletions.includes(test.extra)) fs.rmSync(path.join(root, 'docs', 'Target.md'));
     if (test.extra === 'review-regression') fs.rmSync(path.join(root, 'docs', test.deletedName || 'Target.md'));
+    if (test.extra === 'deleted-heading-thrash') {
+      for (let n = 0; n < 3; n++) fs.rmSync(path.join(root, 'docs', `Target-${n}.md`));
+    }
     if (test.extra === 'deleted-many-unrelated') {
       fs.rmSync(path.join(root, 'docs', 'other.md'));
     }
