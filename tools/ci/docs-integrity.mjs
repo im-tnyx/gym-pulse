@@ -119,7 +119,8 @@ function removeCode(markdown) {
       const candidate = candidateContainer.content;
       // Inline code spans cannot cross a Markdown paragraph boundary.
       if (/^[ \t]*$/.test(candidate)) return false;
-      if (!sameContainerShape(openerContainer, candidateContainer) && isBlockInterruption(lines[j])) return false;
+      if (isBlockInterruption(candidate) ||
+          (!sameContainerShape(openerContainer, candidateContainer) && isBlockInterruption(lines[j]))) return false;
       inspected += candidate.length + 1;
       if (inspected > 8192) return false; // Do not suppress uncertain live links.
       // Do not mistake a later fenced code marker for an inline-code closer.
