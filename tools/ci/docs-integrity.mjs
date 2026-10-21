@@ -356,34 +356,59 @@ function removeCode(markdown) {
 
 const UNCERTAIN_HEADING_ENTITY = '\0unknown-heading-entity';
 function stripClosedHeadingComments(text) {
-  // Keep escaped openers literal and scan each heading character at most once.
-  let visible = '', cursor = 0;
-  while (cursor < text.length) {
-    const opener = text.indexOf('<!--', cursor);
-    if (opener < 0) return visible + text.slice(cursor);
-    if (escapedAt(text, opener)) {
-      visible += text.slice(cursor, opener + 4);
-      cursor = opener + 4;
+  // Visit tags and comments in source order: attribute values own their '<!--'.
+  const starts = /<!--|<\/?[A-Za-z][A-Za-z0-9-]*/g;
+  let visible = '', cursor = 0, scanned = 0, match;
+  const maxScanned = Math.min(4 * text.length + 4096, 2 * 1024 * 1024);
+  const tick = () => {
+    if (++scanned > maxScanned) throw new Error('Heading HTML scan budget exceeded; fail closed');
+  };
+  while ((match = starts.exec(text))) {
+    const opener = match.index;
+    if (escapedAt(text, opener)) continue;
+    if (match[0] !== '<!--') {
+      if (!/[\s/>]/.test(text[opener + match[0].length] || '')) continue;
+      const end = parseHtmlTagEnd(text, opener, match[0].length, tick);
+      if (end > opener) starts.lastIndex = end;
       continue;
     }
     const closer = text.indexOf('-->', opener + 4);
-    if (closer < 0) return visible + text.slice(cursor);
+    if (closer < 0) break; // An unmatched opener needs only one suffix scan.
     visible += text.slice(cursor, opener);
     cursor = closer + 3;
+    starts.lastIndex = cursor;
   }
-  return visible;
+  return visible + text.slice(cursor);
+}
+function protectHeadingCode(heading, spans) {
+  // Preindex matching run lengths rather than repeatedly searching suffixes.
+  const runs = [...heading.matchAll(/`+/g)], next = new Map();
+  const closers = new Array(runs.length);
+  for (let i = runs.length - 1; i >= 0; i--) {
+    closers[i] = next.get(runs[i][0].length);
+    next.set(runs[i][0].length, i);
+  }
+  let visible = '', cursor = 0;
+  for (let i = 0; i < runs.length; i++) {
+    const opener = runs[i], closeIndex = closers[i];
+    if (escapedAt(heading, opener.index) || closeIndex === undefined) continue;
+    const closer = runs[closeIndex];
+    let inner = heading.slice(opener.index + opener[0].length, closer.index)
+      .replace(/\r\n|\n|\r/g, ' ');
+    if (inner.startsWith(' ') && inner.endsWith(' ') && /[^ ]/.test(inner)) inner = inner.slice(1, -1);
+    visible += heading.slice(cursor, opener.index) + '\x01' + spans.length + '\x02';
+    spans.push(inner);
+    cursor = closer.index + closer[0].length;
+    i = closeIndex;
+  }
+  return visible + heading.slice(cursor);
 }
 function headingSlug(heading, definedRefs = new Set()) {
   // Parse markup before decoding entities: encoded brackets and angle signs
   // are rendered text, never structural link or HTML delimiters.
   const spans = [];
-  const protectedHeading = heading.replace(/`([^`\n]*)`/g, (_match, inner) => {
-    const index = spans.length;
-    spans.push(inner);
-    return '\x01' + index + '\x02';
-  });
-  // More complex code delimiters are outside this pilot's slug parser.
-  // If they coincide with HTML-like text, avoid a false baseline-invalid.
+  const protectedHeading = protectHeadingCode(heading, spans);
+  // Unmatched code runs mixed with HTML leave slug interpretation uncertain.
   if (protectedHeading.includes('`') && /<[^>]*>/.test(protectedHeading)) return null;
   // Closed comments render no heading text. Code spans are already protected
   // by placeholders, so comment-shaped code content remains literal.
@@ -598,6 +623,12 @@ function decodeLinkEntities(value) {
   });
 }
 
+function decodeDestinationText(value) {
+  // Escapes and entities are one token stream; '\&' must not create an entity.
+  return value.replace(/\\([!-/:-@\[-`{-~ ])|&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g,
+    (token, escaped) => escaped === undefined ? decodeLinkEntities(token) : escaped);
+}
+
 function hasEscapedAngleDelimiter(raw) {
   if (!raw.startsWith('<')) return false;
   // Under CommonMark a backslash-escaped '>' cannot delimit an angle link.
@@ -621,10 +652,9 @@ function destination(raw) {
       if (value[i] === '>') { end = i; break; }
     }
     if (end < 0) throw new Error('Malformed angle-wrapped link');
-    return decodeLinkEntities(value.slice(1, end).replace(/\\([!-/:-@\[-`{-~ ])/g, '$1'));
+    return decodeDestinationText(value.slice(1, end));
   }
-  return decodeLinkEntities((value.match(/^(?:\\.|[^\x00-\x20\x7f])+/) || [''])[0]
-    .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1'));
+  return decodeDestinationText((value.match(/^(?:\\.|[^\x00-\x20\x7f])+/) || [''])[0]);
 }
 
 function checkLink(source, raw, line) {
@@ -1309,17 +1339,49 @@ function parseReferenceLabelAt(text, bracketIndex) {
   return null;
 }
 
+function linkBlockBoundaries(text) {
+  const boundaries = [];
+  let offset = 0, quoteDepth = 0, listIndent = null, priorSingleLineBlock = false, priorBlank = true;
+  for (const raw of text.split('\n')) {
+    const quote = /^ {0,3}(?:>[ \t]?){1,4}/.exec(raw);
+    const depth = quote ? (quote[0].match(/>/g) || []).length : 0;
+    let content = raw.slice(quote?.[0].length || 0);
+    const continuationIndent = listIndent !== null && content.startsWith(' '.repeat(listIndent))
+      ? listIndent : 0;
+    if (continuationIndent) content = content.slice(continuationIndent);
+    const list = /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content);
+    // Only an ordered list starting at 1 can interrupt an ordinary paragraph.
+    const listStartsBlock = list && (listIndent !== null || priorBlank || priorSingleLineBlock ||
+      /^[-+*]$|^1[.)]$/.test(list[1]));
+    const leaf = listStartsBlock ? content.slice(list[0].length) : content;
+    const atx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(leaf);
+    const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
+    const thematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(leaf);
+    if (priorSingleLineBlock || /^[ \t]*$/.test(content) || depth > quoteDepth ||
+        listStartsBlock || atx || setext || thematic) boundaries.push(offset);
+    priorSingleLineBlock = atx || setext || thematic;
+    priorBlank = /^[ \t]*$/.test(content);
+    quoteDepth = depth;
+    if (listStartsBlock) listIndent = continuationIndent + list[0].length;
+    else if (!continuationIndent && !/^[ \t]*$/.test(content)) listIndent = null;
+    offset += raw.length + 1;
+  }
+  return boundaries;
+}
 // One forward pass. Images do not deactivate an enclosing link, so a badge
 // wrapped in a link reports both destinations. A nested link keeps the inner
 // destination and leaves the outer brackets inactive.
 function scanBracketLinks(text, masks = [], collectShortcuts = false, definedRefs = null) {
   const inlines = [], fullRefs = [], unresolvedFullRefs = [], shortcuts = [];
   const stack = [];
+  const boundaries = linkBlockBoundaries(text);
+  let nextBoundary = 0;
   for (let i = 0; i < text.length; i++) {
-    if (inRanges(masks, i)) continue;
-    if (text[i] === '\n' && /^[ \t]*\n/.test(text.slice(i + 1))) {
-      stack.length = 0; // Link labels cannot cross a paragraph boundary.
+    while (nextBoundary < boundaries.length && boundaries[nextBoundary] <= i) {
+      stack.length = 0;
+      nextBoundary++;
     }
+    if (inRanges(masks, i)) continue;
     if (text[i] === '\\') {
       if (/[!-/:-@\[-`{-~]/.test(text[i + 1])) i++;
       continue;
@@ -1339,7 +1401,7 @@ function scanBracketLinks(text, masks = [], collectShortcuts = false, definedRef
     const index = image ? opener.index - 1 : opener.index;
     if (text[i + 1] === '(') {
       const parsed = parseInlineTail(text, i + 1);
-      if (parsed) {
+      if (parsed && parsed.end <= (boundaries[nextBoundary] ?? text.length)) {
         inlines.push({ index, opener: opener.index, labelEnd: i, raw: parsed.raw, end: parsed.end });
         if (!image) for (const item of stack) if (!item.image) item.active = false;
         i = parsed.end - 1;
@@ -1348,7 +1410,7 @@ function scanBracketLinks(text, masks = [], collectShortcuts = false, definedRef
     }
     if (text[i + 1] === '[') {
       const ref = parseReferenceLabelAt(text, i + 1);
-      if (ref) {
+      if (ref && ref.end <= (boundaries[nextBoundary] ?? text.length)) {
         const textLabel = text.slice(opener.index + 1, i);
         const label = ref.label.length ? ref.label : textLabel;
         const match = { index, opener: opener.index, label, end: ref.end, suffixStart: i + 1 };
