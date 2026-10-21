@@ -61,7 +61,8 @@ function removeCode(markdown) {
       }
     }
   }
-  let fenced = null, comment = false, rawBlock = null, listIndent = null, inlineTicks = 0;
+  let fenced = null, comment = false, commentContainer = null;
+  let rawBlock = null, listIndent = null, inlineTicks = 0;
   let paragraphOpen = false;
   const laterCommentCloser = new Array(lines.length + 1).fill(false);
   for (let i = lines.length - 1; i >= 0; i--) {
@@ -73,7 +74,22 @@ function removeCode(markdown) {
     // raw HTML blocks. Do not expose Markdown-looking attributes to the
     // link scanner: tag spans are skipped by htmlTagRanges().
     return htmlTagRanges(line).map(x => line.slice(x.start, x.end))
-      .filter(tag => /\sid\s*=/.test(tag)).join(' ');
+      .filter(tag => /\sid\s*=/i.test(tag)).join(' ');
+  }
+
+  function continuingContainer(state, containerLine, lineInList) {
+    let content = containerLine;
+    let continues = !state.outerListIndent || lineInList;
+    for (let depth = 0; continues && depth < state.quoteDepth; depth++) {
+      const prefix = /^ {0,3}>[ \t]?/.exec(content);
+      if (!prefix) continues = false;
+      else content = content.slice(prefix[0].length);
+    }
+    if (continues && state.listIndent) {
+      if (!content.startsWith(' '.repeat(state.listIndent))) continues = false;
+      else content = content.slice(state.listIndent);
+    }
+    return { continues, content };
   }
 
   function closingTicks(text, from, count) {
@@ -106,26 +122,24 @@ function removeCode(markdown) {
     const lineInList = listIndent !== null && line.startsWith(' '.repeat(listIndent));
     const containerLine = lineInList ? line.slice(listIndent) : line;
     const fence = containerLine.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (comment && commentContainer &&
+        !continuingContainer(commentContainer, containerLine, lineInList).continues) {
+      comment = false;
+      commentContainer = null;
+    }
     if (fenced) {
-      if (fence && fence[1][0] === fenced.marker &&
-          fence[1].length >= fenced.count && !fence[2].trim()) fenced = null;
-      paragraphOpen = false;
-      return '';
+      if (!continuingContainer(fenced, containerLine, lineInList).continues) fenced = null;
+      else {
+        if (fence && fence[1][0] === fenced.marker &&
+            fence[1].length >= fenced.count && /^[ \t]*$/.test(fence[2])) fenced = null;
+        paragraphOpen = false;
+        return '';
+      }
     }
     if (rawBlock) {
       // A block opened inside a blockquote/list ends when that container
       // ends. Never mask a live link on the first line outside it.
-      let blockLine = containerLine;
-      let continues = !rawBlock.outerListIndent || lineInList;
-      for (let depth = 0; continues && depth < rawBlock.quoteDepth; depth++) {
-        const prefix = /^ {0,3}>[ \t]?/.exec(blockLine);
-        if (!prefix) continues = false;
-        else blockLine = blockLine.slice(prefix[0].length);
-      }
-      if (continues && rawBlock.listIndent) {
-        if (!blockLine.startsWith(' '.repeat(rawBlock.listIndent))) continues = false;
-        else blockLine = blockLine.slice(rawBlock.listIndent);
-      }
+      const { continues, content: blockLine } = continuingContainer(rawBlock, containerLine, lineInList);
       if (!continues) rawBlock = null;
       else {
         // Type 6 ends on a blank line; type 1 ends on its closing tag.
@@ -143,7 +157,8 @@ function removeCode(markdown) {
     }
     if (!comment && !inlineTicks && fence &&
         !(fence[1][0] === '`' && fence[2].includes('`'))) {
-      fenced = { marker: fence[1][0], count: fence[1].length };
+      fenced = { marker: fence[1][0], count: fence[1].length,
+        quoteDepth: 0, listIndent: 0, outerListIndent: lineInList ? listIndent : null };
       paragraphOpen = false;
       return '';
     }
@@ -174,7 +189,7 @@ function removeCode(markdown) {
       }
       const list = line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])\s+/);
       if (list) { listIndent = list[0].length; paragraphOpen = false; }
-      else if (line.trim() && listIndent !== null &&
+      else if (!/^[ \t]*$/.test(line) && listIndent !== null &&
           !line.startsWith(' '.repeat(listIndent))) listIndent = null;
       const indent = (line.match(/^ */) || [''])[0].length;
       if ((indent >= 4 || line.startsWith('\t')) && !paragraphOpen &&
@@ -246,7 +261,8 @@ function removeCode(markdown) {
           from = tick.index + tick[0].length;
         }
       } else if (opener >= 0) {
-        const blockStart = opener <= 3 && !line.slice(0, opener).trim();
+        const openerShape = markdownContainer(containerLine);
+        const blockStart = /^ {0,3}<!--/.test(openerShape.content);
         // Unclosed inline opener is literal text; unclosed block opener masks.
         if (!blockStart && !laterCommentCloser[lineIndex]) {
           visible += line.slice(from, opener + 4);
@@ -256,13 +272,17 @@ function removeCode(markdown) {
         visible += line.slice(from, opener);
         from = opener;
         comment = true;
+        commentContainer = openerShape.quoteDepth || openerShape.listIndent || lineInList
+          ? { quoteDepth: openerShape.quoteDepth, listIndent: openerShape.listIndent,
+              outerListIndent: lineInList ? listIndent : null }
+          : null;
       } else {
         visible += line.slice(from);
         break;
       }
     }
-    if (!line.trim()) paragraphOpen = false;
-    else if (visible.trim() && !/^ {0,3}(?:#{1,6}[ \t]|>|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(line) &&
+    if (/^[ \t]*$/.test(line)) paragraphOpen = false;
+    else if (!/^[ \t]*$/.test(visible) && !/^ {0,3}(?:#{1,6}[ \t]|>|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(line) &&
              !/^ {0,3}(?:={2,}|-{2,})[ \t]*$/.test(line)) paragraphOpen = true;
     return visible;
   }).join('\n');

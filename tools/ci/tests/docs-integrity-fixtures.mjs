@@ -87,6 +87,14 @@ function git(cwd, ...args) {
 
 const fixtures = [
   ...[
+    ['comment ends with its blockquote', '> <!--\n[old](Target.md)\n> -->', false],
+    ['comment stays masked in blockquote', '> <!--\n> [old](Target.md)\n> -->', true],
+    ['comment ends with its list', '- <!--\n[old](Target.md)\n  -->', false],
+    ['NBSP paragraph keeps indented link active', '\u00a0\n    [old](Target.md)', false],
+    ['fenced code ends with its list', '- item\n  ```md\n  [hidden](Target.md)\n[old](Target.md)', false],
+    ['fenced code stays masked in list', '- item\n  ```md\n  [old](Target.md)\n  ```', true],
+    ['raw HTML uppercase ID remains an anchor', '[old](Target.md#kept)', false,
+      '<div ID="kept">hi</div>\n'],
     ['special HTML block ends with its blockquote', '> <?xml\n[old](Target.md)', false],
     ['standard HTML block stays masked in blockquote',
       '> <script>\n> [old](Target.md)\n> </script>', true],
