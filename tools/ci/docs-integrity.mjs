@@ -104,12 +104,22 @@ function removeCode(markdown) {
     }
     return null;
   }
-  function laterClosingTicks(index, count) {
+  function sameContainerShape(left, right) {
+    if (left.containers.length !== right.containers.length) return false;
+    return left.containers.every((part, index) =>
+      part.kind === right.containers[index].kind && part.indent === right.containers[index].indent);
+  }
+  function isBlockInterruption(raw) {
+    return /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|(?:[-*_][ \t]*){3,}$)/.test(raw);
+  }
+  function laterClosingTicks(index, count, openerContainer) {
     let inspected = 0;
     for (let j = index + 1; j < lines.length && j - index <= 32; j++) {
-      const candidate = markdownContainer(lines[j]).content;
+      const candidateContainer = markdownContainer(lines[j]);
+      const candidate = candidateContainer.content;
       // Inline code spans cannot cross a Markdown paragraph boundary.
       if (/^[ \t]*$/.test(candidate)) return false;
+      if (!sameContainerShape(openerContainer, candidateContainer) && isBlockInterruption(lines[j])) return false;
       inspected += candidate.length + 1;
       if (inspected > 8192) return false; // Do not suppress uncertain live links.
       // Do not mistake a later fenced code marker for an inline-code closer.
@@ -281,7 +291,7 @@ function removeCode(markdown) {
           visible += line.slice(from, tick.index) +
             ' '.repeat(closer.index + closer[0].length - tick.index);
           from = closer.index + closer[0].length;
-        } else if (laterClosingTicks(lineIndex, tick[0].length)) {
+        } else if (laterClosingTicks(lineIndex, tick[0].length, container)) {
           visible += line.slice(from, tick.index) + ' '.repeat(line.length - tick.index);
           inlineTicks = tick[0].length;
           break;
