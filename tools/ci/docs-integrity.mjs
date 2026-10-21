@@ -63,31 +63,32 @@ function removeCode(markdown) {
   }
   let fenced = null, comment = false, commentContainer = null;
   let rawBlock = null, listIndent = null, inlineTicks = 0;
+  let pendingHtmlScanBytes = 0;
   let paragraphOpen = false;
   const laterCommentCloser = new Array(lines.length + 1).fill(false);
   for (let i = lines.length - 1; i >= 0; i--) {
     laterCommentCloser[i] = lines[i].includes('-->') || laterCommentCloser[i + 1];
   }
 
-  function idTagsOnly(line) {
+  function idTagsOnly(line, ranges = htmlTagRanges(line)) {
     // Preserve explicit anchors for BASE heading validation even inside
     // raw HTML blocks. Do not expose Markdown-looking attributes to the
     // link scanner: tag spans are skipped by htmlTagRanges().
-    return htmlTagRanges(line).map(x => line.slice(x.start, x.end))
+    return ranges.map(x => line.slice(x.start, x.end))
       .filter(tag => /\sid\s*=/i.test(tag)).join(' ');
   }
 
   function continuingContainer(state, containerLine, lineInList) {
     let content = containerLine;
     let continues = !state.outerListIndent || lineInList;
-    for (let depth = 0; continues && depth < state.quoteDepth; depth++) {
-      const prefix = /^ {0,3}>[ \t]?/.exec(content);
-      if (!prefix) continues = false;
-      else content = content.slice(prefix[0].length);
-    }
-    if (continues && state.listIndent) {
-      if (!content.startsWith(' '.repeat(state.listIndent))) continues = false;
-      else content = content.slice(state.listIndent);
+    for (const part of state.containers || []) {
+      if (!continues) break;
+      if (part.kind === 'quote') {
+        const prefix = /^ {0,3}>[ \t]?/.exec(content);
+        if (!prefix) continues = false;
+        else content = content.slice(prefix[0].length);
+      } else if (!content.startsWith(' '.repeat(part.indent))) continues = false;
+      else content = content.slice(part.indent);
     }
     return { continues, content };
   }
@@ -154,8 +155,18 @@ function removeCode(markdown) {
         if (rawBlock.pendingTag) {
           rawBlock.pendingTag += '\n' + blockLine;
           if (rawBlock.pendingTag.length > 4096) failParserBound();
-          const kept = idTagsOnly(rawBlock.pendingTag);
-          if (htmlTagRanges(rawBlock.pendingTag).length) rawBlock.pendingTag = null;
+          let kept = '';
+          if (blockLine.includes('>')) {
+            pendingHtmlScanBytes += rawBlock.pendingTag.length;
+            if (pendingHtmlScanBytes > 16 * 1024 * 1024) failParserBound();
+            const ranges = htmlTagRanges(rawBlock.pendingTag);
+            if (ranges.length) {
+              kept = idTagsOnly(rawBlock.pendingTag, ranges).replace(/\n/g, ' ');
+              rawBlock.pendingTag = null;
+            }
+          }
+          if (!rawBlock.endOnBlank && !rawBlock.terminator &&
+              new RegExp('</' + rawBlock.tag + '\\s*>', 'i').test(blockLine)) rawBlock = null;
           paragraphOpen = false;
           return kept;
         }
@@ -169,7 +180,7 @@ function removeCode(markdown) {
     if (!comment && !inlineTicks && fence &&
         !(fence[1][0] === '`' && fence[2].includes('`'))) {
       fenced = { marker: fence[1][0], count: fence[1].length,
-        quoteDepth: container.quoteDepth, listIndent: container.listIndent,
+        containers: container.containers,
         outerListIndent: lineInList ? listIndent : null };
       paragraphOpen = false;
       return '';
@@ -182,7 +193,8 @@ function removeCode(markdown) {
         const terminator = special[1] === '<?' ? '?>' : special[1] === '<![CDATA[' ? ']]>' : '>';
         if (!container.content.includes(terminator, special[0].length)) {
           rawBlock = { terminator, quoteDepth: container.quoteDepth,
-            listIndent: container.listIndent, outerListIndent: listIndent };
+            listIndent: container.listIndent, containers: container.containers,
+            outerListIndent: listIndent };
         }
         paragraphOpen = false;
         return '';
@@ -194,7 +206,8 @@ function removeCode(markdown) {
         if (endOnBlank ||
             !new RegExp('</' + tag + '\\s*>', 'i').test(container.content.slice(rawOpen[0].length))) {
           rawBlock = { tag, endOnBlank, quoteDepth: container.quoteDepth,
-            listIndent: container.listIndent, outerListIndent: listIndent };
+            listIndent: container.listIndent, containers: container.containers,
+            outerListIndent: listIndent };
           rawBlock.pendingTag = htmlTagRanges(line).length ? null : line;
         }
         paragraphOpen = false;
@@ -286,7 +299,7 @@ function removeCode(markdown) {
         from = opener;
         comment = true;
         commentContainer = openerShape.quoteDepth || openerShape.listIndent || lineInList
-          ? { quoteDepth: openerShape.quoteDepth, listIndent: openerShape.listIndent,
+          ? { containers: openerShape.containers,
               outerListIndent: lineInList ? listIndent : null }
           : null;
       } else {
@@ -331,15 +344,14 @@ function headingSlug(heading, definedRefs = new Set()) {
   rendered += withoutTags.slice(cursor);
   rendered = rendered
     .replace(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g, (whole, label, id) =>
-      definedRefs.has(referenceLabel(id || label)) ? label : whole)
-    .replace(/\x01(\d+)\x02/g, (_match, index) => spans[Number(index)] || '');
+      definedRefs.has(referenceLabel(id || label)) ? label : whole);
   let uncertain = false;
   rendered = rendered.replace(/&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g, ref => {
     try { return decodeLinkEntities(ref); }
     catch { uncertain = true; return ''; }
   });
   if (uncertain) return null;
-  return rendered
+  return rendered.replace(/\x01(\d+)\x02/g, (_match, index) => spans[Number(index)] || '')
     .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
     .replace(/[\x60*_~]/g, '')
     .toLowerCase()
@@ -352,19 +364,42 @@ function markdownContainer(raw) {
   // Keep the opening container shape so HTML blocks stop masking when their
   // blockquote/list ends. Deep nesting exceeds this pilot's parser bound.
   let content = raw, quoteDepth = 0, listIndent = 0;
+  const containers = [];
   for (let hop = 0; hop < 4; hop++) {
     const before = content;
     const quote = /^ {0,3}>[ \t]?/.exec(content);
-    if (quote) { quoteDepth++; content = content.slice(quote[0].length); }
+    if (quote) {
+      quoteDepth++;
+      containers.push({ kind: 'quote' });
+      content = content.slice(quote[0].length);
+    }
     const list = /^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+/.exec(content);
-    if (list) { listIndent += list[0].length; content = content.slice(list[0].length); }
+    if (list) {
+      listIndent += list[0].length;
+      containers.push({ kind: 'list', indent: list[0].length });
+      content = content.slice(list[0].length);
+    }
     if (content === before) break;
   }
   if (/^ {0,3}(?:>|(?:[-+*]|\d{1,9}[.)])[ \t]+)/.test(content)) failParserBound();
-  return { content, quoteDepth, listIndent };
+  return { content, quoteDepth, listIndent, containers };
 }
 function headingContainerContent(raw) {
   return markdownContainer(raw).content;
+}
+function continuingHeadingContainer(shape, raw) {
+  let content = raw;
+  for (const part of shape.containers) {
+    if (part.kind === 'quote') {
+      const prefix = /^ {0,3}>[ \t]?/.exec(content);
+      if (!prefix) return { continues: false };
+      content = content.slice(prefix[0].length);
+    } else {
+      if (!content.startsWith(' '.repeat(part.indent))) return { continues: false };
+      content = content.slice(part.indent);
+    }
+  }
+  return { continues: true, content };
 }
 function headingsIn(text, original = text) {
   // Use masked text to decide which lines are headings, and the original
@@ -430,12 +465,20 @@ function headingsIn(text, original = text) {
       addSlug(source ? source[1] : atx[1]);
     } else if (i > 0 && /^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(line))) {
       const previous = lines[i - 1];
-      const previousContent = headingContainerContent(previous);
-      if (!/^[ \t]*$/.test(previousContent) && !/^ {0,3}#/.test(previousContent)) {
+      const previousShape = markdownContainer(previous);
+      const previousContent = previousShape.content;
+      const sameParagraph = candidate => {
+        const continuation = continuingHeadingContainer(previousShape, candidate);
+        return continuation.continues &&
+          (previousShape.containers.length || !markdownContainer(candidate).containers.length);
+      };
+      if (sameParagraph(line) && !/^[ \t]*$/.test(previousContent) &&
+          !/^ {0,3}#/.test(previousContent)) {
         // A setext heading spans the entire immediately preceding paragraph,
         // not just the final line above the underline.
         let begin = i - 1;
-        while (begin > 0 && !/^[ \t]*$/.test(headingContainerContent(lines[begin - 1])) &&
+        while (begin > 0 && sameParagraph(lines[begin - 1]) &&
+          !/^[ \t]*$/.test(headingContainerContent(lines[begin - 1])) &&
           !/^ {0,3}(?:#|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(headingContainerContent(lines[begin - 1])) &&
           !/^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(lines[begin - 1]))) begin--;
         addSlug(originalLines.slice(begin, i).map(x =>
@@ -1036,8 +1079,8 @@ function readAngleDestination(text, index, limit) {
         separatorExceeded(index + 1, limit, text);
         return null;
       }
-      if (text[index + 1] === '>') return null;
-      index += 2;
+      if (text[index + 1] === '>' || text[index + 1] === '\n') return null;
+      index += /[!-/:-@\[-`{-~]/.test(text[index + 1]) ? 2 : 1;
       continue;
     }
     if (text[index] === '\n' || text[index] === '<') return null;

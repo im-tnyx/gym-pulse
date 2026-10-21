@@ -87,6 +87,18 @@ function git(cwd, ...args) {
 
 const fixtures = [
   ...[
+    ['mixed list then quote fence ends with list', '- > ```md\n>   [old](Target.md)\n- > ```', false],
+    ['multiline script opener closes on completion line', '<script\n></script>\n[old](Target.md)', false],
+    ['setext paragraph stops at blockquote boundary', '[old](Target.md#foo)', false,
+      'Outside\n> Foo\n> ---\n'],
+    ['buffered HTML ID does not shift heading lines', '[old](Target.md#hello-there)', false,
+      '<div\nid="kept">\n\n# Hello `There`\n'],
+    ['many multiline tags stay inside scan budget', '[old](Target.md#kept)', false,
+      '<div id="kept">\n\n' + ('<div\n' + 'a\n'.repeat(1900) + '>\n\n').repeat(50)],
+    ['heading code span keeps entity literal', '[old](Target.md#amp)', false,
+      '# `&amp;`\n'],
+    ['escaped newline rejects angle destination fallback',
+      '[old](<x\\\n>)\n\n[old]: Target.md', false],
     ['blockquote fence ends before unquoted link', '> ```md\n[old](Target.md)\n> ```', false],
     ['blockquote fence masks quoted pseudo-link', '> ```md\n> [old](Target.md)\n> ```', true],
     ['list opening fence ends before outside link', '- ```md\n[old](Target.md)\n  ```', false],
