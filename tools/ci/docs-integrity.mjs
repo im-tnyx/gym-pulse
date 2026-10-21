@@ -121,17 +121,20 @@ function removeCode(markdown) {
     // indented code. Match fences after removing that active prefix.
     const lineInList = listIndent !== null && line.startsWith(' '.repeat(listIndent));
     const containerLine = lineInList ? line.slice(listIndent) : line;
-    const fence = containerLine.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    const container = markdownContainer(containerLine);
+    const fence = container.content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (comment && commentContainer &&
         !continuingContainer(commentContainer, containerLine, lineInList).continues) {
       comment = false;
       commentContainer = null;
     }
     if (fenced) {
-      if (!continuingContainer(fenced, containerLine, lineInList).continues) fenced = null;
+      const continuation = continuingContainer(fenced, containerLine, lineInList);
+      if (!continuation.continues) fenced = null;
       else {
-        if (fence && fence[1][0] === fenced.marker &&
-            fence[1].length >= fenced.count && /^[ \t]*$/.test(fence[2])) fenced = null;
+        const closer = continuation.content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+        if (closer && closer[1][0] === fenced.marker &&
+            closer[1].length >= fenced.count && /^[ \t]*$/.test(closer[2])) fenced = null;
         paragraphOpen = false;
         return '';
       }
@@ -148,6 +151,14 @@ function removeCode(markdown) {
           paragraphOpen = false;
           return '';
         }
+        if (rawBlock.pendingTag) {
+          rawBlock.pendingTag += '\n' + blockLine;
+          if (rawBlock.pendingTag.length > 4096) failParserBound();
+          const kept = idTagsOnly(rawBlock.pendingTag);
+          if (htmlTagRanges(rawBlock.pendingTag).length) rawBlock.pendingTag = null;
+          paragraphOpen = false;
+          return kept;
+        }
         if (rawBlock.terminator && blockLine.includes(rawBlock.terminator)) rawBlock = null;
         else if (!rawBlock.endOnBlank && !rawBlock.terminator &&
             new RegExp('</' + rawBlock.tag + '\\s*>', 'i').test(blockLine)) rawBlock = null;
@@ -158,7 +169,8 @@ function removeCode(markdown) {
     if (!comment && !inlineTicks && fence &&
         !(fence[1][0] === '`' && fence[2].includes('`'))) {
       fenced = { marker: fence[1][0], count: fence[1].length,
-        quoteDepth: 0, listIndent: 0, outerListIndent: lineInList ? listIndent : null };
+        quoteDepth: container.quoteDepth, listIndent: container.listIndent,
+        outerListIndent: lineInList ? listIndent : null };
       paragraphOpen = false;
       return '';
     }
@@ -183,6 +195,7 @@ function removeCode(markdown) {
             !new RegExp('</' + tag + '\\s*>', 'i').test(container.content.slice(rawOpen[0].length))) {
           rawBlock = { tag, endOnBlank, quoteDepth: container.quoteDepth,
             listIndent: container.listIndent, outerListIndent: listIndent };
+          rawBlock.pendingTag = htmlTagRanges(line).length ? null : line;
         }
         paragraphOpen = false;
         return idTagsOnly(line);
@@ -330,6 +343,7 @@ function headingSlug(heading, definedRefs = new Set()) {
     .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
     .replace(/[\x60*_~]/g, '')
     .toLowerCase()
+    .replace(/\t/g, ' ')
     .replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, '')
     .trim().replace(/ +/g, '-');
 }
@@ -414,16 +428,18 @@ function headingsIn(text, original = text) {
       const source = headingContainerContent(originalLines[i] || '')
         .match(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/);
       addSlug(source ? source[1] : atx[1]);
-    } else if (i > 0 && /^ {0,3}(?:=+|-+)[ \t]*$/.test(line)) {
+    } else if (i > 0 && /^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(line))) {
       const previous = lines[i - 1];
-      if (previous.trim() && !/^ {0,3}[#>]/.test(previous)) {
+      const previousContent = headingContainerContent(previous);
+      if (!/^[ \t]*$/.test(previousContent) && !/^ {0,3}#/.test(previousContent)) {
         // A setext heading spans the entire immediately preceding paragraph,
         // not just the final line above the underline.
         let begin = i - 1;
-        while (begin > 0 && lines[begin - 1].trim() &&
-          !/^ {0,3}(?:[#>]|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(lines[begin - 1]) &&
-          !/^ {0,3}(?:=+|-+)[ \t]*$/.test(lines[begin - 1])) begin--;
-        addSlug(originalLines.slice(begin, i).map(x => x.trim()).join(' '));
+        while (begin > 0 && !/^[ \t]*$/.test(headingContainerContent(lines[begin - 1])) &&
+          !/^ {0,3}(?:#|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(headingContainerContent(lines[begin - 1])) &&
+          !/^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(lines[begin - 1]))) begin--;
+        addSlug(originalLines.slice(begin, i).map(x =>
+          headingContainerContent(x).replace(/^[ \t]+|[ \t]+$/g, '')).join(' '));
       }
     }
     // Capture complete tag first, then find one valid quoted/unquoted ID.

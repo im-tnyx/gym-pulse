@@ -87,6 +87,21 @@ function git(cwd, ...args) {
 
 const fixtures = [
   ...[
+    ['blockquote fence ends before unquoted link', '> ```md\n[old](Target.md)\n> ```', false],
+    ['blockquote fence masks quoted pseudo-link', '> ```md\n> [old](Target.md)\n> ```', true],
+    ['list opening fence ends before outside link', '- ```md\n[old](Target.md)\n  ```', false],
+    ['multiline uppercase HTML ID remains an anchor', '[old](Target.md#kept)', false,
+      '<div\nID="kept">hi</div>\n'],
+    ['multiline lowercase HTML id remains an anchor', '[old](Target.md#kept)', false,
+      '<div\nid="kept">hi</div>\n'],
+    ['NBSP final setext text line keeps anchor', '[old](Target.md#foo)', false,
+      'Foo\n\u00a0\n---\n'],
+    ['blockquote setext underline keeps anchor', '[old](Target.md#foo)', false,
+      '> Foo\n> ---\n'],
+    ['list setext underline keeps anchor', '[old](Target.md#foo)', false,
+      '- Foo\n  ---\n'],
+    ['tab heading separator keeps hyphen', '[old](Target.md#hello-world)', false,
+      '# Hello\tWorld\n'],
     ['comment ends with its blockquote', '> <!--\n[old](Target.md)\n> -->', false],
     ['comment stays masked in blockquote', '> <!--\n> [old](Target.md)\n> -->', true],
     ['comment ends with its list', '- <!--\n[old](Target.md)\n  -->', false],
