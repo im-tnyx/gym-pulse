@@ -89,6 +89,7 @@ const fixtures = [
   ...[
     ['quoted heading interruption ends multiline code span', '> `code\n> # [old](Target.md)\n> code`', false],
     ['heading interruption ends quoted multiline code span', '> `code\n# [old](Target.md)\n> code`', false],
+    ['list boundary ends multiline code span', '- `code\n[old](Target.md)\ncode`', false],
     ['blockquote blank boundary ends multiline code span', '> `code\n> \n> [old](Target.md)\n> code`', false],
     ['balanced reference heading slug keeps nested label', '[old](Target.md#hello-there)', false,
       '# [Hello [there]][ref]\n\n[ref]: https://example.invalid\n'],

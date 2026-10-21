@@ -104,23 +104,25 @@ function removeCode(markdown) {
     }
     return null;
   }
-  function sameContainerShape(left, right) {
-    if (left.containers.length !== right.containers.length) return false;
-    return left.containers.every((part, index) =>
-      part.kind === right.containers[index].kind && part.indent === right.containers[index].indent);
-  }
   function isBlockInterruption(raw) {
     return /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|(?:[-*_][ \t]*){3,}$)/.test(raw);
   }
-  function laterClosingTicks(index, count, openerContainer) {
+  function laterClosingTicks(index, count, openerContainer, outerListIndent) {
     let inspected = 0;
     for (let j = index + 1; j < lines.length && j - index <= 32; j++) {
-      const candidateContainer = markdownContainer(lines[j]);
-      const candidate = candidateContainer.content;
+      const lineInList = outerListIndent !== null &&
+        lines[j].startsWith(' '.repeat(outerListIndent));
+      const containerLine = lineInList ? lines[j].slice(outerListIndent) : lines[j];
+      const continuation = continuingContainer(
+        { containers: openerContainer.containers, outerListIndent }, containerLine, lineInList);
+      // An inline code span cannot cross the blockquote/list container that
+      // owns its opener. In particular, a root-level line after a list item
+      // must remain visible to the deleted-target scan.
+      if (!continuation.continues) return false;
+      const candidate = continuation.content;
       // Inline code spans cannot cross a Markdown paragraph boundary.
       if (/^[ \t]*$/.test(candidate)) return false;
-      if (isBlockInterruption(candidate) ||
-          (!sameContainerShape(openerContainer, candidateContainer) && isBlockInterruption(lines[j]))) return false;
+      if (isBlockInterruption(candidate)) return false;
       inspected += candidate.length + 1;
       if (inspected > 8192) return false; // Do not suppress uncertain live links.
       // Do not mistake a later fenced code marker for an inline-code closer.
@@ -292,7 +294,8 @@ function removeCode(markdown) {
           visible += line.slice(from, tick.index) +
             ' '.repeat(closer.index + closer[0].length - tick.index);
           from = closer.index + closer[0].length;
-        } else if (laterClosingTicks(lineIndex, tick[0].length, container)) {
+        } else if (laterClosingTicks(lineIndex, tick[0].length, container,
+          lineInList ? listIndent : null)) {
           visible += line.slice(from, tick.index) + ' '.repeat(line.length - tick.index);
           inlineTicks = tick[0].length;
           break;
