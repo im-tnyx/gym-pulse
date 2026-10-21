@@ -107,13 +107,14 @@ function removeCode(markdown) {
   function laterClosingTicks(index, count) {
     let inspected = 0;
     for (let j = index + 1; j < lines.length && j - index <= 32; j++) {
+      const candidate = markdownContainer(lines[j]).content;
       // Inline code spans cannot cross a Markdown paragraph boundary.
-      if (/^[ \t]*$/.test(lines[j])) return false;
-      inspected += lines[j].length + 1;
+      if (/^[ \t]*$/.test(candidate)) return false;
+      inspected += candidate.length + 1;
       if (inspected > 8192) return false; // Do not suppress uncertain live links.
       // Do not mistake a later fenced code marker for an inline-code closer.
-      if (/^ {0,3}(?:`{3,}|~{3,})/.test(lines[j])) return false;
-      if (closingTicks(lines[j], 0, count)) return true;
+      if (/^ {0,3}(?:`{3,}|~{3,})/.test(candidate)) return false;
+      if (closingTicks(candidate, 0, count)) return true;
     }
     return false;
   }

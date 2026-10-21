@@ -87,6 +87,7 @@ function git(cwd, ...args) {
 
 const fixtures = [
   ...[
+    ['blockquote blank boundary ends multiline code span', '> `code\n> \n> [old](Target.md)\n> code`', false],
     ['balanced reference heading slug keeps nested label', '[old](Target.md#hello-there)', false,
       '# [Hello [there]][ref]\n\n[ref]: https://example.invalid\n'],
     ['blank boundary ends multiline code span', '`code\n\n[old](Target.md)\ncode`', false],
