@@ -406,7 +406,15 @@ const fixtures = [
     pass: true, markdownCount: 1 },
   { name: 'regular Markdown replaced by symlink preserves unanchored link', md: null, extra: 'typechange-unanchored',
     pass: true, markdownCount: 1 },
+  { name: 'regular Markdown replaced by text symlink breaks old anchor', md: null, extra: 'typechange-anchor-nonmarkdown',
+    pass: false, signal: 'invalid local link', markdownCount: 1 },
+  { name: 'repeated preserved symlink anchor stays within parse budget', md: null, extra: 'typechange-anchor-cached',
+    pass: true, markdownCount: 1, checkerTimeout: 15000 },
   { name: 'list item closes paragraph before reference definition', md: null, extra: 'deleted-ref-after-list',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'setext heading closes paragraph before reference definition', md: null, extra: 'deleted-ref-after-setext',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'empty ATX heading closes paragraph before reference definition', md: null, extra: 'deleted-ref-after-empty-atx',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'masked fence definition cannot change base heading anchor', md: null, extra: 'deleted-heading-masked-ref',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
@@ -572,6 +580,8 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'inactive outer link is not a deleted-target reference', md: null, extra: 'deleted-nested-outer-inactive',
     pass: true, markdownCount: 0 },
+  { name: 'undefined nested reference keeps outer link active', md: null, extra: 'deleted-nested-undefined-ref',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'image badge full reference detects deletion', md: null, extra: 'deleted-image-badge-ref',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'three nested destination parentheses remain a link', md: null, extra: 'deleted-dest-depth-3',
@@ -739,6 +749,8 @@ function executeFixture(test) {
       'deleted-setext-anchor': '# Consumer\n[old](Target.md#existing-heading)\n',
       'deleted-huge-anchored': '# Consumer\n[old](Target.md#existing)\n',
       'deleted-ref-after-list': '# Consumer\n- item\n[x]: Target.md\n\n[x]\n',
+      'deleted-ref-after-setext': 'Heading\n===\n[ref]: Target.md\n\n[ref]\n',
+      'deleted-ref-after-empty-atx': '#\n[ref]: Target.md\n\n[ref]\n',
       'deleted-heading-masked-ref': '# Consumer\n[old](Target.md#hellor)\n',
       'deleted-combining-anchor': '# Consumer\n[old](Target.md#e%CC%81)\n',
       'deleted-div-id': '# Consumer\n[old](Target.md#kept)\n',
@@ -790,6 +802,7 @@ function executeFixture(test) {
       'deleted-nested-brackets': '# Consumer\n[link [foo [bar]]](Target.md)\n',
       'deleted-nested-inner': '# Consumer\n[[inner](Target.md)](../README.md)\n',
       'deleted-nested-outer-inactive': '# Consumer\n[[inner](../README.md)](Target.md)\n',
+      'deleted-nested-undefined-ref': '# Consumer\n[[inner][missing]](Target.md)\n',
       'deleted-image-badge-ref': '# Consumer\n[![badge](https://example.invalid/badge.png)][ref]\n\n[ref]: Target.md\n',
       'deleted-dest-depth-3': '# Consumer\n[old](a(b(c(d))).md)\n',
     };
@@ -823,14 +836,19 @@ function executeFixture(test) {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '---\ntitle: x\n---\n# Real Heading\n');
     }
     if (['typechange-anchor-broken', 'typechange-anchor-preserved',
-         'typechange-unanchored'].includes(test.extra)) {
+          'typechange-unanchored', 'typechange-anchor-nonmarkdown',
+          'typechange-anchor-cached'].includes(test.extra)) {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Old\n');
-      fs.writeFileSync(path.join(root, 'docs', 'Other.md'),
-        test.extra === 'typechange-anchor-broken' ? '# New\n' : '# Old\n');
+      const replacement = test.extra === 'typechange-anchor-nonmarkdown' ? 'Other.txt' : 'Other.md';
+      fs.writeFileSync(path.join(root, 'docs', replacement),
+        test.extra === 'typechange-anchor-broken' || test.extra === 'typechange-anchor-nonmarkdown'
+          ? '# New\n' : '# Old\n' + (test.extra === 'typechange-anchor-cached' ? 'x'.repeat(690000) : ''));
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'),
         test.extra === 'typechange-unanchored'
           ? '# Consumer\n[old](Target.md)\n'
-          : '# Consumer\n[old](Target.md#old)\n');
+          : '# Consumer\n' + (test.extra === 'typechange-anchor-cached'
+            ? Array.from({ length: 90 }, () => '[old](Target.md#old)').join('\n') + '\n'
+            : '[old](Target.md#old)\n'));
     }
     // Some bypass scenarios require additional paths already present in BASE.
     const specialSymlinks = ['symlink-source-internal', 'symlink-source-outside', 'deleted-alias', 'deleted-alias-retarget', 'deleted-literal-alias', 'deleted-surviving-alias', 'deleted-entity-alias', 'deleted-entity-alias-unrelated'];
@@ -1088,10 +1106,12 @@ function executeFixture(test) {
     if (rawName) fs.rmSync(rawName);
     if (test.extra === 'renamed-inbound') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
     if (['typechange-anchor-broken', 'typechange-anchor-preserved',
-         'typechange-unanchored'].includes(test.extra)) {
+         'typechange-unanchored', 'typechange-anchor-nonmarkdown',
+         'typechange-anchor-cached'].includes(test.extra)) {
       fs.rmSync(path.join(root, 'docs', 'Target.md'));
       try {
-        fs.symlinkSync('Other.md', path.join(root, 'docs', 'Target.md'), 'file');
+        fs.symlinkSync(test.extra === 'typechange-anchor-nonmarkdown' ? 'Other.txt' : 'Other.md',
+          path.join(root, 'docs', 'Target.md'), 'file');
       } catch (error) {
         if (['EPERM', 'ENOSYS', 'EACCES', 'EOPNOTSUPP', 'ENOTSUP'].includes(error.code)) {
           return { skip: 'symlink creation unsupported on current host' };

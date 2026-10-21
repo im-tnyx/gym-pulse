@@ -350,7 +350,7 @@ function headingSlug(heading, definedRefs = new Set()) {
     tagEnd = tag.end;
   }
   withoutTags += protectedHeading.slice(tagEnd);
-  const scannedLinks = scanBracketLinks(withoutTags);
+  const scannedLinks = scanBracketLinks(withoutTags, [], false, definedRefs);
   const linkSyntax = [
     ...scannedLinks.inlines,
     ...scannedLinks.fullRefs.filter(link => definedRefs.has(referenceLabel(link.label))),
@@ -601,7 +601,7 @@ function checkLink(source, raw, line) {
   try {
     const resolved = localFile(rel), stat = fs.statSync(resolved);
     if (!stat.isFile() && !stat.isDirectory()) throw new Error('Not a file');
-    if (anchor && stat.isFile() && resolved.toLowerCase().endsWith('.md')) {
+    if (anchor && stat.isFile() && rel.toLowerCase().endsWith('.md')) {
       if (!headingsFor(resolved).has(anchor)) throw new Error('Missing Markdown anchor');
     } else if (anchor && stat.isDirectory()) throw new Error('Directory anchor unsupported');
   } catch { fail(safe(source) + ': invalid local link ' + safe(target) + at); }
@@ -617,6 +617,11 @@ const MAX_BASE_HEADING_PARSES = 64;
 const MAX_BASE_HEADING_PARSE_BYTES = 16 * 1024 * 1024;
 let baseHeadingParses = 0, baseHeadingParsedBytes = 0;
 const regularToSymlink = new Set();
+const mergeHeadingCache = new Map();
+const MAX_MERGE_HEADING_CACHE_FILES = 2;
+const MAX_MERGE_HEADING_PARSES = 64;
+const MAX_MERGE_HEADING_PARSE_BYTES = 16 * 1024 * 1024;
+let mergeHeadingParses = 0, mergeHeadingParsedBytes = 0;
 function mergeSymlinkTargetValid(relative, anchor) {
   try {
     // MERGE is untrusted: localFile() rejects symlinks escaping repository.
@@ -626,7 +631,18 @@ function mergeSymlinkTargetValid(relative, anchor) {
     if (!anchor) return true; // A surviving valid path is not deleted.
     // Only recognize a preserved anchor after bounded Markdown parsing.
     if (stat.size > 1024 * 1024) return false;
-    const headings = headingsFor(resolved);
+    let headings = mergeHeadingCache.get(resolved);
+    if (!headings) {
+      if (mergeHeadingParses >= MAX_MERGE_HEADING_PARSES ||
+          mergeHeadingParsedBytes + stat.size > MAX_MERGE_HEADING_PARSE_BYTES) return false;
+      mergeHeadingParses++;
+      mergeHeadingParsedBytes += stat.size;
+      headings = headingsFor(resolved);
+      if (mergeHeadingCache.size >= MAX_MERGE_HEADING_CACHE_FILES) {
+        mergeHeadingCache.delete(mergeHeadingCache.keys().next().value);
+      }
+      mergeHeadingCache.set(resolved, headings);
+    }
     return headings.has(anchor) || headings.has(UNCERTAIN_HEADING_ENTITY);
   } catch { return false; } // Missing, dangling, escaping or invalid target.
 }
@@ -1234,7 +1250,7 @@ function parseReferenceLabelAt(text, bracketIndex) {
 // One forward pass. Images do not deactivate an enclosing link, so a badge
 // wrapped in a link reports both destinations. A nested link keeps the inner
 // destination and leaves the outer brackets inactive.
-function scanBracketLinks(text, masks = [], collectShortcuts = false) {
+function scanBracketLinks(text, masks = [], collectShortcuts = false, definedRefs = null) {
   const inlines = [], fullRefs = [], shortcuts = [];
   const stack = [];
   for (let i = 0; i < text.length; i++) {
@@ -1269,12 +1285,15 @@ function scanBracketLinks(text, masks = [], collectShortcuts = false) {
       const ref = parseReferenceLabelAt(text, i + 1);
       if (ref) {
         const textLabel = text.slice(opener.index + 1, i);
+        const label = ref.label.length ? ref.label : textLabel;
         fullRefs.push({
           index, opener: opener.index,
-          label: ref.label.length ? ref.label : textLabel,
+          label,
           end: ref.end, suffixStart: i + 1,
         });
-        if (!image) for (const item of stack) if (!item.image) item.active = false;
+        if (!image && definedRefs?.has(referenceLabel(label))) {
+          for (const item of stack) if (!item.image) item.active = false;
+        }
         i = ref.end - 1;
         continue;
       }
@@ -1340,9 +1359,9 @@ function referenceDefinitionCanStart(text, offset, last) {
   if (last && start >= last.start && end <= last.end) return true;
   const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '');
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
-  if (/^[ \t]*$/.test(prior) || /^#{1,6}[ \t]+/.test(prior)) return true;
+  if (/^[ \t]*$/.test(prior) || /^#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
   if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior) || /^ {0,3}>/.test(text.slice(start, end))) return true;
-  if (/^(?:-{3,}|\*{3,}|_{3,})[ \t]*$/.test(prior)) return true;
+  if (/^(?:=+|-+|\*{3,}|_{3,})[ \t]*$/.test(prior)) return true;
   return /^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior);
 }
 
@@ -1522,7 +1541,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     .sort((a, b) => a.start - b.start || a.end - b.end);
   let maskEnd = 0;
   for (const range of masks) { maskEnd = Math.max(maskEnd, range.end); range.end = maskEnd; }
-  const structures = scanBracketLinks(text, masks, Boolean(deletedTargets));
+  const structures = scanBracketLinks(text, masks, Boolean(deletedTargets), new Set(refs.keys()));
   const inlineOpeners = new Set(), inlineRanges = [];
   for (const match of structures.inlines) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
