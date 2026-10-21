@@ -451,6 +451,10 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'setext heading comment content does not alter a baseline anchor', md: null, extra: 'deleted-heading-comment-setext',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'escaped heading comment opener preserves literal anchor text', md: null, extra: 'deleted-heading-escaped-comment',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'unclosed heading comment openers stay within the scanner budget', md: null, extra: 'deleted-heading-unclosed-comment-budget',
+    pass: false, signal: 'invalid local link', markdownCount: 0, checkerTimeout: 5000 },
   { name: 'masked fence definition cannot change base heading anchor', md: null, extra: 'deleted-heading-masked-ref',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'combining mark in GitHub heading anchor is preserved', md: null, extra: 'deleted-combining-anchor',
@@ -801,6 +805,8 @@ function executeFixture(test) {
       'deleted-ref-list-long-marker': '100. item\n\n     [ref]: Target.md\n\n     [ref]\n',
       'deleted-heading-comment-atx': '# Consumer\n[old](Target.md#helloworld)\n',
       'deleted-heading-comment-setext': '# Consumer\n[old](Target.md#helloworld)\n',
+      'deleted-heading-escaped-comment': '# Consumer\n[old](Target.md#hello--hidden--world)\n',
+      'deleted-heading-unclosed-comment-budget': '# Consumer\n[old](Target.md#hello)\n',
       'deleted-heading-masked-ref': '# Consumer\n[old](Target.md#hellor)\n',
       'deleted-combining-anchor': '# Consumer\n[old](Target.md#e%CC%81)\n',
       'deleted-div-id': '# Consumer\n[old](Target.md#kept)\n',
@@ -996,6 +1002,12 @@ function executeFixture(test) {
     if (test.extra === 'deleted-heading-comment-setext') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), 'Hello<!--hidden-->World\n---\n');
     }
+    if (test.extra === 'deleted-heading-escaped-comment') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Hello\\<!--hidden-->World\n');
+    }
+    if (test.extra === 'deleted-heading-unclosed-comment-budget') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Hello\n# ' + '<!--'.repeat(32000) + '\n');
+    }
     if (test.extra === 'deleted-heading-global-suffix') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Foo\n# Foo-1\n# Foo\n');
     }
@@ -1106,6 +1118,7 @@ function executeFixture(test) {
       'deleted-heading-ref', 'deleted-heading-ref-undefined',
       'deleted-ref-in-title', 'deleted-full-ref-in-title',
       'deleted-ref-after-list', 'deleted-heading-masked-ref',
+      'deleted-ref-after-setext', 'deleted-ref-after-empty-atx',
       'deleted-ref-after-bare-setext', 'deleted-multiline-code-html',
       'deleted-list-fence-following-link', 'deleted-raw-after-list',
       'deleted-ref-after-thematic', 'deleted-ref-after-inline-html-setext',
@@ -1114,6 +1127,8 @@ function executeFixture(test) {
       'deleted-nested-defined-shortcut',
       'deleted-label-escaped-blank', 'deleted-ref-list-long-marker',
       'deleted-heading-comment-atx', 'deleted-heading-comment-setext',
+      'deleted-heading-escaped-comment',
+      'deleted-heading-unclosed-comment-budget',
       'deleted-combining-anchor', 'deleted-div-id', 'deleted-multiline-setext',
       'deleted-heading-global-suffix', 'deleted-blockquote-heading',
       'deleted-list-heading', 'deleted-escaped-html-tag',
@@ -1134,6 +1149,7 @@ function executeFixture(test) {
       'deleted-title-suffix', 'deleted-title-paren-suffix',
       'deleted-image-badge', 'deleted-nested-brackets',
       'deleted-nested-inner', 'deleted-nested-outer-inactive',
+      'deleted-nested-undefined-ref',
       'deleted-image-badge-ref', 'deleted-dest-depth-3',
       'deleted-unclosed-inline-comment', 'deleted-indented-paragraph',
       'deleted-div-raw-block', 'deleted-div-block-then-link',

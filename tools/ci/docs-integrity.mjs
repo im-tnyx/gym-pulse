@@ -355,6 +355,24 @@ function removeCode(markdown) {
 }
 
 const UNCERTAIN_HEADING_ENTITY = '\0unknown-heading-entity';
+function stripClosedHeadingComments(text) {
+  // Keep escaped openers literal and scan each heading character at most once.
+  let visible = '', cursor = 0;
+  while (cursor < text.length) {
+    const opener = text.indexOf('<!--', cursor);
+    if (opener < 0) return visible + text.slice(cursor);
+    if (escapedAt(text, opener)) {
+      visible += text.slice(cursor, opener + 4);
+      cursor = opener + 4;
+      continue;
+    }
+    const closer = text.indexOf('-->', opener + 4);
+    if (closer < 0) return visible + text.slice(cursor);
+    visible += text.slice(cursor, opener);
+    cursor = closer + 3;
+  }
+  return visible;
+}
 function headingSlug(heading, definedRefs = new Set()) {
   // Parse markup before decoding entities: encoded brackets and angle signs
   // are rendered text, never structural link or HTML delimiters.
@@ -369,7 +387,7 @@ function headingSlug(heading, definedRefs = new Set()) {
   if (protectedHeading.includes('`') && /<[^>]*>/.test(protectedHeading)) return null;
   // Closed comments render no heading text. Code spans are already protected
   // by placeholders, so comment-shaped code content remains literal.
-  const withoutComments = protectedHeading.replace(/<!--(?:[^-]|-(?!->))*-->/g, '');
+  const withoutComments = stripClosedHeadingComments(protectedHeading);
   let withoutTags = '', tagEnd = 0;
   for (const tag of htmlTagRanges(withoutComments)) {
     withoutTags += withoutComments.slice(tagEnd, tag.start);
