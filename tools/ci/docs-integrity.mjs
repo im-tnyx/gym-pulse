@@ -105,7 +105,11 @@ function removeCode(markdown) {
     return null;
   }
   function isBlockInterruption(raw) {
-    return /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|(?:[-*_][ \t]*){3,}$)/.test(raw);
+    // Inline code cannot cross a paragraph boundary. Recognize the CommonMark
+    // HTML block openers handled below as well: even a same-line <script>
+    // opener/closer interrupts the preceding paragraph.
+    const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$))/i;
+    return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|(?:[-*_][ \t]*){3,}$|=+[ \t]*$)/.test(raw);
   }
   function laterClosingTicks(index, count, openerContainer, outerListIndent) {
     let inspected = 0;
@@ -136,17 +140,26 @@ function removeCode(markdown) {
     if (frontMatterEnd >= 0 && lineIndex <= frontMatterEnd) return '';
     // A list item's continuation indentation is a container prefix, not
     // indented code. Match fences after removing that active prefix.
-    const lineInList = listIndent !== null && line.startsWith(' '.repeat(listIndent));
+    const activeListIndent = listIndent;
+    const lineInList = activeListIndent !== null && line.startsWith(' '.repeat(activeListIndent));
     const containerLine = lineInList ? line.slice(listIndent) : line;
     const container = markdownContainer(containerLine);
+    // Remember a list marker before an early fence/raw-block return. Its
+    // continuation indentation belongs to later lines of the same item.
+    if (container.listIndent) {
+      listIndent = (lineInList ? activeListIndent : 0) + container.listIndent;
+    }
+    const continuationInput = state =>
+      state.outerListIndent === null && lineInList &&
+        state.containers?.some(part => part.kind === 'list') ? line : containerLine;
     const fence = container.content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (comment && commentContainer &&
-        !continuingContainer(commentContainer, containerLine, lineInList).continues) {
+        !continuingContainer(commentContainer, continuationInput(commentContainer), lineInList).continues) {
       comment = false;
       commentContainer = null;
     }
     if (fenced) {
-      const continuation = continuingContainer(fenced, containerLine, lineInList);
+      const continuation = continuingContainer(fenced, continuationInput(fenced), lineInList);
       if (!continuation.continues) fenced = null;
       else {
         const closer = continuation.content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
@@ -159,7 +172,8 @@ function removeCode(markdown) {
     if (rawBlock) {
       // A block opened inside a blockquote/list ends when that container
       // ends. Never mask a live link on the first line outside it.
-      const { continues, content: blockLine } = continuingContainer(rawBlock, containerLine, lineInList);
+      const { continues, content: blockLine } = continuingContainer(
+        rawBlock, continuationInput(rawBlock), lineInList);
       if (!continues) rawBlock = null;
       else {
         // Type 6 ends on a blank line; type 1 ends on its closing tag.
@@ -197,7 +211,7 @@ function removeCode(markdown) {
         !(fence[1][0] === '`' && fence[2].includes('`'))) {
       fenced = { marker: fence[1][0], count: fence[1].length,
         containers: container.containers,
-        outerListIndent: lineInList ? listIndent : null };
+        outerListIndent: lineInList ? activeListIndent : null };
       paragraphOpen = false;
       return '';
     }
@@ -210,7 +224,7 @@ function removeCode(markdown) {
         if (!container.content.includes(terminator, special[0].length)) {
           rawBlock = { terminator, quoteDepth: container.quoteDepth,
             listIndent: container.listIndent, containers: container.containers,
-            outerListIndent: listIndent };
+            outerListIndent: lineInList ? activeListIndent : null };
         }
         paragraphOpen = false;
         return '';
@@ -223,7 +237,7 @@ function removeCode(markdown) {
             !new RegExp('</' + tag + '\\s*>', 'i').test(container.content.slice(rawOpen[0].length))) {
           rawBlock = { tag, endOnBlank, quoteDepth: container.quoteDepth,
             listIndent: container.listIndent, containers: container.containers,
-            outerListIndent: listIndent };
+            outerListIndent: lineInList ? activeListIndent : null };
           rawBlock.pendingTag = htmlTagRanges(line).length ? null : line;
         }
         paragraphOpen = false;
@@ -295,7 +309,7 @@ function removeCode(markdown) {
             ' '.repeat(closer.index + closer[0].length - tick.index);
           from = closer.index + closer[0].length;
         } else if (laterClosingTicks(lineIndex, tick[0].length, container,
-          lineInList ? listIndent : null)) {
+          lineInList ? activeListIndent : null)) {
           visible += line.slice(from, tick.index) + ' '.repeat(line.length - tick.index);
           inlineTicks = tick[0].length;
           break;
@@ -317,7 +331,7 @@ function removeCode(markdown) {
         comment = true;
         commentContainer = openerShape.quoteDepth || openerShape.listIndent || lineInList
           ? { containers: openerShape.containers,
-              outerListIndent: lineInList ? listIndent : null }
+              outerListIndent: lineInList ? activeListIndent : null }
           : null;
       } else {
         visible += line.slice(from);
@@ -598,10 +612,21 @@ function checkLink(source, raw, line) {
   } catch { fail(safe(source) + ': invalid URL encoding' + at); return; }
   if (filePart.includes('\0') || filePart.includes('\\')) { fail(safe(source) + ': unsafe encoding' + at); return; }
   const rel = filePart ? path.join(path.dirname(source), filePart) : source;
+  const repoRelative = path.relative(root, path.resolve(root, rel)).split(path.sep).join('/');
+  // `refersToDeletedMarkdown()` reached this path after a MERGE anchor-cache
+  // miss exhausted its cumulative budget. Do not reparse that untrusted file
+  // through the ordinary link checker.
+  if (mergeHeadingBudgetExhaustedTargets.has(repoRelative)) {
+    fail(safe(source) + ': invalid local link ' + safe(target) + at);
+    return;
+  }
   try {
     const resolved = localFile(rel), stat = fs.statSync(resolved);
     if (!stat.isFile() && !stat.isDirectory()) throw new Error('Not a file');
-    if (anchor && stat.isFile() && rel.toLowerCase().endsWith('.md')) {
+    // Keep the lexical extension check for Markdown paths retargeted to text,
+    // while still validating a non-Markdown alias that resolves to Markdown.
+    if (anchor && stat.isFile() &&
+        (rel.toLowerCase().endsWith('.md') || resolved.toLowerCase().endsWith('.md'))) {
       if (!headingsFor(resolved).has(anchor)) throw new Error('Missing Markdown anchor');
     } else if (anchor && stat.isDirectory()) throw new Error('Directory anchor unsupported');
   } catch { fail(safe(source) + ': invalid local link ' + safe(target) + at); }
@@ -622,6 +647,7 @@ const MAX_MERGE_HEADING_CACHE_FILES = 2;
 const MAX_MERGE_HEADING_PARSES = 64;
 const MAX_MERGE_HEADING_PARSE_BYTES = 16 * 1024 * 1024;
 let mergeHeadingParses = 0, mergeHeadingParsedBytes = 0;
+const mergeHeadingBudgetExhaustedTargets = new Set();
 function mergeSymlinkTargetValid(relative, anchor) {
   try {
     // MERGE is untrusted: localFile() rejects symlinks escaping repository.
@@ -634,7 +660,10 @@ function mergeSymlinkTargetValid(relative, anchor) {
     let headings = mergeHeadingCache.get(resolved);
     if (!headings) {
       if (mergeHeadingParses >= MAX_MERGE_HEADING_PARSES ||
-          mergeHeadingParsedBytes + stat.size > MAX_MERGE_HEADING_PARSE_BYTES) return false;
+          mergeHeadingParsedBytes + stat.size > MAX_MERGE_HEADING_PARSE_BYTES) {
+        mergeHeadingBudgetExhaustedTargets.add(relative);
+        return false;
+      }
       mergeHeadingParses++;
       mergeHeadingParsedBytes += stat.size;
       headings = headingsFor(resolved);
@@ -881,8 +910,9 @@ function refersToDeletedMarkdown(source, raw, deleted) {
     if (!deleted.has(relative) || !baseTargetValid(relative, anchor)) return false;
     // A regular Markdown file replaced by a symlink is not a broken link
     // if the resolved MERGE file still contains the pre-existing anchor.
-    return !regularToSymlink.has(relative) ||
-      !mergeSymlinkTargetValid(relative, anchor);
+    if (!regularToSymlink.has(relative)) return true;
+    const mergeTargetValid = mergeSymlinkTargetValid(relative, anchor);
+    return !mergeTargetValid;
   });
 }
 
@@ -1361,7 +1391,20 @@ function referenceDefinitionCanStart(text, offset, last) {
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
   if (/^[ \t]*$/.test(prior) || /^#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
   if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior) || /^ {0,3}>/.test(text.slice(start, end))) return true;
-  if (/^(?:=+|-+|\*{3,}|_{3,})[ \t]*$/.test(prior)) return true;
+  if (/^(?:\*{3,}|_{3,})[ \t]*$/.test(prior)) return true;
+  if (/^(?:=+|-+)[ \t]*$/.test(prior)) {
+    // A setext underline only interrupts a paragraph when it actually has a
+    // preceding paragraph line. A leading `=` is ordinary text, so allowing a
+    // following definition would hide any Markdown-looking destination.
+    const headingEnd = start - 1;
+    if (headingEnd < 0) return false;
+    const headingStart = text.lastIndexOf('\n', headingEnd - 1) + 1;
+    const heading = text.slice(headingStart, headingEnd)
+      .replace(/^ {0,3}(?:>[ \t]?){0,4}/, '');
+    return Boolean(heading) && !/^[ \t]*$/.test(heading) &&
+      !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|`{3,}|~{3,}|<)/.test(heading) &&
+      !/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(heading);
+  }
   return /^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior);
 }
 
