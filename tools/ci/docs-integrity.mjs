@@ -367,12 +367,15 @@ function headingSlug(heading, definedRefs = new Set()) {
   // More complex code delimiters are outside this pilot's slug parser.
   // If they coincide with HTML-like text, avoid a false baseline-invalid.
   if (protectedHeading.includes('`') && /<[^>]*>/.test(protectedHeading)) return null;
+  // Closed comments render no heading text. Code spans are already protected
+  // by placeholders, so comment-shaped code content remains literal.
+  const withoutComments = protectedHeading.replace(/<!--(?:[^-]|-(?!->))*-->/g, '');
   let withoutTags = '', tagEnd = 0;
-  for (const tag of htmlTagRanges(protectedHeading)) {
-    withoutTags += protectedHeading.slice(tagEnd, tag.start);
+  for (const tag of htmlTagRanges(withoutComments)) {
+    withoutTags += withoutComments.slice(tagEnd, tag.start);
     tagEnd = tag.end;
   }
-  withoutTags += protectedHeading.slice(tagEnd);
+  withoutTags += withoutComments.slice(tagEnd);
   const scannedLinks = scanBracketLinks(withoutTags, [], false, definedRefs);
   const linkSyntax = [
     ...scannedLinks.inlines,
@@ -1292,14 +1295,17 @@ function parseReferenceLabelAt(text, bracketIndex) {
 // wrapped in a link reports both destinations. A nested link keeps the inner
 // destination and leaves the outer brackets inactive.
 function scanBracketLinks(text, masks = [], collectShortcuts = false, definedRefs = null) {
-  const inlines = [], fullRefs = [], shortcuts = [];
+  const inlines = [], fullRefs = [], unresolvedFullRefs = [], shortcuts = [];
   const stack = [];
   for (let i = 0; i < text.length; i++) {
     if (inRanges(masks, i)) continue;
     if (text[i] === '\n' && /^[ \t]*\n/.test(text.slice(i + 1))) {
       stack.length = 0; // Link labels cannot cross a paragraph boundary.
     }
-    if (text[i] === '\\') { i++; continue; }
+    if (text[i] === '\\') {
+      if (/[!-/:-@\[-`{-~]/.test(text[i + 1])) i++;
+      continue;
+    }
     if (text[i] === '[') {
       if (stack.length >= MAX_BRACKET_DEPTH) failParserBound();
       stack.push({ index: i, active: true,
@@ -1327,18 +1333,16 @@ function scanBracketLinks(text, masks = [], collectShortcuts = false, definedRef
       if (ref) {
         const textLabel = text.slice(opener.index + 1, i);
         const label = ref.label.length ? ref.label : textLabel;
+        const match = { index, opener: opener.index, label, end: ref.end, suffixStart: i + 1 };
         if (definedRefs?.has(referenceLabel(label))) {
-          fullRefs.push({
-            index, opener: opener.index,
-            label,
-            end: ref.end, suffixStart: i + 1,
-          });
+          fullRefs.push(match);
           if (!image) {
             for (const item of stack) if (!item.image) item.active = false;
           }
           i = ref.end - 1;
           continue;
         }
+        unresolvedFullRefs.push(match);
       }
     }
     if (collectShortcuts) {
@@ -1352,7 +1356,7 @@ function scanBracketLinks(text, masks = [], collectShortcuts = false, definedRef
       }
     }
   }
-  return { inlines, fullRefs, shortcuts };
+  return { inlines, fullRefs, unresolvedFullRefs, shortcuts };
 }
 
 function finishReferenceLine(text, index) {
@@ -1568,12 +1572,19 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   // Paragraph and first-definition rules still apply. A blank line or a
   // suffix after the title means this line is not a definition.
   const definitionPrefix = /^( {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
-  let scanAt = 0;
+  let scanAt = 0, listContinuationIndent = null;
   while (scanAt < text.length) {
     const lineBreak = text.indexOf('\n', scanAt);
     const lineLimit = lineBreak < 0 ? text.length : lineBreak;
-    const prefix = definitionPrefix.exec(text.slice(scanAt, lineLimit));
-    const bracket = scanAt + (prefix ? prefix[0].length : 0);
+    const line = text.slice(scanAt, lineLimit);
+    const list = /^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+/.exec(line);
+    if (list) listContinuationIndent = list[0].length;
+    else if (!/^[ \t]*$/.test(line) && listContinuationIndent !== null &&
+        !line.startsWith(' '.repeat(listContinuationIndent))) listContinuationIndent = null;
+    const continuation = !list && listContinuationIndent !== null &&
+      line.startsWith(' '.repeat(listContinuationIndent)) ? listContinuationIndent : 0;
+    const prefix = definitionPrefix.exec(line.slice(continuation));
+    const bracket = scanAt + continuation + (prefix ? prefix[0].length : 0);
     if (prefix && /^ {0,3}>/.test(text.slice(bracket, lineLimit))) failParserBound();
     let advanced = false;
     if (prefix && text[bracket] === '[' && !escapedAt(text, bracket) &&
@@ -1647,6 +1658,17 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     if (deletedTargets) used.add(id);
     else if (!refs.has(id)) {
       fail(safe(filename) + ': undefined reference label ' + safe(id) + ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
+    }
+  }
+  if (!deletedTargets) {
+    // Undefined full references are literal text for deletion matching, but
+    // changed Markdown keeps the existing syntax diagnostic.
+    for (const match of structures.unresolvedFullRefs) {
+      if (insideInline(match.index) || inRanges(inlineHtmlRanges, match.index) ||
+          inRanges(autolinkRanges, match.index) || escapedAt(text, match.opener)) continue;
+      const id = referenceLabel(match.label);
+      fail(safe(filename) + ': undefined reference label ' + safe(id) +
+        ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
     }
   }
   // An escaped '[' is not a reference opener, but it still consumes the

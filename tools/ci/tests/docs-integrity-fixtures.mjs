@@ -443,6 +443,14 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'defined nested shortcut deactivates its enclosing inline candidate', md: null, extra: 'deleted-nested-defined-shortcut',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'escaped newline ends a link label before an active deleted link', md: null, extra: 'deleted-label-escaped-blank',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'long ordered-list continuation activates a reference definition', md: null, extra: 'deleted-ref-list-long-marker',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'ATX heading comment content does not alter a baseline anchor', md: null, extra: 'deleted-heading-comment-atx',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'setext heading comment content does not alter a baseline anchor', md: null, extra: 'deleted-heading-comment-setext',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'masked fence definition cannot change base heading anchor', md: null, extra: 'deleted-heading-masked-ref',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'combining mark in GitHub heading anchor is preserved', md: null, extra: 'deleted-combining-anchor',
@@ -789,6 +797,10 @@ function executeFixture(test) {
       'deleted-title-escaped-blank': '# Consumer\n[x](../README.md "title\\\n\n[old](Target.md)\n")\n',
       'deleted-undefined-full-suffix-inline': '# Consumer\n[x][old](Target.md)\n',
       'deleted-nested-defined-shortcut': '# Consumer\n[[inner]](../README.md)\n\n[inner]: Target.md\n',
+      'deleted-label-escaped-blank': '# Consumer\n[x\\\n\nz](../README.md "title [old](Target.md)")\n',
+      'deleted-ref-list-long-marker': '100. item\n\n     [ref]: Target.md\n\n     [ref]\n',
+      'deleted-heading-comment-atx': '# Consumer\n[old](Target.md#helloworld)\n',
+      'deleted-heading-comment-setext': '# Consumer\n[old](Target.md#helloworld)\n',
       'deleted-heading-masked-ref': '# Consumer\n[old](Target.md#hellor)\n',
       'deleted-combining-anchor': '# Consumer\n[old](Target.md#e%CC%81)\n',
       'deleted-div-id': '# Consumer\n[old](Target.md#kept)\n',
@@ -978,6 +990,12 @@ function executeFixture(test) {
     if (test.extra === 'deleted-multiline-setext') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), 'Foo\nBar\n---\n');
     }
+    if (test.extra === 'deleted-heading-comment-atx') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Hello<!--hidden-->World\n');
+    }
+    if (test.extra === 'deleted-heading-comment-setext') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), 'Hello<!--hidden-->World\n---\n');
+    }
     if (test.extra === 'deleted-heading-global-suffix') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Foo\n# Foo-1\n# Foo\n');
     }
@@ -1094,6 +1112,8 @@ function executeFixture(test) {
       'deleted-fenced-list-indent', 'deleted-html-attribute-comment',
       'deleted-title-escaped-blank', 'deleted-undefined-full-suffix-inline',
       'deleted-nested-defined-shortcut',
+      'deleted-label-escaped-blank', 'deleted-ref-list-long-marker',
+      'deleted-heading-comment-atx', 'deleted-heading-comment-setext',
       'deleted-combining-anchor', 'deleted-div-id', 'deleted-multiline-setext',
       'deleted-heading-global-suffix', 'deleted-blockquote-heading',
       'deleted-list-heading', 'deleted-escaped-html-tag',
