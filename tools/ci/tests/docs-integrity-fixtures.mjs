@@ -87,6 +87,9 @@ function git(cwd, ...args) {
 
 const fixtures = [
   ...[
+    ['balanced reference heading slug keeps nested label', '[old](Target.md#hello-there)', false,
+      '# [Hello [there]][ref]\n\n[ref]: https://example.invalid\n'],
+    ['blank boundary ends multiline code span', '`code\n\n[old](Target.md)\ncode`', false],
     ['mixed list then quote fence ends with list', '- > ```md\n>   [old](Target.md)\n- > ```', false],
     ['multiline script opener closes on completion line', '<script\n></script>\n[old](Target.md)', false],
     ['setext paragraph stops at blockquote boundary', '[old](Target.md#foo)', false,

@@ -107,6 +107,8 @@ function removeCode(markdown) {
   function laterClosingTicks(index, count) {
     let inspected = 0;
     for (let j = index + 1; j < lines.length && j - index <= 32; j++) {
+      // Inline code spans cannot cross a Markdown paragraph boundary.
+      if (/^[ \t]*$/.test(lines[j])) return false;
       inspected += lines[j].length + 1;
       if (inspected > 8192) return false; // Do not suppress uncertain live links.
       // Do not mistake a later fenced code marker for an inline-code closer.
@@ -333,18 +335,19 @@ function headingSlug(heading, definedRefs = new Set()) {
     tagEnd = tag.end;
   }
   withoutTags += protectedHeading.slice(tagEnd);
-  const linkSyntax = scanBracketLinks(withoutTags).inlines
-    .flatMap(link => [{ start: link.opener, end: link.opener + 1 },
-      { start: link.labelEnd, end: link.end }]).sort((a, b) => a.start - b.start);
+  const scannedLinks = scanBracketLinks(withoutTags);
+  const linkSyntax = [
+    ...scannedLinks.inlines,
+    ...scannedLinks.fullRefs.filter(link => definedRefs.has(referenceLabel(link.label))),
+  ].flatMap(link => [{ start: link.opener, end: link.opener + 1 },
+    { start: link.labelEnd ?? link.suffixStart - 1, end: link.end }])
+    .sort((a, b) => a.start - b.start);
   let rendered = '', cursor = 0;
   for (const range of linkSyntax) {
     if (range.start > cursor) rendered += withoutTags.slice(cursor, range.start);
     cursor = Math.max(cursor, range.end);
   }
   rendered += withoutTags.slice(cursor);
-  rendered = rendered
-    .replace(/!?\[([^\]\n]+)\]\[([^\]\n]*)\]/g, (whole, label, id) =>
-      definedRefs.has(referenceLabel(id || label)) ? label : whole);
   let uncertain = false;
   rendered = rendered.replace(/&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g, ref => {
     try { return decodeLinkEntities(ref); }
