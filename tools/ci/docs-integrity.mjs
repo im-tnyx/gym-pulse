@@ -144,11 +144,14 @@ function removeCode(markdown) {
     const lineInList = activeListIndent !== null && line.startsWith(' '.repeat(activeListIndent));
     const containerLine = lineInList ? line.slice(listIndent) : line;
     const container = markdownContainer(containerLine);
-    // Remember a list marker before an early fence/raw-block return. Its
-    // continuation indentation belongs to later lines of the same item.
-    if (container.listIndent) {
-      listIndent = (lineInList ? activeListIndent : 0) + container.listIndent;
-    }
+    // Apply this only when opening a new container below. List-like text in
+    // an existing fence/raw block/comment is literal and must not mutate the
+    // outer list continuation state.
+    const updateListIndent = () => {
+      if (container.listIndent) {
+        listIndent = (lineInList ? activeListIndent : 0) + container.listIndent;
+      }
+    };
     const continuationInput = state =>
       state.outerListIndent === null && lineInList &&
         state.containers?.some(part => part.kind === 'list') ? line : containerLine;
@@ -209,6 +212,7 @@ function removeCode(markdown) {
     }
     if (!comment && !inlineTicks && fence &&
         !(fence[1][0] === '`' && fence[2].includes('`'))) {
+      updateListIndent();
       fenced = { marker: fence[1][0], count: fence[1].length,
         containers: container.containers,
         outerListIndent: lineInList ? activeListIndent : null };
@@ -216,6 +220,7 @@ function removeCode(markdown) {
       return '';
     }
     if (!comment && !inlineTicks) {
+      updateListIndent();
       const container = markdownContainer(containerLine);
       const special = /^ {0,3}(<\?|<!\[CDATA\[|<![A-Z])/.exec(
         container.content);
@@ -253,6 +258,8 @@ function removeCode(markdown) {
     }
 
     let visible = '', from = 0;
+    const inlineTagRanges = htmlTagRanges(line);
+    const insideInlineTag = index => inRanges(inlineTagRanges, index);
     // Cache the next unescaped backtick run and comment opener. Recomputing
     // either from every comment would rescan the same suffix repeatedly.
     let cachedTick, cachedTickFrom = -1, cachedOpener = -1, cachedOpenerFrom = Infinity;
@@ -263,7 +270,7 @@ function removeCode(markdown) {
       runs.lastIndex = startAt;
       let run;
       while ((run = runs.exec(line))) {
-        if (!escapedAt(line, run.index)) {
+        if (!escapedAt(line, run.index) && !insideInlineTag(run.index)) {
           cachedTick = run;
           cachedTickFrom = startAt;
           return run;
@@ -278,7 +285,9 @@ function removeCode(markdown) {
         return cachedOpener;
       }
       let opener = line.indexOf('<!--', startAt);
-      while (opener >= 0 && escapedAt(line, opener)) opener = line.indexOf('<!--', opener + 4);
+      while (opener >= 0 && (escapedAt(line, opener) || insideInlineTag(opener))) {
+        opener = line.indexOf('<!--', opener + 4);
+      }
       cachedOpener = opener;
       cachedOpenerFrom = startAt;
       return opener;
@@ -1198,7 +1207,9 @@ function readLinkTitle(text, index, limit) {
         separatorExceeded(index + 1, limit, text);
         return null;
       }
-      index += 2;
+      // Only ASCII punctuation is escapable. In particular, do not skip a
+      // following newline before the blank-paragraph boundary check.
+      index += /[!-/:-@\[-`{-~]/.test(text[index + 1]) ? 2 : 1;
       continue;
     }
     if (text[index] === '\n') {
@@ -1316,16 +1327,18 @@ function scanBracketLinks(text, masks = [], collectShortcuts = false, definedRef
       if (ref) {
         const textLabel = text.slice(opener.index + 1, i);
         const label = ref.label.length ? ref.label : textLabel;
-        fullRefs.push({
-          index, opener: opener.index,
-          label,
-          end: ref.end, suffixStart: i + 1,
-        });
-        if (!image && definedRefs?.has(referenceLabel(label))) {
-          for (const item of stack) if (!item.image) item.active = false;
+        if (definedRefs?.has(referenceLabel(label))) {
+          fullRefs.push({
+            index, opener: opener.index,
+            label,
+            end: ref.end, suffixStart: i + 1,
+          });
+          if (!image) {
+            for (const item of stack) if (!item.image) item.active = false;
+          }
+          i = ref.end - 1;
+          continue;
         }
-        i = ref.end - 1;
-        continue;
       }
     }
     if (collectShortcuts) {
@@ -1333,6 +1346,9 @@ function scanBracketLinks(text, masks = [], collectShortcuts = false, definedRef
       if (shortcut?.end === i + 1) {
         if (shortcuts.length >= 10000) failParserBound();
         shortcuts.push({ index, opener: opener.index, label: shortcut.label, end: i + 1 });
+        if (!image && definedRefs?.has(referenceLabel(shortcut.label))) {
+          for (const item of stack) if (!item.image) item.active = false;
+        }
       }
     }
   }
@@ -1391,7 +1407,7 @@ function referenceDefinitionCanStart(text, offset, last) {
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
   if (/^[ \t]*$/.test(prior) || /^#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
   if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior) || /^ {0,3}>/.test(text.slice(start, end))) return true;
-  if (/^(?:\*{3,}|_{3,})[ \t]*$/.test(prior)) return true;
+  if (/^(?:\*{3,}|_{3,}|-{3,})[ \t]*$/.test(prior)) return true;
   if (/^(?:=+|-+)[ \t]*$/.test(prior)) {
     // A setext underline only interrupts a paragraph when it actually has a
     // preceding paragraph line. A leading `=` is ordinary text, so allowing a
@@ -1401,8 +1417,10 @@ function referenceDefinitionCanStart(text, offset, last) {
     const headingStart = text.lastIndexOf('\n', headingEnd - 1) + 1;
     const heading = text.slice(headingStart, headingEnd)
       .replace(/^ {0,3}(?:>[ \t]?){0,4}/, '');
+    const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$))/i;
     return Boolean(heading) && !/^[ \t]*$/.test(heading) &&
-      !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|`{3,}|~{3,}|<)/.test(heading) &&
+      !htmlBlock.test(heading) &&
+      !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|`{3,}|~{3,})/.test(heading) &&
       !/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(heading);
   }
   return /^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior);
