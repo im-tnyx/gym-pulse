@@ -61,7 +61,7 @@ function removeCode(markdown) {
       }
     }
   }
-  let fenced = null, comment = false, commentContainer = null;
+  let fenced = null, comment = false, commentContainer = null, commentIsBlock = false;
   let rawBlock = null, listIndent = null, inlineTicks = 0;
   let pendingHtmlScanBytes = 0;
   let paragraphOpen = false;
@@ -111,6 +111,25 @@ function removeCode(markdown) {
     const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$))/i;
     return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|(?:[-*_][ \t]*){3,}$|=+[ \t]*$)/.test(raw);
   }
+  function laterCommentCloserInline(index, openerContainer, outerListIndent) {
+    let inspected = 0;
+    for (let j = index + 1; j < lines.length && j - index <= 32; j++) {
+      const lineInList = outerListIndent !== null &&
+        lines[j].startsWith(' '.repeat(outerListIndent));
+      const containerLine = lineInList ? lines[j].slice(outerListIndent) : lines[j];
+      const continuation = continuingContainer(
+        { containers: openerContainer.containers, outerListIndent }, containerLine, lineInList);
+      if (!continuation.continues) return false;
+      const candidate = continuation.content;
+      if (/^[ \t]*$/.test(candidate)) return false;
+      if (isBlockInterruption(candidate)) return false;
+      inspected += candidate.length + 1;
+      if (inspected > 8192) return false;
+      if (candidate.includes('-->')) return true;
+    }
+    return false;
+  }
+
   function laterClosingTicks(index, count, openerContainer, outerListIndent) {
     let inspected = 0;
     for (let j = index + 1; j < lines.length && j - index <= 32; j++) {
@@ -156,7 +175,16 @@ function removeCode(markdown) {
       state.outerListIndent === null && lineInList &&
         state.containers?.some(part => part.kind === 'list') ? line : containerLine;
     const fence = container.content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
-    if (comment && commentContainer &&
+    if (comment && !commentIsBlock) {
+      const continuation = continuingContainer(
+        commentContainer ? commentContainer : { containers: [] },
+        lineInList && commentContainer ? line.slice(activeListIndent) : line, lineInList);
+      if (!continuation.continues || /^[ \t]*$/.test(continuation.content) ||
+          isBlockInterruption(continuation.content)) {
+        comment = false;
+        commentContainer = null;
+      }
+    } else if (comment && commentContainer &&
         !continuingContainer(commentContainer, continuationInput(commentContainer), lineInList).continues) {
       comment = false;
       commentContainer = null;
@@ -234,7 +262,7 @@ function removeCode(markdown) {
         paragraphOpen = false;
         return '';
       }
-      const rawOpen = container.content.match(/^ {0,3}<(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)/i);
+      const rawOpen = container.content.match(/^ {0,3}<\/?(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)/i);
       if (rawOpen) {
         const tag = rawOpen[1].toLowerCase();
         const endOnBlank = !/^(?:pre|script|style|textarea)$/.test(tag);
@@ -332,7 +360,8 @@ function removeCode(markdown) {
         const openerShape = markdownContainer(containerLine);
         const blockStart = /^ {0,3}<!--/.test(openerShape.content);
         // Unclosed inline opener is literal text; unclosed block opener masks.
-        if (!blockStart && !laterCommentCloser[lineIndex]) {
+        if (!blockStart && !laterCommentCloserInline(lineIndex, openerShape,
+          lineInList ? activeListIndent : null)) {
           visible += line.slice(from, opener + 4);
           from = opener + 4;
           continue;
@@ -340,6 +369,7 @@ function removeCode(markdown) {
         visible += line.slice(from, opener);
         from = opener;
         comment = true;
+        commentIsBlock = blockStart;
         commentContainer = openerShape.quoteDepth || openerShape.listIndent || lineInList
           ? { containers: openerShape.containers,
               outerListIndent: lineInList ? activeListIndent : null }
@@ -677,6 +707,14 @@ const NAMED_DESTINATION_ENTITIES = Object.freeze({
   eacute: 'é', Eacute: 'É', copy: '©', reg: '®', trade: '™', hellip: '…', mdash: '—', ndash: '–',
   euro: '€', pound: '£', yen: '¥', cent: '¢', bull: '•', times: '×', divide: '÷',
 });
+const NUMERIC_ENTITY_REPLACEMENTS = Object.freeze({
+  0x80: '\u20ac', 0x82: '\u201a', 0x83: '\u0192', 0x84: '\u201e', 0x85: '\u2026',
+  0x86: '\u2020', 0x87: '\u2021', 0x88: '\u02c6', 0x89: '\u2030', 0x8a: '\u0160',
+  0x8b: '\u2039', 0x8c: '\u0152', 0x8e: '\u017d', 0x91: '\u2018', 0x92: '\u2019',
+  0x93: '\u201c', 0x94: '\u201d', 0x95: '\u2022', 0x96: '\u2013', 0x97: '\u2014',
+  0x98: '\u02dc', 0x99: '\u2122', 0x9a: '\u0161', 0x9b: '\u203a', 0x9c: '\u0153',
+  0x9e: '\u017e', 0x9f: '\u0178',
+});
 function decodeLinkEntities(value) {
   return value.replace(/&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g, entity => {
     const token = entity.slice(1, -1);
@@ -685,6 +723,12 @@ function decodeLinkEntities(value) {
       const number = Number.parseInt(token.slice(hex ? 2 : 1), hex ? 16 : 10);
       if (!Number.isSafeInteger(number) || number < 1 || number > 0x10ffff ||
           (number >= 0xd800 && number <= 0xdfff)) {
+        throw new Error('Unsupported numeric HTML entity; fail closed');
+      }
+      if (Object.hasOwn(NUMERIC_ENTITY_REPLACEMENTS, number)) {
+        return NUMERIC_ENTITY_REPLACEMENTS[number];
+      }
+      if (number >= 0x80 && number <= 0x9f) {
         throw new Error('Unsupported numeric HTML entity; fail closed');
       }
       return String.fromCodePoint(number);
@@ -805,7 +849,7 @@ function mergeSymlinkTargetValid(relative, anchor) {
       }
       mergeHeadingCache.set(resolved, headings);
     }
-    return headings.has(anchor) || headings.has(UNCERTAIN_HEADING_ENTITY);
+    return headings.has(anchor);
   } catch { return false; } // Missing, dangling, escaping or invalid target.
 }
 const baseTargetInProgress = new Set();

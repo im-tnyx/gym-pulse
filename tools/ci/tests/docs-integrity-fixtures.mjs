@@ -195,6 +195,12 @@ const fixtures = [
       '[old](Target.md#ab)', false, '# A\\\\&amp;B\n'],
     ['review: triple-escaped backslash before entity preserves literal ampersand',
       '[old](Target.md#aampb)', false, '# A\\\\\\&amp;B\n'],
+    ['review: unclosed inline comment before blank line does not hide link',
+      'text <!--\n\n[old](Target.md)\n-->\n', false],
+    ['review: closing HTML block tag masks until blank line',
+      '</div>\n[old](Target.md)\n', true],
+    ['review: numeric character reference maps to target filename',
+      '[old](Target&#128;.md)\n[old2](Target&#x80;.md)\n', false, null, null, 'Target€.md'],
     ['quoted heading interruption ends multiline code span', '> `code\n> # [old](Target.md)\n> code`', false],
     ['heading interruption ends quoted multiline code span', '> `code\n# [old](Target.md)\n> code`', false],
     ['list boundary ends multiline code span', '- `code\n[old](Target.md)\ncode`', false],
@@ -529,6 +535,8 @@ const fixtures = [
   { name: 'regular Markdown replaced by symlink preserves unanchored link', md: null, extra: 'typechange-unanchored',
     pass: true, markdownCount: 1 },
   { name: 'regular Markdown replaced by text symlink breaks old anchor', md: null, extra: 'typechange-anchor-nonmarkdown',
+    pass: false, signal: 'invalid local link', markdownCount: 1 },
+  { name: 'regular Markdown replaced by symlink with uncertain heading breaks old anchor', md: null, extra: 'typechange-anchor-uncertain',
     pass: false, signal: 'invalid local link', markdownCount: 1 },
   { name: 'non-Markdown symlink alias still validates resolved Markdown anchor',
     md: '# New\n[broken](Alias.txt#absent)\n', extra: 'alias-text-to-markdown-anchor',
@@ -1015,7 +1023,8 @@ function executeFixture(test) {
     }
     if (['typechange-anchor-broken', 'typechange-anchor-preserved',
           'typechange-unanchored', 'typechange-anchor-nonmarkdown',
-          'typechange-anchor-cached', 'typechange-anchor-budget'].includes(test.extra)) {
+          'typechange-anchor-cached', 'typechange-anchor-budget',
+          'typechange-anchor-uncertain'].includes(test.extra)) {
       if (test.extra === 'typechange-anchor-budget') {
         for (let n = 0; n < 3; n++) {
           fs.writeFileSync(path.join(root, 'docs', `Target-${n}.md`), '# Old\n');
@@ -1025,10 +1034,10 @@ function executeFixture(test) {
           Array.from({ length: 90 }, (_, n) => `[old](Target-${n % 3}.md#old)`).join('\n') + '\n');
       } else {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Old\n');
-      const replacement = test.extra === 'typechange-anchor-nonmarkdown' ? 'Other.txt' : 'Other.md';
+      const replacement = (test.extra === 'typechange-anchor-nonmarkdown' || test.extra === 'typechange-anchor-uncertain') ? 'Other.txt' : 'Other.md';
       fs.writeFileSync(path.join(root, 'docs', replacement),
         test.extra === 'typechange-anchor-broken' || test.extra === 'typechange-anchor-nonmarkdown'
-          ? '# New\n' : '# Old\n' + (test.extra === 'typechange-anchor-cached' ? 'x'.repeat(690000) : ''));
+          ? '# New\n' : test.extra === 'typechange-anchor-uncertain' ? '# &Aopf;\n' : '# Old\n' + (test.extra === 'typechange-anchor-cached' ? 'x'.repeat(690000) : ''));
       fs.writeFileSync(path.join(root, 'docs', 'consumer.md'),
         test.extra === 'typechange-unanchored'
           ? '# Consumer\n[old](Target.md)\n'
@@ -1320,7 +1329,8 @@ function executeFixture(test) {
     if (test.extra === 'renamed-inbound') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
     if (['typechange-anchor-broken', 'typechange-anchor-preserved',
          'typechange-unanchored', 'typechange-anchor-nonmarkdown',
-         'typechange-anchor-cached', 'typechange-anchor-budget'].includes(test.extra)) {
+         'typechange-anchor-cached', 'typechange-anchor-budget',
+         'typechange-anchor-uncertain'].includes(test.extra)) {
       try {
         if (test.extra === 'typechange-anchor-budget') {
           for (let n = 0; n < 3; n++) {
@@ -1329,7 +1339,7 @@ function executeFixture(test) {
           }
         } else {
           fs.rmSync(path.join(root, 'docs', 'Target.md'));
-          fs.symlinkSync(test.extra === 'typechange-anchor-nonmarkdown' ? 'Other.txt' : 'Other.md',
+          fs.symlinkSync((test.extra === 'typechange-anchor-nonmarkdown' || test.extra === 'typechange-anchor-uncertain') ? 'Other.txt' : 'Other.md',
             path.join(root, 'docs', 'Target.md'), 'file');
         }
       } catch (error) {
