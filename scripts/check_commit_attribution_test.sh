@@ -159,6 +159,10 @@ run_case fail "AI trailer mixed among human co-authors" \
 run_case fail "AI co-author after a patch-style --- divider" \
   "$(printf 'feat: x\n\nBody.\n\n---\n\nCo-Authored-By: Claude <noreply@anthropic.com>')"
 
+# --- FAIL: original reviewer repro with Codex after the same divider ---
+run_case fail "Codex co-author after a patch-style --- divider" \
+  "$(printf 'feat: x\n\nBody.\n\n---\n\nCo-Authored-By: Codex <codex@openai.com>')"
+
 # --- PASS: an ordinary human co-author after the same divider is permitted ---
 run_case pass "human co-author after a patch-style --- divider" \
   "$(printf 'feat: x\n\nBody.\n\n---\n\nCo-Authored-By: Jane Developer <jane@example.com>')"
