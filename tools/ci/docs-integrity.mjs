@@ -503,8 +503,11 @@ function headingSlug(heading, definedRefs = new Set()) {
   }
   rendered += withoutTags.slice(cursor);
   let uncertain = false;
-  rendered = rendered.replace(/&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g, ref => {
-    try { return decodeLinkEntities(ref); }
+  // Escapes and entities are one token stream; an escaped ampersand ('\&') must
+  // not be decoded as an HTML entity delimiter.
+  rendered = rendered.replace(/\\([!-/:-@\[-`{-~ ])|&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g, (match, escaped) => {
+    if (escaped !== undefined) return match;
+    try { return decodeLinkEntities(match); }
     catch { uncertain = true; return ''; }
   });
   if (uncertain) return null;
