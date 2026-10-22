@@ -1,0 +1,56 @@
+name: Commit attribution guard
+
+# Inspect PR commit metadata using trusted code from main.
+# Never execute or check out code from the pull request head.
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gym-pulse-attribution-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  attribution-guard:
+    name: gym-pulse-ai-attribution-guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out trusted base only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+
+      - name: Run trusted attribution regression fixtures
+        run: bash scripts/check_commit_attribution_test.sh
+
+      - name: Fetch PR commits as Git objects only
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:refs/remotes/pull/${PR_NUMBER}/head"
+          fetched_head_sha="$(git rev-parse "refs/remotes/pull/${PR_NUMBER}/head")"
+          if [ "${fetched_head_sha}" != "${EXPECTED_HEAD_SHA}" ]; then
+            echo 'PR head SHA changed during attribution validation' >&2
+            exit 2
+          fi
+
+      - name: Reject prohibited AI co-author trailers
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          bash scripts/check_commit_attribution.sh "$BASE_SHA" "$HEAD_SHA"
