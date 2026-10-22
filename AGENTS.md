@@ -51,3 +51,11 @@ Before proposing or editing anything, consult only the relevant live sources:
 - [Issue #6 — Copilot instructions, depends on this guide](https://github.com/im-tnyx/gym-pulse/issues/6)
 
 Review the live issue/ADR status before relying on any snapshot above.
+
+## AI Commit Attribution Policy
+
+- AI coding agents (including Codex, Claude Code, Copilot, Cursor, and similar tools) must **not** append their identities as `Co-Authored-By` trailers in Git commits.
+- Do not add an AI co-author automatically, invent a human co-author, or manipulate attribution to evade the check. Preserve the real human author and legitimate human co-authors.
+- Before opening a PR, ensure each commit passes `scripts/check_commit_attribution.sh` and the fixture suite `scripts/check_commit_attribution_test.sh`.
+- `.github/workflows/commit-attribution-guard.yml` checks PR commit messages with code from the trusted base branch. Do not bypass or weaken it.
+- This CI check is advisory until GitHub branch protection actually requires it. A green or failed check alone is not a guaranteed merge or direct-push gate in a GitHub Free private repository.
