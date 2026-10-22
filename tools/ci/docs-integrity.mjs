@@ -411,10 +411,9 @@ function protectHeadingCode(heading, spans) {
       if (escapedAt(heading, opener)) continue;
       if (match[0] === '<!--') {
         const closer = heading.indexOf('-->', opener + 4);
-        if (closer >= 0) {
-          nextHtml = { start: opener, end: closer + 3 };
-          break;
-        }
+        if (closer < 0) break; // An unmatched opener needs only one suffix scan.
+        nextHtml = { start: opener, end: closer + 3 };
+        break;
       } else {
         if (!/[\s/>]/.test(heading[opener + match[0].length] || '')) continue;
         const end = parseHtmlTagEnd(heading, opener, match[0].length, tick);
