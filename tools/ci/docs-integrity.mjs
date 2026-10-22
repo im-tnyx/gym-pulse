@@ -396,40 +396,53 @@ function protectHeadingCode(heading, spans) {
 
   const htmlStarts = /<!--|<\/?[A-Za-z][A-Za-z0-9-]*/g;
   let visible = '', cursor = 0, runIndex = 0;
+  let nextHtml = null, hasClosingComment = true, htmlExhausted = false;
+
+  function findNextHtml(from) {
+    if (htmlExhausted) return null;
+    if (nextHtml && nextHtml.start >= from) return nextHtml;
+    htmlStarts.lastIndex = Math.max(from, htmlStarts.lastIndex);
+    let match;
+    while ((match = htmlStarts.exec(heading))) {
+      const opener = match.index;
+      if (escapedAt(heading, opener)) continue;
+      if (match[0] === '<!--') {
+        if (!hasClosingComment) continue;
+        const closer = heading.indexOf('-->', opener + 4);
+        if (closer < 0) {
+          hasClosingComment = false;
+          continue;
+        }
+        nextHtml = { start: opener, end: closer + 3 };
+        htmlStarts.lastIndex = closer + 3;
+        return nextHtml;
+      }
+      if (!/[\s/>]/.test(heading[opener + match[0].length] || '')) continue;
+      const end = parseHtmlTagEnd(heading, opener, match[0].length, tick);
+      if (end > opener) {
+        nextHtml = { start: opener, end };
+        htmlStarts.lastIndex = end;
+        return nextHtml;
+      }
+    }
+    nextHtml = null;
+    htmlExhausted = true;
+    return null;
+  }
 
   while (cursor < heading.length) {
     while (runIndex < runs.length && (runs[runIndex].index < cursor || escapedAt(heading, runs[runIndex].index) || closers[runIndex] === undefined)) {
       runIndex++;
     }
     const nextRun = runIndex < runs.length ? runs[runIndex] : null;
+    const html = findNextHtml(cursor);
 
-    htmlStarts.lastIndex = cursor;
-    let nextHtml = null;
-    let match;
-    while ((match = htmlStarts.exec(heading))) {
-      const opener = match.index;
-      if (escapedAt(heading, opener)) continue;
-      if (match[0] === '<!--') {
-        const closer = heading.indexOf('-->', opener + 4);
-        if (closer < 0) break; // An unmatched opener needs only one suffix scan.
-        nextHtml = { start: opener, end: closer + 3 };
-        break;
-      } else {
-        if (!/[\s/>]/.test(heading[opener + match[0].length] || '')) continue;
-        const end = parseHtmlTagEnd(heading, opener, match[0].length, tick);
-        if (end > opener) {
-          nextHtml = { start: opener, end };
-          break;
-        }
-      }
-    }
-
-    if (!nextRun && !nextHtml) {
+    if (!nextRun && !html) {
       visible += heading.slice(cursor);
       break;
     }
 
-    if (nextRun && (!nextHtml || nextRun.index < nextHtml.start)) {
+    if (nextRun && (!html || nextRun.index < html.start)) {
       const closer = runs[closers[runIndex]];
       let inner = heading.slice(nextRun.index + nextRun[0].length, closer.index)
         .replace(/\r\n|\n|\r/g, ' ');
@@ -438,9 +451,11 @@ function protectHeadingCode(heading, spans) {
       spans.push(inner);
       cursor = closer.index + closer[0].length;
       runIndex = closers[runIndex] + 1;
+      if (nextHtml && nextHtml.start < cursor) nextHtml = null;
     } else {
-      visible += heading.slice(cursor, nextHtml.start);
-      cursor = nextHtml.end;
+      visible += heading.slice(cursor, html.start);
+      cursor = html.end;
+      nextHtml = null;
     }
   }
 
