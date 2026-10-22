@@ -260,6 +260,8 @@ function removeCode(markdown) {
     let visible = '', from = 0;
     const inlineTagRanges = htmlTagRanges(line);
     const insideInlineTag = index => inRanges(inlineTagRanges, index);
+    // ATX headings cannot contain line breaks; an unclosed backtick cannot span lines.
+    const isAtxHeading = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(container.content);
     // Cache the next unescaped backtick run and comment opener. Recomputing
     // either from every comment would rescan the same suffix repeatedly.
     let cachedTick, cachedTickFrom = -1, cachedOpener = -1, cachedOpenerFrom = Infinity;
@@ -317,7 +319,7 @@ function removeCode(markdown) {
           visible += line.slice(from, tick.index) +
             ' '.repeat(closer.index + closer[0].length - tick.index);
           from = closer.index + closer[0].length;
-        } else if (laterClosingTicks(lineIndex, tick[0].length, container,
+        } else if (!isAtxHeading && laterClosingTicks(lineIndex, tick[0].length, container,
           lineInList ? activeListIndent : null)) {
           visible += line.slice(from, tick.index) + ' '.repeat(line.length - tick.index);
           inlineTicks = tick[0].length;
