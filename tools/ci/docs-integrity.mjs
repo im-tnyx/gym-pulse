@@ -396,36 +396,23 @@ function protectHeadingCode(heading, spans) {
 
   const htmlStarts = /<!--|<\/?[A-Za-z][A-Za-z0-9-]*/g;
   let visible = '', cursor = 0, runIndex = 0;
-  let nextHtml = null, hasClosingComment = true, htmlExhausted = false;
+  let nextMatch = null, hasClosingComment = true, htmlExhausted = false;
 
-  function findNextHtml(from) {
+  function findNextHtmlOpener(from) {
     if (htmlExhausted) return null;
-    if (nextHtml && nextHtml.start >= from) return nextHtml;
+    if (nextMatch && nextMatch.index >= from) return nextMatch;
     htmlStarts.lastIndex = Math.max(from, htmlStarts.lastIndex);
-    let match;
-    while ((match = htmlStarts.exec(heading))) {
-      const opener = match.index;
+    while ((nextMatch = htmlStarts.exec(heading))) {
+      const opener = nextMatch.index;
       if (escapedAt(heading, opener)) continue;
-      if (match[0] === '<!--') {
+      if (nextMatch[0] === '<!--') {
         if (!hasClosingComment) continue;
-        const closer = heading.indexOf('-->', opener + 4);
-        if (closer < 0) {
-          hasClosingComment = false;
-          continue;
-        }
-        nextHtml = { start: opener, end: closer + 3 };
-        htmlStarts.lastIndex = closer + 3;
-        return nextHtml;
+        return nextMatch;
       }
-      if (!/[\s/>]/.test(heading[opener + match[0].length] || '')) continue;
-      const end = parseHtmlTagEnd(heading, opener, match[0].length, tick);
-      if (end > opener) {
-        nextHtml = { start: opener, end };
-        htmlStarts.lastIndex = end;
-        return nextHtml;
-      }
+      if (!/[\s/>]/.test(heading[opener + nextMatch[0].length] || '')) continue;
+      return nextMatch;
     }
-    nextHtml = null;
+    nextMatch = null;
     htmlExhausted = true;
     return null;
   }
@@ -435,27 +422,50 @@ function protectHeadingCode(heading, spans) {
       runIndex++;
     }
     const nextRun = runIndex < runs.length ? runs[runIndex] : null;
-    const html = findNextHtml(cursor);
+    const match = findNextHtmlOpener(cursor);
 
-    if (!nextRun && !html) {
+    if (!nextRun && !match) {
       visible += heading.slice(cursor);
       break;
     }
 
-    if (nextRun && (!html || nextRun.index < html.start)) {
+    if (nextRun && (!match || nextRun.index < match.index)) {
       const closer = runs[closers[runIndex]];
+      const closerEnd = closer.index + closer[0].length;
       let inner = heading.slice(nextRun.index + nextRun[0].length, closer.index)
         .replace(/\r\n|\n|\r/g, ' ');
       if (inner.startsWith(' ') && inner.endsWith(' ') && /[^ ]/.test(inner)) inner = inner.slice(1, -1);
       visible += heading.slice(cursor, nextRun.index) + '\x01' + spans.length + '\x02';
       spans.push(inner);
-      cursor = closer.index + closer[0].length;
+      cursor = closerEnd;
       runIndex = closers[runIndex] + 1;
-      if (nextHtml && nextHtml.start < cursor) nextHtml = null;
+      if (match && match.index < closerEnd) {
+        nextMatch = null;
+        htmlStarts.lastIndex = Math.max(htmlStarts.lastIndex, closerEnd);
+      }
     } else {
-      visible += heading.slice(cursor, html.start);
-      cursor = html.end;
-      nextHtml = null;
+      if (match[0] === '<!--') {
+        const closer = heading.indexOf('-->', match.index + 4);
+        if (closer < 0) {
+          hasClosingComment = false;
+          nextMatch = null;
+          continue;
+        }
+        visible += heading.slice(cursor, match.index);
+        cursor = closer + 3;
+        nextMatch = null;
+        htmlStarts.lastIndex = Math.max(htmlStarts.lastIndex, cursor);
+      } else {
+        const end = parseHtmlTagEnd(heading, match.index, match[0].length, tick);
+        if (end <= match.index) {
+          nextMatch = null;
+          continue;
+        }
+        visible += heading.slice(cursor, match.index);
+        cursor = end;
+        nextMatch = null;
+        htmlStarts.lastIndex = Math.max(htmlStarts.lastIndex, cursor);
+      }
     }
   }
 
