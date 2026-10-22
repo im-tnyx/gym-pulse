@@ -155,6 +155,14 @@ run_case fail "OpenAI Codex identity" \
 run_case fail "AI trailer mixed among human co-authors" \
   "$(printf 'feat: x\n\nBody.\n\nCo-Authored-By: Jane Developer <jane@example.com>\nCo-Authored-By: Claude <noreply@anthropic.com>')"
 
+# --- FAIL: an AI trailer after a standalone --- divider must be parsed ---
+run_case fail "AI co-author after a patch-style --- divider" \
+  "$(printf 'feat: x\n\nBody.\n\n---\n\nCo-Authored-By: Claude <noreply@anthropic.com>')"
+
+# --- PASS: an ordinary human co-author after the same divider is permitted ---
+run_case pass "human co-author after a patch-style --- divider" \
+  "$(printf 'feat: x\n\nBody.\n\n---\n\nCo-Authored-By: Jane Developer <jane@example.com>')"
+
 # --- Exception-contract fixtures (4-argument form) ---
 
 # clean range + no exception -> PASS

@@ -115,7 +115,9 @@ if [ -n "$commit_list" ]; then
     # trailers found". An empty (but successful) parse is the normal case
     # for a commit with no trailers at all and is not an error.
     set +e
-    trailers="$(printf '%s\n' "$message" | git interpret-trailers --parse)"
+    # Commit messages are not mail-style patch input: a standalone --- must not hide
+    # AI attribution trailers that follow it.
+    trailers="$(printf '%s\n' "$message" | git interpret-trailers --parse --no-divider)"
     trailer_rc=$?
     set -e
 
