@@ -381,6 +381,11 @@ function stripClosedHeadingComments(text) {
   return visible + text.slice(cursor);
 }
 function protectHeadingCode(heading, spans) {
+  let scanned = 0;
+  const maxScanned = Math.min(4 * heading.length + 4096, 2 * 1024 * 1024);
+  const tick = () => {
+    if (++scanned > maxScanned) throw new Error('Heading HTML scan budget exceeded; fail closed');
+  };
   // Preindex matching run lengths rather than repeatedly searching suffixes.
   const runs = [...heading.matchAll(/`+/g)], next = new Map();
   const closers = new Array(runs.length);
@@ -388,20 +393,59 @@ function protectHeadingCode(heading, spans) {
     closers[i] = next.get(runs[i][0].length);
     next.set(runs[i][0].length, i);
   }
-  let visible = '', cursor = 0;
-  for (let i = 0; i < runs.length; i++) {
-    const opener = runs[i], closeIndex = closers[i];
-    if (escapedAt(heading, opener.index) || closeIndex === undefined) continue;
-    const closer = runs[closeIndex];
-    let inner = heading.slice(opener.index + opener[0].length, closer.index)
-      .replace(/\r\n|\n|\r/g, ' ');
-    if (inner.startsWith(' ') && inner.endsWith(' ') && /[^ ]/.test(inner)) inner = inner.slice(1, -1);
-    visible += heading.slice(cursor, opener.index) + '\x01' + spans.length + '\x02';
-    spans.push(inner);
-    cursor = closer.index + closer[0].length;
-    i = closeIndex;
+
+  const htmlStarts = /<!--|<\/?[A-Za-z][A-Za-z0-9-]*/g;
+  let visible = '', cursor = 0, runIndex = 0;
+
+  while (cursor < heading.length) {
+    while (runIndex < runs.length && (runs[runIndex].index < cursor || escapedAt(heading, runs[runIndex].index) || closers[runIndex] === undefined)) {
+      runIndex++;
+    }
+    const nextRun = runIndex < runs.length ? runs[runIndex] : null;
+
+    htmlStarts.lastIndex = cursor;
+    let nextHtml = null;
+    let match;
+    while ((match = htmlStarts.exec(heading))) {
+      const opener = match.index;
+      if (escapedAt(heading, opener)) continue;
+      if (match[0] === '<!--') {
+        const closer = heading.indexOf('-->', opener + 4);
+        if (closer >= 0) {
+          nextHtml = { start: opener, end: closer + 3 };
+          break;
+        }
+      } else {
+        if (!/[\s/>]/.test(heading[opener + match[0].length] || '')) continue;
+        const end = parseHtmlTagEnd(heading, opener, match[0].length, tick);
+        if (end > opener) {
+          nextHtml = { start: opener, end };
+          break;
+        }
+      }
+    }
+
+    if (!nextRun && !nextHtml) {
+      visible += heading.slice(cursor);
+      break;
+    }
+
+    if (nextRun && (!nextHtml || nextRun.index < nextHtml.start)) {
+      const closer = runs[closers[runIndex]];
+      let inner = heading.slice(nextRun.index + nextRun[0].length, closer.index)
+        .replace(/\r\n|\n|\r/g, ' ');
+      if (inner.startsWith(' ') && inner.endsWith(' ') && /[^ ]/.test(inner)) inner = inner.slice(1, -1);
+      visible += heading.slice(cursor, nextRun.index) + '\x01' + spans.length + '\x02';
+      spans.push(inner);
+      cursor = closer.index + closer[0].length;
+      runIndex = closers[runIndex] + 1;
+    } else {
+      visible += heading.slice(cursor, nextHtml.start);
+      cursor = nextHtml.end;
+    }
   }
-  return visible + heading.slice(cursor);
+
+  return visible;
 }
 function headingSlug(heading, definedRefs = new Set()) {
   // Parse markup before decoding entities: encoded brackets and angle signs
@@ -1351,7 +1395,7 @@ function linkBlockBoundaries(text) {
     if (continuationIndent) content = content.slice(continuationIndent);
     const list = /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content);
     // Only an ordered list starting at 1 can interrupt an ordinary paragraph.
-    const listStartsBlock = list && (listIndent !== null || priorBlank || priorSingleLineBlock ||
+    const listStartsBlock = list && ((listIndent !== null && !continuationIndent) || priorBlank || priorSingleLineBlock ||
       /^[-+*]$|^1[.)]$/.test(list[1]));
     const leaf = listStartsBlock ? content.slice(list[0].length) : content;
     const atx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(leaf);
