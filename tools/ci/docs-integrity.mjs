@@ -238,18 +238,41 @@ function removeCode(markdown, collectedIds = null) {
   }
   const prepassDefText = normalizeReferenceContainers(markdown);
   const prepassLastDefClose = prepassDefText.lastIndexOf(']:');
-  let priorDef = null;
-  for (const ref of markdown.matchAll(/^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/gm)) {
-    if (priorDef && ref.index < priorDef.end) continue;
-    if (!referenceDefinitionCanStart(markdown, ref.index, priorDef)) continue;
-    const bracket = ref.index + ref[0].length - 1;
-    const parsedDef = parseReferenceDefinition(prepassDefText, bracket, prepassLastDefClose, prepassDefText);
-    if (parsedDef) {
-      priorDef = { start: ref.index, end: parsedDef.end };
-      const colon = prepassDefText.indexOf(']:', bracket);
-      const afterColon = colon >= 0 ? colon + 2 : bracket + 1;
-      multilineProtectedRanges.push({ start: afterColon, end: parsedDef.end });
-      multilineDefRanges.push({ start: ref.index, end: parsedDef.end });
+  let priorDef = null, defScanListIndent = null;
+  const defPrefix = /^( {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
+  let prepassLineOffset = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineStart = prepassLineOffset;
+    prepassLineOffset += line.length + 1;
+    if (priorDef && lineStart < priorDef.end) continue;
+    const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line);
+    const list = !isThematic ? /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(line) : null;
+    if (list) {
+      const markerStr = list[0].slice(0, list[0].length - list[1].length);
+      const markerCol = visualColumn(markerStr);
+      const wsStr = list[1];
+      const afterWsCol = visualColumn(wsStr, markerCol);
+      const spacesCol = afterWsCol - markerCol;
+      const padding = spacesCol >= 5 ? 1 : spacesCol;
+      defScanListIndent = markerCol + padding;
+    } else if (!/^[ \t]*$/.test(line) && defScanListIndent !== null && !stripIndent(line, defScanListIndent)) {
+      defScanListIndent = null;
+    }
+    const strippedCont = !list && defScanListIndent !== null ? stripIndent(line, defScanListIndent) : null;
+    const continuation = strippedCont ? strippedCont.consumedChars : 0;
+    const prefix = defPrefix.exec(line.slice(continuation));
+    const bracket = lineStart + continuation + (prefix ? prefix[0].length : 0);
+    if (prefix && markdown[bracket] === '[' && !escapedAt(markdown, bracket) &&
+        referenceDefinitionCanStart(markdown, lineStart, priorDef)) {
+      const parsedDef = parseReferenceDefinition(prepassDefText, bracket, prepassLastDefClose, prepassDefText);
+      if (parsedDef) {
+        priorDef = { start: lineStart, end: parsedDef.end };
+        const colon = prepassDefText.indexOf(']:', bracket);
+        const afterColon = colon >= 0 ? colon + 2 : bracket + 1;
+        multilineProtectedRanges.push({ start: afterColon, end: parsedDef.end });
+        multilineDefRanges.push({ start: lineStart, end: parsedDef.end });
+      }
     }
   }
   multilineProtectedRanges.sort((a, b) => a.start - b.start || a.end - b.end);
@@ -985,23 +1008,45 @@ function headingsIn(text, original = text, collectedIds = null) {
   const rawDefinitionText = normalizeReferenceContainers(normOriginal);
   const lastDefinitionClose = definitionText.lastIndexOf(']:');
   let priorDefinition = null, definitionCount = 0, defLine = 0;
-  for (const ref of text.matchAll(/^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/gm)) {
-    if (priorDefinition && ref.index < priorDefinition.end) continue;
-    if (!referenceDefinitionCanStart(text, ref.index, priorDefinition)) continue;
-    const bracket = ref.index + ref[0].length - 1;
-    const parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose, rawDefinitionText);
-    if (parsed) {
-      if (++definitionCount > 10000) failParserBound();
-      priorDefinition = { start: ref.index, end: parsed.end };
-      definedRefs.add(referenceLabel(parsed.label));
-      while (defLine < lines.length && lineStarts[defLine] + lines[defLine].length < ref.index) {
-        defLine++;
+  let defScanListIndent = null;
+  const definitionPrefix = /^( {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineStart = lineStarts[i];
+    if (priorDefinition && lineStart < priorDefinition.end) continue;
+    const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line);
+    const list = !isThematic ? /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(line) : null;
+    if (list) {
+      const markerStr = list[0].slice(0, list[0].length - list[1].length);
+      const markerCol = visualColumn(markerStr);
+      const wsStr = list[1];
+      const afterWsCol = visualColumn(wsStr, markerCol);
+      const spacesCol = afterWsCol - markerCol;
+      const padding = spacesCol >= 5 ? 1 : spacesCol;
+      defScanListIndent = markerCol + padding;
+    } else if (!/^[ \t]*$/.test(line) && defScanListIndent !== null && !stripIndent(line, defScanListIndent)) {
+      defScanListIndent = null;
+    }
+    const strippedCont = !list && defScanListIndent !== null ? stripIndent(line, defScanListIndent) : null;
+    const continuation = strippedCont ? strippedCont.consumedChars : 0;
+    const prefix = definitionPrefix.exec(line.slice(continuation));
+    const bracket = lineStart + continuation + (prefix ? prefix[0].length : 0);
+    if (prefix && text[bracket] === '[' && !escapedAt(text, bracket) &&
+        referenceDefinitionCanStart(text, lineStart, priorDefinition)) {
+      const parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose, rawDefinitionText);
+      if (parsed) {
+        if (++definitionCount > 10000) failParserBound();
+        priorDefinition = { start: lineStart, end: parsed.end };
+        definedRefs.add(referenceLabel(parsed.label));
+        while (defLine < lines.length && lineStarts[defLine] + lines[defLine].length < lineStart) {
+          defLine++;
+        }
+        while (defLine < lines.length && lineStarts[defLine] < parsed.end) {
+          definitionLines.add(defLine);
+          defLine++;
+        }
+        if (defLine > 0) defLine--;
       }
-      while (defLine < lines.length && lineStarts[defLine] < parsed.end) {
-        definitionLines.add(defLine);
-        defLine++;
-      }
-      if (defLine > 0) defLine--;
     }
   }
   const addSlug = heading => {
@@ -2119,10 +2164,7 @@ function referenceDefinitionCanStart(text, offset, last) {
     const isBlank = /^[ \t]*$/.test(afterMarker);
     const isRefDef = /^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(afterMarker);
     const priorHasParagraph = !isBlank && !isRefDef && !isHeading && !isThematic;
-    if (currentCol >= listContIndent) {
-      if (!priorHasParagraph) return true;
-      return false;
-    }
+    if (priorHasParagraph) return false;
     return true;
   }
   if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prior)) return true;

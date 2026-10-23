@@ -549,6 +549,8 @@ const fixtures = [
     ['multiline reference definition does not open paragraph before HTML block', '[ref]:\n  ../README.md\n<custom>\n[old](Target.md)\n', true],
     ['spaced thematic break does not count as list before indented code', 'paragraph\n* * *\n    [old](Target.md)\n', true],
     ['long spaced thematic break does not exceed parser bound', '* * * * * *\n', true],
+    ['list item reference definition in base target resolves heading anchor', '[old](Target.md#hello)\n', false, '10. # [Hello][ref]\n\n    [ref]: https://example.invalid\n'],
+    ['lazy list paragraph continuation cannot start reference definition', '- paragraph\n[x]: Consumer.md "[old](Target.md)"\n', false],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
     name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',
@@ -1140,7 +1142,7 @@ function executeFixture(test) {
       'deleted-escaped-ref-opener': '# Consumer\n\\[old][target]\n\n[old]: Target.md\n',
       'deleted-setext-anchor': '# Consumer\n[old](Target.md#existing-heading)\n',
       'deleted-huge-anchored': '# Consumer\n[old](Target.md#existing)\n',
-      'deleted-ref-after-list': '# Consumer\n- item\n[x]: Target.md\n\n[x]\n',
+      'deleted-ref-after-list': '# Consumer\n- item\n\n[x]: Target.md\n\n[x]\n',
       'deleted-ref-after-setext': 'Heading\n===\n[ref]: Target.md\n\n[ref]\n',
       'deleted-ref-after-empty-atx': '#\n[ref]: Target.md\n\n[ref]\n',
       'deleted-ref-after-bare-setext': '=\n[ref]: [old](Target.md)\n',
