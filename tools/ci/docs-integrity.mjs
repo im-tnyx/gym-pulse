@@ -91,13 +91,42 @@ function removeCode(markdown) {
   for (let i = lines.length - 1; i >= 0; i--) {
     laterCommentCloser[i] = lines[i].includes('-->') || laterCommentCloser[i + 1];
   }
+  const multilineProtectedRanges = [];
+  let searchTail = 0;
+  while (searchTail < markdown.length) {
+    const bracket = markdown.indexOf('](', searchTail);
+    if (bracket < 0) break;
+    if (!escapedAt(markdown, bracket)) {
+      const tail = parseInlineTail(markdown, bracket + 1);
+      if (tail) {
+        multilineProtectedRanges.push({ start: bracket + 1, end: tail.end });
+        searchTail = tail.end;
+        continue;
+      }
+    }
+    searchTail = bracket + 2;
+  }
+  for (const m of markdown.matchAll(/^ {0,3}\[([^\]]+)\]:[ \t]*/gm)) {
+    const parsedDef = parseReferenceDefinition(markdown, m.index + m[0].indexOf('['), markdown.length);
+    if (parsedDef) {
+      multilineProtectedRanges.push({ start: m.index + m[0].length, end: parsedDef.end });
+    }
+  }
+  multilineProtectedRanges.sort((a, b) => a.start - b.start || a.end - b.end);
 
   function idTagsOnly(line, ranges = htmlTagRanges(line)) {
     // Preserve explicit anchors for BASE heading validation even inside
-    // raw HTML blocks. Do not expose Markdown-looking attributes to the
-    // link scanner: tag spans are skipped by htmlTagRanges().
-    return ranges.map(x => line.slice(x.start, x.end))
-      .filter(tag => /\sid\s*=/i.test(tag)).join(' ');
+    // raw HTML blocks while keeping line lengths and offsets aligned.
+    let result = '', last = 0;
+    for (const range of ranges) {
+      const tag = line.slice(range.start, range.end);
+      if (/\sid\s*=/i.test(tag)) {
+        result += ' '.repeat(range.start - last) + tag;
+        last = range.end;
+      }
+    }
+    result += ' '.repeat(line.length - last);
+    return result;
   }
 
   function continuingContainer(state, containerLine, lineInList) {
@@ -132,12 +161,14 @@ function removeCode(markdown) {
       const lineInList = outerListIndent !== null &&
         lines[j].startsWith(' '.repeat(outerListIndent));
       const containerLine = lineInList ? lines[j].slice(outerListIndent) : lines[j];
+      const rawLine = lines[j];
+      const isBlank = /^[ \t]*$/.test(rawLine);
+      const isInterruption = isBlockInterruption(rawLine);
+      if (isBlank || isInterruption) return false;
       const continuation = continuingContainer(
         { containers: openerContainer.containers, outerListIndent }, containerLine, lineInList);
-      if (!continuation.continues) return false;
-      const candidate = continuation.content;
-      if (/^[ \t]*$/.test(candidate)) return false;
-      if (isBlockInterruption(candidate)) return false;
+      if (!continuation.continues && !openerContainer.containers?.some(p => p.kind === 'quote')) return false;
+      const candidate = continuation.continues ? continuation.content : rawLine;
       inspected += candidate.length + 1;
       if (inspected > 8192) return false;
       if (candidate.includes('-->')) return true;
@@ -151,16 +182,16 @@ function removeCode(markdown) {
       const lineInList = outerListIndent !== null &&
         lines[j].startsWith(' '.repeat(outerListIndent));
       const containerLine = lineInList ? lines[j].slice(outerListIndent) : lines[j];
+      const rawLine = lines[j];
+      const isBlank = /^[ \t]*$/.test(rawLine);
+      const isInterruption = isBlockInterruption(rawLine);
+      if (isBlank || isInterruption) return false;
       const continuation = continuingContainer(
         { containers: openerContainer.containers, outerListIndent }, containerLine, lineInList);
       // An inline code span cannot cross the blockquote/list container that
-      // owns its opener. In particular, a root-level line after a list item
-      // must remain visible to the deleted-target scan.
-      if (!continuation.continues) return false;
-      const candidate = continuation.content;
-      // Inline code spans cannot cross a Markdown paragraph boundary.
-      if (/^[ \t]*$/.test(candidate)) return false;
-      if (isBlockInterruption(candidate)) return false;
+      // owns its opener, unless it is a lazy blockquote continuation.
+      if (!continuation.continues && !openerContainer.containers?.some(p => p.kind === 'quote')) return false;
+      const candidate = continuation.continues ? continuation.content : rawLine;
       inspected += candidate.length + 1;
       if (inspected > 8192) return false; // Do not suppress uncertain live links.
       // Do not mistake a later fenced code marker for an inline-code closer.
@@ -170,7 +201,10 @@ function removeCode(markdown) {
     return false;
   }
 
+  let lineStartOffset = 0;
   return lines.map((line, lineIndex) => {
+    const currentLineOffset = lineStartOffset;
+    lineStartOffset += line.length + 1;
     if (frontMatterEnd >= 0 && lineIndex <= frontMatterEnd) return ' '.repeat(line.length);
     // A list item's continuation indentation is a container prefix, not
     // indented code. Match fences after removing that active prefix.
@@ -191,7 +225,7 @@ function removeCode(markdown) {
       }
       fenced = null;
     }
-    const container = markdownContainer(containerLine);
+    const container = markdownContainer(containerLine, paragraphOpen);
     // Apply this only when opening a new container below. List-like text in
     // an existing fence/raw block/comment is literal and must not mutate the
     // outer list continuation state.
@@ -205,8 +239,10 @@ function removeCode(markdown) {
       const continuation = continuingContainer(
         commentContainer ? commentContainer : { containers: [] },
         lineInList && commentContainer ? line.slice(activeListIndent) : line, lineInList);
-      if (!continuation.continues || /^[ \t]*$/.test(continuation.content) ||
-          isBlockInterruption(continuation.content)) {
+      const isBlank = /^[ \t]*$/.test(line);
+      const isInterruption = isBlockInterruption(line);
+      const isLazy = !isBlank && !isInterruption && commentContainer?.containers?.some(p => p.kind === 'quote');
+      if ((!continuation.continues && !isLazy) || isBlank || isInterruption) {
         comment = false;
         commentContainer = null;
       }
@@ -266,7 +302,7 @@ function removeCode(markdown) {
     }
     if (!comment && !inlineTicks) {
       updateListIndent();
-      const container = markdownContainer(containerLine);
+      const container = markdownContainer(containerLine, paragraphOpen);
       const special = /^ {0,3}(<\?|<!\[CDATA\[|<![A-Z])/.exec(
         container.content);
       if (special) {
@@ -355,7 +391,20 @@ function removeCode(markdown) {
         protectedRanges.push({ start: defMatch[0].length, end: parsedDef.end });
       }
     }
-    const insideProtected = index => inRanges(protectedRanges, index);
+    protectedRanges.sort((a, b) => a.start - b.start || a.end - b.end);
+    const mergedProtected = [];
+    let curEnd = 0;
+    for (const r of protectedRanges) {
+      if (mergedProtected.length && r.start <= curEnd) {
+        curEnd = Math.max(curEnd, r.end);
+        mergedProtected.at(-1).end = curEnd;
+      } else {
+        curEnd = r.end;
+        mergedProtected.push({ start: r.start, end: r.end });
+      }
+    }
+    const insideProtected = index =>
+      inRanges(mergedProtected, index) || inRanges(multilineProtectedRanges, currentLineOffset + index);
     // ATX headings cannot contain line breaks; an unclosed backtick cannot span lines.
     const isAtxHeading = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(container.content);
     // Cache the next unescaped backtick run and comment opener. Recomputing
@@ -451,7 +500,7 @@ function removeCode(markdown) {
           from = tick.index + tick[0].length;
         }
       } else if (opener >= 0) {
-        const openerShape = markdownContainer(containerLine);
+        const openerShape = markdownContainer(containerLine, paragraphOpen);
         const blockStart = /^ {0,3}<!--/.test(openerShape.content);
         const hasSameLineCloser = hasSameLineCommentCloser(opener + 4);
         // Unclosed inline opener is literal text; unclosed block opener masks.
@@ -517,7 +566,7 @@ function stripClosedHeadingComments(text) {
   }
   return visible + text.slice(cursor);
 }
-function protectHeadingCode(heading, spans) {
+function protectHeadingCode(heading, spans, rawSpans = []) {
   let scanned = 0;
   const maxScanned = Math.min(4 * heading.length + 4096, 2 * 1024 * 1024);
   const tick = () => {
@@ -574,6 +623,7 @@ function protectHeadingCode(heading, spans) {
       if (inner.startsWith(' ') && inner.endsWith(' ') && /[^ ]/.test(inner)) inner = inner.slice(1, -1);
       visible += heading.slice(cursor, nextRun.index) + '\x01' + spans.length + '\x02';
       spans.push(inner);
+      rawSpans.push(heading.slice(nextRun.index, closerEnd));
       cursor = closerEnd;
       runIndex = closers[runIndex] + 1;
       if (match && match.index < closerEnd) {
@@ -611,8 +661,8 @@ function protectHeadingCode(heading, spans) {
 function headingSlug(heading, definedRefs = new Set()) {
   // Parse markup before decoding entities: encoded brackets and angle signs
   // are rendered text, never structural link or HTML delimiters.
-  const spans = [];
-  const protectedHeading = protectHeadingCode(heading, spans);
+  const spans = [], rawSpans = [];
+  const protectedHeading = protectHeadingCode(heading, spans, rawSpans);
   // Unmatched code runs mixed with HTML leave slug interpretation uncertain.
   if (protectedHeading.includes('`') && /<[^>]*>/.test(protectedHeading)) return null;
   // Closed comments render no heading text. Code spans are already protected
@@ -624,10 +674,17 @@ function headingSlug(heading, definedRefs = new Set()) {
     tagEnd = tag.end;
   }
   withoutTags += withoutComments.slice(tagEnd);
-  const scannedLinks = scanBracketLinks(withoutTags, [], false, definedRefs);
+  const resolveHeadingLabel = label =>
+    referenceLabel(label.replace(/\x01(\d+)\x02/g, (_m, idx) => rawSpans[Number(idx)] ?? ''));
+  const headingRefs = {
+    has(label) {
+      return definedRefs.has(resolveHeadingLabel(label));
+    },
+  };
+  const scannedLinks = scanBracketLinks(withoutTags, [], false, headingRefs);
   const linkSyntax = [
     ...scannedLinks.inlines,
-    ...scannedLinks.fullRefs.filter(link => definedRefs.has(referenceLabel(link.label))),
+    ...scannedLinks.fullRefs.filter(link => headingRefs.has(link.label)),
   ].flatMap(link => [{ start: link.opener, end: link.opener + 1 },
     { start: link.labelEnd ?? link.suffixStart - 1, end: link.end }])
     .sort((a, b) => a.start - b.start);
@@ -1795,9 +1852,12 @@ function referenceDefinitionCanStart(text, offset, last) {
   const start = text.lastIndexOf('\n', end - 1) + 1;
   if (last && start >= last.start && end <= last.end) return true;
   const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '');
+  const priorInQuote = /^ {0,3}>/.test(text.slice(start, end));
+  const currentInQuote = /^ {0,3}>/.test(text.slice(text.lastIndexOf('\n', offset - 1) + 1, offset));
+  if (currentInQuote && !priorInQuote) return true;
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
   if (/^[ \t]*$/.test(prior) || /^#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
-  if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior) || /^ {0,3}>/.test(text.slice(start, end))) return true;
+  if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior)) return true;
   if (/^(?:\*{3,}|_{3,}|-{3,})[ \t]*$/.test(prior)) return true;
   if (/^(?:=+|-+)[ \t]*$/.test(prior)) {
     // A setext underline only interrupts a paragraph when it actually has a
