@@ -68,6 +68,46 @@ function hasInterveningBlockBoundary(text, begin, end) {
   return false;
 }
 
+const LINK_LABEL_LIMIT = 512;
+
+function hasMatchingLinkOpener(text, bracket) {
+  let depth = 1;
+  const minIndex = Math.max(0, bracket - LINK_LABEL_LIMIT - 1);
+  for (let k = bracket - 1; k >= minIndex; k--) {
+    if (text[k] === '\n') {
+      let probe = k - 1;
+      while (probe >= minIndex && (text[probe] === ' ' || text[probe] === '\t')) probe--;
+      if (probe >= minIndex && text[probe] === '\n') return false;
+    }
+    if (text[k] === ']' && !escapedAt(text, k)) {
+      depth++;
+    } else if (text[k] === '[' && !escapedAt(text, k)) {
+      depth--;
+      if (depth === 0) {
+        const inner = text.slice(k + 1, bracket);
+        let innerTail = 0;
+        while ((innerTail = inner.indexOf('](', innerTail)) >= 0) {
+          if (!escapedAt(inner, innerTail) && parseInlineTail(inner, innerTail + 1)) {
+            let img = false, d = 1;
+            for (let j = innerTail - 1; j >= 0; j--) {
+              if (inner[j] === ']' && !escapedAt(inner, j)) d++;
+              else if (inner[j] === '[' && !escapedAt(inner, j)) {
+                if (--d === 0) {
+                  img = j > 0 && inner[j - 1] === '!' && !escapedAt(inner, j - 1);
+                  break;
+                }
+              }
+            }
+            if (!img) return false;
+          }
+          innerTail += 2;
+        }
+        return true;
+      }
+    }
+  }
+  return false;
+}
 function removeCode(markdown) {
   // Bounded, order-sensitive Markdown masking. Preserve newlines and offsets.
   // Multiline code spans and HTML comments cannot change fence ownership.
@@ -96,7 +136,7 @@ function removeCode(markdown) {
   while (searchTail < markdown.length) {
     const bracket = markdown.indexOf('](', searchTail);
     if (bracket < 0) break;
-    if (!escapedAt(markdown, bracket)) {
+    if (!escapedAt(markdown, bracket) && hasMatchingLinkOpener(markdown, bracket)) {
       const tail = parseInlineTail(markdown, bracket + 1);
       if (tail) {
         multilineProtectedRanges.push({ start: bracket + 1, end: tail.end });
@@ -162,13 +202,13 @@ function removeCode(markdown) {
         lines[j].startsWith(' '.repeat(outerListIndent));
       const containerLine = lineInList ? lines[j].slice(outerListIndent) : lines[j];
       const rawLine = lines[j];
-      const isBlank = /^[ \t]*$/.test(rawLine);
-      const isInterruption = isBlockInterruption(rawLine);
-      if (isBlank || isInterruption) return false;
       const continuation = continuingContainer(
         { containers: openerContainer.containers, outerListIndent }, containerLine, lineInList);
       if (!continuation.continues && !openerContainer.containers?.some(p => p.kind === 'quote')) return false;
       const candidate = continuation.continues ? continuation.content : rawLine;
+      const isBlank = /^[ \t]*$/.test(candidate);
+      const isInterruption = isBlockInterruption(candidate);
+      if (isBlank || isInterruption) return false;
       inspected += candidate.length + 1;
       if (inspected > 8192) return false;
       if (candidate.includes('-->')) return true;
@@ -183,15 +223,15 @@ function removeCode(markdown) {
         lines[j].startsWith(' '.repeat(outerListIndent));
       const containerLine = lineInList ? lines[j].slice(outerListIndent) : lines[j];
       const rawLine = lines[j];
-      const isBlank = /^[ \t]*$/.test(rawLine);
-      const isInterruption = isBlockInterruption(rawLine);
-      if (isBlank || isInterruption) return false;
       const continuation = continuingContainer(
         { containers: openerContainer.containers, outerListIndent }, containerLine, lineInList);
       // An inline code span cannot cross the blockquote/list container that
       // owns its opener, unless it is a lazy blockquote continuation.
       if (!continuation.continues && !openerContainer.containers?.some(p => p.kind === 'quote')) return false;
       const candidate = continuation.continues ? continuation.content : rawLine;
+      const isBlank = /^[ \t]*$/.test(candidate);
+      const isInterruption = isBlockInterruption(candidate);
+      if (isBlank || isInterruption) return false;
       inspected += candidate.length + 1;
       if (inspected > 8192) return false; // Do not suppress uncertain live links.
       // Do not mistake a later fenced code marker for an inline-code closer.
@@ -374,7 +414,7 @@ function removeCode(markdown) {
     while (tailSearch < line.length) {
       const bracket = line.indexOf('](', tailSearch);
       if (bracket < 0) break;
-      if (!escapedAt(line, bracket)) {
+      if (!escapedAt(line, bracket) && hasMatchingLinkOpener(line, bracket)) {
         const tail = parseInlineTail(line, bracket + 1);
         if (tail) {
           protectedRanges.push({ start: bracket + 1, end: tail.end });
@@ -825,16 +865,30 @@ function headingsIn(text, original = text) {
       }
     }
   }
+  let listIndent = null;
   for (let i = 0; i < lines.length; i++) {
     if (frontMatterEnd >= 0 && i <= frontMatterEnd) continue;
     const line = lines[i];
-    const atx = headingContainerContent(line)
+    const originalLine = originalLines[i] ?? line;
+    const activeListIndent = listIndent;
+    const lineInList = activeListIndent !== null && line.startsWith(' '.repeat(activeListIndent));
+    const containerLine = lineInList ? line.slice(activeListIndent) : line;
+    const origContainerLine = lineInList && originalLine.startsWith(' '.repeat(activeListIndent))
+      ? originalLine.slice(activeListIndent)
+      : originalLine;
+    const container = markdownContainer(containerLine);
+    if (container.listIndent) {
+      listIndent = (lineInList ? activeListIndent : 0) + container.listIndent;
+    } else if (!/^[ \t]*$/.test(line) && listIndent !== null && !line.startsWith(' '.repeat(listIndent))) {
+      listIndent = null;
+    }
+    const atx = container.content
       .match(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/);
     if (atx) {
-      const source = headingContainerContent(originalLines[i] || '')
+      const source = markdownContainer(origContainerLine).content
         .match(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/);
       addSlug(source ? source[1] : atx[1]);
-    } else if (i > 0 && /^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(line))) {
+    } else if (i > 0 && /^ {0,3}(?:=+|-+)[ \t]*$/.test(container.content)) {
       const previous = lines[i - 1];
       const prevParagraphOpen = i >= 2 && !/^[ \t]*$/.test(lines[i - 2]) &&
         !definitionLines.has(i - 2) &&
@@ -1504,7 +1558,6 @@ function referenceLabel(raw) {
 }
 
 const PARSER_BOUND = 'Markdown parser bound exceeded; fail closed';
-const LINK_LABEL_LIMIT = 512;
 const LINK_DEST_LIMIT = 4096;
 const MAX_DEST_DEPTH = 3;
 const MAX_BRACKET_DEPTH = 32;
@@ -1788,12 +1841,14 @@ function scanBracketLinks(rawText, masks = [], collectShortcuts = false, defined
         unresolvedFullRefs.push(match);
       }
     }
-    if (collectShortcuts && !hasFullRefFollower) {
+    if (!hasFullRefFollower) {
       const shortcut = parseReferenceLabelAt(text, opener.index);
       if (shortcut?.end === i + 1) {
-        if (shortcuts.length >= 10000) failParserBound();
         const label = (originalText ?? text).slice(opener.index + 1, i);
-        shortcuts.push({ index, opener: opener.index, label, end: i + 1 });
+        if (collectShortcuts) {
+          if (shortcuts.length >= 10000) failParserBound();
+          shortcuts.push({ index, opener: opener.index, label, end: i + 1 });
+        }
         if (!image && definedRefs?.has(referenceLabel(label))) {
           for (const item of stack) if (!item.image) item.active = false;
         }
@@ -1858,7 +1913,7 @@ function referenceDefinitionCanStart(text, offset, last) {
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
   if (/^[ \t]*$/.test(prior) || /^#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
   if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior)) return true;
-  if (/^(?:\*{3,}|_{3,}|-{3,})[ \t]*$/.test(prior)) return true;
+  if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prior)) return true;
   if (/^(?:=+|-+)[ \t]*$/.test(prior)) {
     // A setext underline only interrupts a paragraph when it actually has a
     // preceding paragraph line. A leading `=` is ordinary text, so allowing a
