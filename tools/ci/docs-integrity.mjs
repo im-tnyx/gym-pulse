@@ -262,10 +262,11 @@ function removeCode(markdown) {
         paragraphOpen = false;
         return '';
       }
-      const rawOpen = container.content.match(/^ {0,3}<\/?(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)/i);
+      const rawOpen = container.content.match(/^ {0,3}(<\/?)((?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul))(?=[ \t/>]|$)/i);
       if (rawOpen) {
-        const tag = rawOpen[1].toLowerCase();
-        const endOnBlank = !/^(?:pre|script|style|textarea)$/.test(tag);
+        const isClosing = rawOpen[1] === '</';
+        const tag = rawOpen[2].toLowerCase();
+        const endOnBlank = isClosing || !/^(?:pre|script|style|textarea)$/.test(tag);
         if (endOnBlank ||
             !new RegExp('</' + tag + '\\s*>', 'i').test(container.content.slice(rawOpen[0].length))) {
           rawBlock = { tag, endOnBlank, quoteDepth: container.quoteDepth,
@@ -322,6 +323,15 @@ function removeCode(markdown) {
       cachedOpenerFrom = startAt;
       return opener;
     }
+    let cachedCloser = -1, cachedCloserFrom = 0;
+    function hasSameLineCommentCloser(startAt) {
+      if (cachedCloser >= startAt) return true;
+      if (cachedCloser < -1 && cachedCloserFrom <= startAt) return false;
+      const at = line.indexOf('-->', startAt);
+      cachedCloser = at >= 0 ? at : -2;
+      cachedCloserFrom = startAt;
+      return at >= 0;
+    }
     while (from < line.length) {
       if (comment) {
         const end = line.indexOf('-->', from);
@@ -359,8 +369,9 @@ function removeCode(markdown) {
       } else if (opener >= 0) {
         const openerShape = markdownContainer(containerLine);
         const blockStart = /^ {0,3}<!--/.test(openerShape.content);
+        const hasSameLineCloser = hasSameLineCommentCloser(opener + 4);
         // Unclosed inline opener is literal text; unclosed block opener masks.
-        if (!blockStart && !laterCommentCloserInline(lineIndex, openerShape,
+        if (!blockStart && !hasSameLineCloser && !laterCommentCloserInline(lineIndex, openerShape,
           lineInList ? activeListIndent : null)) {
           visible += line.slice(from, opener + 4);
           from = opener + 4;
@@ -598,11 +609,19 @@ function headingsIn(text, original = text) {
   const found = new Set(), occurrences = new Map();
   // Only defined reference-style links contribute their rendered link text.
   // Undefined [text][id] remains literal heading text.
+  const lines = text.split('\n');
+  const lineStarts = new Array(lines.length);
+  let curOffset = 0;
+  for (let i = 0; i < lines.length; i++) {
+    lineStarts[i] = curOffset;
+    curOffset += lines[i].length + 1;
+  }
+  const definitionLines = new Set();
   const definedRefs = new Set();
   // Reference definitions in fenced code or other masked content are not live.
   const definitionText = normalizeReferenceContainers(text);
   const lastDefinitionClose = definitionText.lastIndexOf(']:');
-  let priorDefinition = null, definitionCount = 0;
+  let priorDefinition = null, definitionCount = 0, defLine = 0;
   for (const ref of text.matchAll(/^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/gm)) {
     if (priorDefinition && ref.index < priorDefinition.end) continue;
     if (!referenceDefinitionCanStart(text, ref.index, priorDefinition)) continue;
@@ -612,6 +631,14 @@ function headingsIn(text, original = text) {
       if (++definitionCount > 10000) failParserBound();
       priorDefinition = { start: ref.index, end: parsed.end };
       definedRefs.add(referenceLabel(parsed.label));
+      while (defLine < lines.length && lineStarts[defLine] + lines[defLine].length < ref.index) {
+        defLine++;
+      }
+      while (defLine < lines.length && lineStarts[defLine] < parsed.end) {
+        definitionLines.add(defLine);
+        defLine++;
+      }
+      if (defLine > 0) defLine--;
     }
   }
   const addSlug = heading => {
@@ -632,7 +659,6 @@ function headingsIn(text, original = text) {
     found.add(candidate);
     occurrences.set(slug, suffix + 1);
   };
-  const lines = text.split('\n');
   // A complete leading YAML front-matter block is metadata, not a setext
   // heading. An unmatched opener is not masked.
   let frontMatterEnd = -1;
@@ -662,12 +688,12 @@ function headingsIn(text, original = text) {
         return continuation.continues &&
           (previousShape.containers.length || !markdownContainer(candidate).containers.length);
       };
-      if (sameParagraph(line) && !/^[ \t]*$/.test(previousContent) &&
+      if (!definitionLines.has(i - 1) && sameParagraph(line) && !/^[ \t]*$/.test(previousContent) &&
           !/^ {0,3}#/.test(previousContent)) {
         // A setext heading spans the entire immediately preceding paragraph,
         // not just the final line above the underline.
         let begin = i - 1;
-        while (begin > 0 && sameParagraph(lines[begin - 1]) &&
+        while (begin > 0 && !definitionLines.has(begin - 1) && sameParagraph(lines[begin - 1]) &&
           !/^[ \t]*$/.test(headingContainerContent(lines[begin - 1])) &&
           !/^ {0,3}(?:#|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(headingContainerContent(lines[begin - 1])) &&
           !/^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(lines[begin - 1]))) begin--;
@@ -995,7 +1021,32 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
   if (!deleted.size) return false;
   const value = raw.trim().replace(/^</, '').replace(/>\s*$/, '')
     .split(/[?#]/, 1)[0];
-  if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value)) return false;
+  if (!value || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value)) return false;
+  let cleanFilePart = null;
+  try {
+    cleanFilePart = decodeDestinationText((value.match(/^(?:\\.|[^\x00-\x20\x7f])+/) || [''])[0]);
+  } catch {
+    cleanFilePart = null;
+  }
+  if (cleanFilePart !== null) {
+    let filename;
+    try { filename = decodeURIComponent(cleanFilePart); } catch { return true; }
+    if (!filename || filename.includes('\0') || filename.includes('\\')) return true;
+    const absolute = filename.startsWith('/')
+      ? path.resolve(root, '.' + filename)
+      : path.resolve(root, path.dirname(source), filename);
+    if (!withinRoot(absolute)) return false;
+    const paths = [absolute];
+    const canonicalBase = resolveBaseParentAliases(absolute);
+    if (withinRoot(canonicalBase)) paths.push(canonicalBase);
+    const namesDeleted = paths.some(candidate => {
+      if (!withinRoot(candidate)) return false;
+      const relative = path.relative(root, candidate).split(path.sep).join('/');
+      return deleted.has(relative);
+    });
+    if (!namesDeleted) return false;
+    return true; // Target IS in deleted, but unparseable query/fragment makes validation fail-closed.
+  }
   const hasUnknown = /&(?:[A-Za-z][A-Za-z0-9]+);/.test(value);
   if (!hasUnknown) return true; // Malformed or numeric content stays fail-closed.
   let decoded;
