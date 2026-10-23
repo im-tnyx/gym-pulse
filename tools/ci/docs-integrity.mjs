@@ -46,6 +46,32 @@ function escapedAt(text, index) {
   return slashes % 2 === 1;
 }
 
+function visualColumn(str, fromCol = 0) {
+  let col = fromCol;
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '\t') col += 4 - (col % 4);
+    else col++;
+  }
+  return col;
+}
+
+function stripIndent(str, targetIndent) {
+  if (targetIndent <= 0) return { matches: true, remaining: str, consumedChars: 0 };
+  let col = 0;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (ch === ' ') col++;
+    else if (ch === '\t') col += 4 - (col % 4);
+    else return null;
+    if (col >= targetIndent) {
+      const excess = col - targetIndent;
+      const remaining = ' '.repeat(excess) + str.slice(i + 1);
+      return { matches: true, remaining, consumedChars: i + 1 };
+    }
+  }
+  return null;
+}
+
 function isBlockInterruption(raw) {
   // Inline constructs cannot cross a block boundary. Recognize the CommonMark
   // HTML block openers, ATX headings, block quotes, list items, thematic breaks,
@@ -229,8 +255,11 @@ function removeCode(markdown) {
         const prefix = /^ {0,3}>[ \t]?/.exec(content);
         if (!prefix) continues = false;
         else content = content.slice(prefix[0].length);
-      } else if (!content.startsWith(' '.repeat(part.indent))) continues = false;
-      else content = content.slice(part.indent);
+      } else {
+        const stripped = stripIndent(content, part.indent);
+        if (!stripped) continues = false;
+        else content = stripped.remaining;
+      }
     }
     return { continues, content };
   }
@@ -249,9 +278,9 @@ function removeCode(markdown) {
   function laterCommentCloserInline(index, openerContainer, outerListIndent) {
     let inspected = 0;
     for (let j = index + 1; j < lines.length && j - index <= 32; j++) {
-      const lineInList = outerListIndent !== null &&
-        lines[j].startsWith(' '.repeat(outerListIndent));
-      const containerLine = lineInList ? lines[j].slice(outerListIndent) : lines[j];
+      const strippedOuter = outerListIndent !== null ? stripIndent(lines[j], outerListIndent) : null;
+      const lineInList = strippedOuter !== null;
+      const containerLine = lineInList ? strippedOuter.remaining : lines[j];
       const rawLine = lines[j];
       const continuation = continuingContainer(
         { containers: openerContainer.containers, outerListIndent }, containerLine, lineInList);
@@ -270,9 +299,9 @@ function removeCode(markdown) {
   function laterClosingTicks(index, count, openerContainer, outerListIndent) {
     let inspected = 0;
     for (let j = index + 1; j < lines.length && j - index <= 32; j++) {
-      const lineInList = outerListIndent !== null &&
-        lines[j].startsWith(' '.repeat(outerListIndent));
-      const containerLine = lineInList ? lines[j].slice(outerListIndent) : lines[j];
+      const strippedOuter = outerListIndent !== null ? stripIndent(lines[j], outerListIndent) : null;
+      const lineInList = strippedOuter !== null;
+      const containerLine = lineInList ? strippedOuter.remaining : lines[j];
       const rawLine = lines[j];
       const continuation = continuingContainer(
         { containers: openerContainer.containers, outerListIndent }, containerLine, lineInList);
@@ -300,8 +329,9 @@ function removeCode(markdown) {
     // A list item's continuation indentation is a container prefix, not
     // indented code. Match fences after removing that active prefix.
     const activeListIndent = listIndent;
-    const lineInList = activeListIndent !== null && line.startsWith(' '.repeat(activeListIndent));
-    const containerLine = lineInList ? line.slice(listIndent) : line;
+    const strippedActiveList = activeListIndent !== null ? stripIndent(line, activeListIndent) : null;
+    const lineInList = strippedActiveList !== null;
+    const containerLine = lineInList ? strippedActiveList.remaining : line;
     const continuationInput = state =>
       state.outerListIndent === null && lineInList &&
         state.containers?.some(part => part.kind === 'list') ? line : containerLine;
@@ -329,7 +359,7 @@ function removeCode(markdown) {
     if (comment && !commentIsBlock) {
       const continuation = continuingContainer(
         commentContainer ? commentContainer : { containers: [] },
-        lineInList && commentContainer ? line.slice(activeListIndent) : line, lineInList);
+        lineInList && commentContainer ? containerLine : line, lineInList);
       const isBlank = /^[ \t]*$/.test(line);
       const isInterruption = isBlockInterruption(line);
       const isLazy = !isBlank && !isInterruption && commentContainer?.containers?.some(p => p.kind === 'quote');
@@ -394,7 +424,7 @@ function removeCode(markdown) {
     if (!comment && !inlineTicks) {
       updateListIndent();
       const container = markdownContainer(containerLine, paragraphOpen);
-      const special = /^ {0,3}(<\?|<!\[CDATA\[|<![A-Z])/.exec(
+      const special = /^ {0,3}(<\?|<!\[CDATA\[|<![A-Za-z])/.exec(
         container.content);
       if (special) {
         const terminator = special[1] === '<?' ? '?>' : special[1] === '<![CDATA[' ? ']]>' : '>';
@@ -426,7 +456,11 @@ function removeCode(markdown) {
           outerListIndent: lineInList ? activeListIndent : null };
         rawBlock.pendingTag = htmlTagRanges(line).length ? null : line;
         paragraphOpen = false;
-        return rawBlock.pendingTag ? line : idTagsOnly(line);
+        if (rawBlock.pendingTag) {
+          const openerEnd = (line.indexOf(type6[0]) >= 0 ? line.indexOf(type6[0]) : 0) + type6[0].length;
+          return line.slice(0, openerEnd) + ' '.repeat(line.length - openerEnd);
+        }
+        return idTagsOnly(line);
       }
       if (!paragraphOpen) {
         const ranges = htmlTagRanges(container.content);
@@ -446,18 +480,22 @@ function removeCode(markdown) {
       }
       const list = line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/);
       if (list) {
-        const markerLen = list[0].length - list[1].length;
-        const padding = list[1].length >= 5 ? 1 : list[1].length;
-        listIndent = markerLen + padding;
+        const markerStr = list[0].slice(0, list[0].length - list[1].length);
+        const markerCol = visualColumn(markerStr);
+        const wsStr = list[1];
+        const afterWsCol = visualColumn(wsStr, markerCol);
+        const spacesCol = afterWsCol - markerCol;
+        const padding = spacesCol >= 5 ? 1 : spacesCol;
+        listIndent = markerCol + padding;
         paragraphOpen = false;
       }
       else if (!/^[ \t]*$/.test(line) && listIndent !== null &&
-          !line.startsWith(' '.repeat(listIndent))) listIndent = null;
-      const indent = (line.match(/^ */) || [''])[0].length;
-      if ((indent >= 4 || line.startsWith('\t')) && !paragraphOpen &&
-          (listIndent === null || indent < listIndent || indent >= listIndent + 4)) return ' '.repeat(line.length);
-      const contentIndent = (container.content.match(/^ */) || [''])[0].length;
-      if ((contentIndent >= 4 || container.content.startsWith('\t')) && !paragraphOpen &&
+          !stripIndent(line, listIndent)) listIndent = null;
+      const lineCol = visualColumn((line.match(/^[ \t]*/) || [''])[0]);
+      if (lineCol >= 4 && !paragraphOpen &&
+          (listIndent === null || lineCol < listIndent || lineCol >= listIndent + 4)) return ' '.repeat(line.length);
+      const contentCol = visualColumn((container.content.match(/^[ \t]*/) || [''])[0]);
+      if (contentCol >= 4 && !paragraphOpen &&
           (container.quoteDepth > 0 || container.listIndent > 0)) {
         return ' '.repeat(line.length);
       }
@@ -654,10 +692,16 @@ function stripClosedHeadingComments(text) {
       if (end > opener) starts.lastIndex = end;
       continue;
     }
-    const closer = text.indexOf('-->', opener + 4);
-    if (closer < 0) break; // An unmatched opener needs only one suffix scan.
+    let commentEnd = -1;
+    if (text.startsWith('<!-->', opener)) commentEnd = opener + 5;
+    else if (text.startsWith('<!--->', opener)) commentEnd = opener + 6;
+    else {
+      const closer = text.indexOf('-->', opener + 4);
+      if (closer >= 0) commentEnd = closer + 3;
+    }
+    if (commentEnd < 0) break; // An unmatched opener needs only one suffix scan.
     visible += text.slice(cursor, opener);
-    cursor = closer + 3;
+    cursor = commentEnd;
     starts.lastIndex = cursor;
   }
   return visible + text.slice(cursor);
@@ -728,14 +772,20 @@ function protectHeadingCode(heading, spans, rawSpans = []) {
       }
     } else {
       if (match[0] === '<!--') {
-        const closer = heading.indexOf('-->', match.index + 4);
-        if (closer < 0) {
+        let commentEnd = -1;
+        if (heading.startsWith('<!-->', match.index)) commentEnd = match.index + 5;
+        else if (heading.startsWith('<!--->', match.index)) commentEnd = match.index + 6;
+        else {
+          const closer = heading.indexOf('-->', match.index + 4);
+          if (closer >= 0) commentEnd = closer + 3;
+        }
+        if (commentEnd < 0) {
           hasClosingComment = false;
           nextMatch = null;
           continue;
         }
         visible += heading.slice(cursor, match.index);
-        cursor = closer + 3;
+        cursor = commentEnd;
         nextMatch = null;
         htmlStarts.lastIndex = Math.max(htmlStarts.lastIndex, cursor);
       } else {
@@ -823,12 +873,17 @@ function markdownContainer(raw, paragraphOpen = false) {
     }
     const list = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+)/.exec(content);
     if (list && (!paragraphOpen || !list[1] || list[1] === '1')) {
-      const markerLen = list[0].length - list[2].length;
-      const padding = list[2].length >= 5 ? 1 : list[2].length;
-      const consumed = markerLen + padding;
-      listIndent += consumed;
-      containers.push({ kind: 'list', indent: consumed });
-      content = content.slice(consumed);
+      const markerStr = list[0].slice(0, list[0].length - list[2].length);
+      const markerCol = visualColumn(markerStr);
+      const wsStr = list[2];
+      const afterWsCol = visualColumn(wsStr, markerCol);
+      const spacesCol = afterWsCol - markerCol;
+      const padding = spacesCol >= 5 ? 1 : spacesCol;
+      const consumedIndent = markerCol + padding;
+      listIndent += consumedIndent;
+      containers.push({ kind: 'list', indent: consumedIndent });
+      const consumedChars = spacesCol >= 5 ? markerStr.length + 1 : list[0].length;
+      content = content.slice(consumedChars);
     }
     if (content === before) break;
   }
@@ -849,8 +904,9 @@ function continuingHeadingContainer(shape, raw) {
       if (!prefix) return { continues: false };
       content = content.slice(prefix[0].length);
     } else {
-      if (!content.startsWith(' '.repeat(part.indent))) return { continues: false };
-      content = content.slice(part.indent);
+      const stripped = stripIndent(content, part.indent);
+      if (!stripped) return { continues: false };
+      content = stripped.remaining;
     }
   }
   return { continues: true, content };
@@ -930,15 +986,15 @@ function headingsIn(text, original = text) {
     const line = lines[i];
     const originalLine = originalLines[i] ?? line;
     const activeListIndent = listIndent;
-    const lineInList = activeListIndent !== null && line.startsWith(' '.repeat(activeListIndent));
-    const containerLine = lineInList ? line.slice(activeListIndent) : line;
-    const origContainerLine = lineInList && originalLine.startsWith(' '.repeat(activeListIndent))
-      ? originalLine.slice(activeListIndent)
-      : originalLine;
+    const strippedActiveList = activeListIndent !== null ? stripIndent(line, activeListIndent) : null;
+    const lineInList = strippedActiveList !== null;
+    const containerLine = lineInList ? strippedActiveList.remaining : line;
+    const origStripped = activeListIndent !== null ? stripIndent(originalLine, activeListIndent) : null;
+    const origContainerLine = origStripped !== null ? origStripped.remaining : originalLine;
     const container = markdownContainer(containerLine);
     if (container.listIndent) {
       listIndent = (lineInList ? activeListIndent : 0) + container.listIndent;
-    } else if (!/^[ \t]*$/.test(line) && listIndent !== null && !line.startsWith(' '.repeat(listIndent))) {
+    } else if (!/^[ \t]*$/.test(line) && listIndent !== null && !stripIndent(line, listIndent)) {
       listIndent = null;
     }
     const atx = container.content
@@ -1823,9 +1879,9 @@ function linkBlockBoundaries(text, sourceText = text) {
     const quote = /^ {0,3}(?:>[ \t]?){1,4}/.exec(raw);
     const depth = quote ? (quote[0].match(/>/g) || []).length : 0;
     let content = raw.slice(quote?.[0].length || 0);
-    const continuationIndent = listIndent !== null && content.startsWith(' '.repeat(listIndent))
-      ? listIndent : 0;
-    if (continuationIndent) content = content.slice(continuationIndent);
+    const strippedCont = listIndent !== null ? stripIndent(content, listIndent) : null;
+    const continuationIndent = strippedCont !== null ? listIndent : 0;
+    if (strippedCont) content = strippedCont.remaining;
     const list = /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content);
     // Only an ordered list starting at 1 can interrupt an ordinary paragraph.
     const listStartsBlock = list && ((listIndent !== null && !continuationIndent) || priorBlank || priorSingleLineBlock ||
@@ -1843,8 +1899,15 @@ function linkBlockBoundaries(text, sourceText = text) {
     priorBlank = isBlank;
     quoteDepth = activeQuoteDepth;
     paragraphOpen = !isBlank && !isInterruption && !priorSingleLineBlock;
-    if (listStartsBlock) listIndent = continuationIndent + list[0].length;
-    else if (!continuationIndent && !isBlank) listIndent = null;
+    if (listStartsBlock) {
+      const listMarker = list[0].slice(0, list[0].length - (list[0].match(/[ \t]+$/)?.[0].length || 0));
+      const markerCol = visualColumn(listMarker);
+      const ws = list[0].slice(listMarker.length);
+      const afterWsCol = visualColumn(ws, markerCol);
+      const spacesCol = afterWsCol - markerCol;
+      const padding = spacesCol >= 5 ? 1 : spacesCol;
+      listIndent = continuationIndent + markerCol + padding;
+    } else if (!continuationIndent && !isBlank) listIndent = null;
     offset += raw.length + 1;
   }
   return boundaries;
@@ -2006,7 +2069,7 @@ function referenceDefinitionCanStart(text, offset, last) {
 // leave text BETWEEN tags visible. Respect quotes around attributes and limit
 // each tag scan so malformed PR input cannot force unbounded work.
 function htmlTagRanges(text) {
-  const ranges = [], starts = /<\/?[A-Za-z][A-Za-z0-9-]*|<\?|<!\[CDATA\[|<![A-Z]+/g;
+  const ranges = [], starts = /<\/?[A-Za-z][A-Za-z0-9-]*|<\?|<!\[CDATA\[|<![A-Za-z]+/g;
   let scanned = 0;
   const maxScanned = Math.min(4 * text.length + 4096, 2 * 1024 * 1024);
   const tick = () => {
@@ -2273,11 +2336,9 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   for (const match of structures.fullRefs) {
     if (insideInline(match.index) || inRanges(inlineHtmlRanges, match.index) ||
         inRanges(autolinkRanges, match.index)) continue;
-    // Consume an explicit reference's second [label] even if its first
-    // bracket is escaped. Other text ending with ']' is not a reference.
+    if (escapedAt(text, match.opener)) continue;
     referenceSuffixStarts.add(match.suffixStart);
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
-    if (escapedAt(text, match.opener)) continue;
     referenceOpeners.add(match.opener);
     const id = referenceLabel(match.label);
     if (deletedTargets) used.add(id);
@@ -2295,11 +2356,6 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
       fail(safe(filename) + ': undefined reference label ' + safe(id) +
         ' [' + safe(filename) + ':' + lineOf(match.index) + ']');
     }
-  }
-  // An escaped '[' is not a reference opener, but it still consumes the
-  // following full-reference label so that label is not a shortcut.
-  for (const match of text.matchAll(/\\\[(?:\\.|[^\[\]\\\n]){0,512}\]\[/g)) {
-    referenceSuffixStarts.add(match.index + match[0].length - 1);
   }
   if (deletedTargets) {
     // Standard shortcut references: [label] or ![alt] when a definition exists.
