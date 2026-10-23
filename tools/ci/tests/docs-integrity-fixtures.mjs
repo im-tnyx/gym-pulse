@@ -545,6 +545,10 @@ const fixtures = [
     ['reference definition does not open paragraph before HTML block', '[x]: https://example.invalid\n<custom>\n[old](Target.md)\n', true],
     ['single-character setext underline does not open paragraph for indented code', 'Heading\n=\n    [old](Target.md)\n', true],
     ['CRLF target heading with reference definition resolves anchor', '[old](Target.md#hello)\n', false, '# [Hello][ref]\r\n\r\n[ref]: https://example.invalid\r\n'],
+    ['indented setext underline before reference definition', 'Heading\n =\n[old]: Target.md\n\n[old]\n', false],
+    ['multiline reference definition does not open paragraph before HTML block', '[ref]:\n  ../README.md\n<custom>\n[old](Target.md)\n', true],
+    ['spaced thematic break does not count as list before indented code', 'paragraph\n* * *\n    [old](Target.md)\n', true],
+    ['long spaced thematic break does not exceed parser bound', '* * * * * *\n', true],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
     name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',

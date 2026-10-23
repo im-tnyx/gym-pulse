@@ -221,6 +221,7 @@ function removeCode(markdown, collectedIds = null) {
     laterCommentCloser[i] = lines[i].includes('-->') || laterCommentCloser[i + 1];
   }
   const multilineProtectedRanges = [];
+  const multilineDefRanges = [];
   let searchTail = 0;
   while (searchTail < markdown.length) {
     const bracket = markdown.indexOf('](', searchTail);
@@ -248,9 +249,11 @@ function removeCode(markdown, collectedIds = null) {
       const colon = prepassDefText.indexOf(']:', bracket);
       const afterColon = colon >= 0 ? colon + 2 : bracket + 1;
       multilineProtectedRanges.push({ start: afterColon, end: parsedDef.end });
+      multilineDefRanges.push({ start: ref.index, end: parsedDef.end });
     }
   }
   multilineProtectedRanges.sort((a, b) => a.start - b.start || a.end - b.end);
+  multilineDefRanges.sort((a, b) => a.start - b.start || a.end - b.end);
 
   function idTagsOnly(line, ranges = htmlTagRanges(line)) {
     // Preserve explicit anchors for BASE heading validation even inside
@@ -346,6 +349,7 @@ function removeCode(markdown, collectedIds = null) {
   return lines.map((line, lineIndex) => {
     const currentLineOffset = lineStartOffset;
     lineStartOffset += line.length + 1;
+    let lineIsRefDef = inRanges(multilineDefRanges, currentLineOffset);
     if (frontMatterEnd >= 0 && lineIndex <= frontMatterEnd) return ' '.repeat(line.length);
     // A list item's continuation indentation is a container prefix, not
     // indented code. Match fences after removing that active prefix.
@@ -497,7 +501,7 @@ function removeCode(markdown, collectedIds = null) {
         paragraphOpen = false;
         return idTagsOnly(line);
       }
-      if (!paragraphOpen) {
+      if (!paragraphOpen && !lineIsRefDef) {
         const ranges = htmlTagRanges(container.content);
         if (ranges.length === 1 && ranges[0].start <= 3 &&
             /^[ \t]*$/.test(container.content.slice(0, ranges[0].start)) &&
@@ -513,7 +517,8 @@ function removeCode(markdown, collectedIds = null) {
           }
         }
       }
-      const list = line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/);
+      const isThematicBreak = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line);
+      const list = !isThematicBreak ? line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/) : null;
       if (list) {
         const markerStr = list[0].slice(0, list[0].length - list[1].length);
         const markerCol = visualColumn(markerStr);
@@ -527,7 +532,7 @@ function removeCode(markdown, collectedIds = null) {
       else if (!/^[ \t]*$/.test(line) && listIndent !== null &&
           !stripIndent(line, listIndent)) listIndent = null;
       const lineCol = visualColumn((line.match(/^[ \t]*/) || [''])[0]);
-      if (lineCol >= 4 && !paragraphOpen &&
+      if (lineCol >= 4 && !paragraphOpen && !lineIsRefDef &&
           (listIndent === null || lineCol < listIndent || lineCol >= listIndent + 4)) return ' '.repeat(line.length);
       const contentCol = visualColumn((container.content.match(/^[ \t]*/) || [''])[0]);
       if (contentCol >= 4 && !paragraphOpen &&
@@ -554,8 +559,7 @@ function removeCode(markdown, collectedIds = null) {
       }
       tailSearch = bracket + 2;
     }
-    let lineIsRefDef = false;
-    if (!paragraphOpen && referenceDefinitionCanStart(markdown, currentLineOffset)) {
+    if (!lineIsRefDef && !paragraphOpen && referenceDefinitionCanStart(markdown, currentLineOffset)) {
       const defMatch = /^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/.exec(line);
       if (defMatch) {
         const bracket = defMatch[0].length - 1;
@@ -917,6 +921,7 @@ function markdownContainer(raw, paragraphOpen = false) {
       containers.push({ kind: 'quote' });
       content = content.slice(quote[0].length);
     }
+    if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content)) break;
     const list = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+)/.exec(content);
     if (list && (!paragraphOpen || !list[1] || list[1] === '1')) {
       const markerStr = list[0].slice(0, list[0].length - list[2].length);
@@ -933,9 +938,10 @@ function markdownContainer(raw, paragraphOpen = false) {
     }
     if (content === before) break;
   }
-  const unconsumedContainer = paragraphOpen
+  const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
+  const unconsumedContainer = !isThematic && (paragraphOpen
     ? /^ {0,3}(?:>|(?:[-+*]|1[.)])[ \t]+)/.test(content)
-    : /^ {0,3}(?:>|(?:[-+*]|\d{1,9}[.)])[ \t]+)/.test(content);
+    : /^ {0,3}(?:>|(?:[-+*]|\d{1,9}[.)])[ \t]+)/.test(content));
   if (unconsumedContainer) failParserBound();
   return { content, quoteDepth, listIndent, containers };
 }
@@ -1931,14 +1937,14 @@ function linkBlockBoundaries(text, sourceText = text) {
     const strippedCont = listIndent !== null ? stripIndent(content, listIndent) : null;
     const continuationIndent = strippedCont !== null ? listIndent : 0;
     if (strippedCont) content = strippedCont.remaining;
-    const list = /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content);
+    const thematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
+    const list = !thematic ? /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content) : null;
     // Only an ordered list starting at 1 can interrupt an ordinary paragraph.
     const listStartsBlock = list && ((listIndent !== null && !continuationIndent) || priorBlank || priorSingleLineBlock ||
       /^[-+*]$|^1[.)]$/.test(list[1]));
     const leaf = listStartsBlock ? content.slice(list[0].length) : content;
     const atx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(leaf);
     const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
-    const thematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(leaf);
     const isBlank = /^[ \t]*$/.test(sourceRaw.slice(quote?.[0].length || 0));
     const isInterruption = listStartsBlock || atx || setext || thematic;
     const isLazy = paragraphOpen && !isBlank && !isInterruption && depth < quoteDepth;
@@ -2094,6 +2100,7 @@ function referenceDefinitionCanStart(text, offset, last) {
   if (currentInQuote && !priorInQuote) return true;
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
   if (/^[ \t]*$/.test(prior) || /^ {0,3}#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
+  if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prior)) return true;
   const listMatch = /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(prior);
   if (listMatch) {
     const markerCol = visualColumn(listMatch[0].slice(0, listMatch[0].length - listMatch[1].length));
@@ -2119,7 +2126,7 @@ function referenceDefinitionCanStart(text, offset, last) {
     return true;
   }
   if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prior)) return true;
-  if (/^(?:=+|-+)[ \t]*$/.test(prior)) {
+  if (/^ {0,3}(?:=+|-+)[ \t]*$/.test(prior)) {
     // A setext underline only interrupts a paragraph when it actually has a
     // preceding paragraph line. A leading `=` is ordinary text, so allowing a
     // following definition would hide any Markdown-looking destination.
@@ -2127,7 +2134,7 @@ function referenceDefinitionCanStart(text, offset, last) {
     if (headingEnd < 0) return false;
     const headingStart = text.lastIndexOf('\n', headingEnd - 1) + 1;
     const heading = text.slice(headingStart, headingEnd)
-      .replace(/^ {0,3}(?:>[ \t]?){0,4}/, '');
+      .replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
     const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$))/i;
     return Boolean(heading) && !/^[ \t]*$/.test(heading) &&
       !htmlBlock.test(heading) &&
@@ -2325,7 +2332,8 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     const lineBreak = text.indexOf('\n', scanAt);
     const lineLimit = lineBreak < 0 ? text.length : lineBreak;
     const line = text.slice(scanAt, lineLimit);
-    const list = /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(line);
+    const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line);
+    const list = !isThematic ? /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(line) : null;
     if (list) {
       const markerStr = list[0].slice(0, list[0].length - list[1].length);
       const markerCol = visualColumn(markerStr);
