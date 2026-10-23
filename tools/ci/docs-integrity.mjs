@@ -70,10 +70,43 @@ function hasInterveningBlockBoundary(text, begin, end) {
 
 const LINK_LABEL_LIMIT = 512;
 
+function codeSpanRanges(text, from, to) {
+  const ranges = [];
+  const slice = text.slice(from, to);
+  const runs = [...slice.matchAll(/`+/g)];
+  for (let i = 0; i < runs.length; i++) {
+    const opener = runs[i];
+    if (escapedAt(text, from + opener.index)) continue;
+    const len = opener[0].length;
+    let closer = null;
+    for (let j = i + 1; j < runs.length; j++) {
+      if (runs[j][0].length === len && !escapedAt(text, from + runs[j].index)) {
+        const between = text.slice(from + opener.index, from + runs[j].index);
+        if (!/\n[ \t]*\n/.test(between)) {
+          closer = runs[j];
+          i = j;
+          break;
+        }
+      }
+    }
+    if (closer) {
+      ranges.push({
+        start: from + opener.index,
+        end: from + closer.index + len,
+      });
+    }
+  }
+  return ranges;
+}
 function hasMatchingLinkOpener(text, bracket) {
   let depth = 1;
   const minIndex = Math.max(0, bracket - LINK_LABEL_LIMIT - 1);
+  const ignored = [
+    ...codeSpanRanges(text, minIndex, bracket),
+    ...htmlTagRanges(text.slice(minIndex, bracket)).map(r => ({ start: minIndex + r.start, end: minIndex + r.end })),
+  ].sort((a, b) => a.start - b.start);
   for (let k = bracket - 1; k >= minIndex; k--) {
+    if (inRanges(ignored, k)) continue;
     if (text[k] === '\n') {
       let probe = k - 1;
       while (probe >= minIndex && (text[probe] === ' ' || text[probe] === '\t')) probe--;
