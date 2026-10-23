@@ -277,6 +277,22 @@ function removeCode(markdown) {
         paragraphOpen = false;
         return idTagsOnly(line);
       }
+      if (!paragraphOpen) {
+        const ranges = htmlTagRanges(container.content);
+        if (ranges.length === 1 && ranges[0].start <= 3 &&
+            /^[ \t]*$/.test(container.content.slice(0, ranges[0].start)) &&
+            /^[ \t]*$/.test(container.content.slice(ranges[0].end))) {
+          const tagMatch = container.content.slice(ranges[0].start).match(/^<\/??([A-Za-z][A-Za-z0-9-]*)/);
+          const tag = tagMatch ? tagMatch[1].toLowerCase() : '';
+          if (tag && !/^(?:script|style|textarea)$/.test(tag)) {
+            rawBlock = { tag, endOnBlank: true, quoteDepth: container.quoteDepth,
+              listIndent: container.listIndent, containers: container.containers,
+              outerListIndent: lineInList ? activeListIndent : null };
+            paragraphOpen = false;
+            return idTagsOnly(line);
+          }
+        }
+      }
       const list = line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])\s+/);
       if (list) { listIndent = list[0].length; paragraphOpen = false; }
       else if (!/^[ \t]*$/.test(line) && listIndent !== null &&
@@ -879,8 +895,8 @@ function mergeSymlinkTargetValid(relative, anchor) {
   } catch { return false; } // Missing, dangling, escaping or invalid target.
 }
 const baseTargetInProgress = new Set();
-function baseTargetValid(relative, anchor) {
-  const key = JSON.stringify([relative, anchor]);
+function baseTargetValid(relative, anchor, isMarkdown = relative.toLowerCase().endsWith('.md')) {
+  const key = JSON.stringify([relative, anchor, Boolean(isMarkdown)]);
   if (baseTargetCache.has(key)) return baseTargetCache.get(key);
   if (baseTargetInProgress.has(key)) return false; // Cyclic base symlink: already invalid.
   if (baseTargetCache.size > 1000 || baseTargetInProgress.size >= 8) {
@@ -905,7 +921,7 @@ function baseTargetValid(relative, anchor) {
         }
         // Conservative fail-closed rejection of deletions where base anchors
         // cannot safely be parsed, without reading a huge Git blob.
-        valid = blobSize > 1024 * 1024 || (relative.toLowerCase().endsWith('.md') &&
+        valid = blobSize > 1024 * 1024 || (isMarkdown &&
           (() => {
              let headings = baseHeadingCache.get(relative);
              if (!headings) {
@@ -942,7 +958,8 @@ function baseTargetValid(relative, anchor) {
       if (target && !path.isAbsolute(target) && !target.includes('\0')) {
         const resolved = path.resolve(root, path.dirname(relative), target);
         if (withinRoot(resolved)) {
-          valid = baseTargetValid(path.relative(root, resolved).split(path.sep).join('/'), anchor);
+          const targetRel = path.relative(root, resolved).split(path.sep).join('/');
+          valid = baseTargetValid(targetRel, anchor, isMarkdown || targetRel.toLowerCase().endsWith('.md'));
         }
       }
     }
@@ -1017,10 +1034,35 @@ function resolveBaseParentAliases(parent) {
 // must not abort the entire inbound scan; a plausible deleted one must fail.
 // Mark path-shaping ambiguous entities as possible when we cannot exclude
 // an affected path. This deliberately does not claim full HTML5 parsing.
+function extractDestinationFilenamePart(raw) {
+  let text = raw.trim();
+  if (text.startsWith('<')) {
+    text = text.slice(1).replace(/>\s*$/, '');
+  }
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] === '\\' && i + 1 < text.length) {
+      i += 2;
+      continue;
+    }
+    if (text[i] === '&') {
+      const ent = /^&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/.exec(text.slice(i));
+      if (ent) {
+        i += ent[0].length;
+        continue;
+      }
+    }
+    if (text[i] === '?' || text[i] === '#') {
+      return text.slice(0, i);
+    }
+    i++;
+  }
+  return text;
+}
+
 function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
   if (!deleted.size) return false;
-  const value = raw.trim().replace(/^</, '').replace(/>\s*$/, '')
-    .split(/[?#]/, 1)[0];
+  const value = extractDestinationFilenamePart(raw);
   if (!value || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value)) return false;
   let cleanFilePart = null;
   try {

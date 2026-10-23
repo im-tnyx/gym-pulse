@@ -211,6 +211,10 @@ const fixtures = [
       '[unrelated](../README.md#&Aopf;)\n', true],
     ['review: fragment entity uncertainty on deleted target fails closed',
       '[old](Target.md#&Aopf;)\n', false, null, 'Unparseable inbound destination'],
+    ['review: numeric entity in destination filename preserved before fragment',
+      '[old](Target&#46;md#&Aopf;)\n', false, '# Target\n<span id="𝔸"></span>\n', 'Unparseable inbound destination'],
+    ['review: standalone type-7 HTML block masks contained link',
+      '<span>\n[old](Target.md)\n</span>\n', true],
     ['quoted heading interruption ends multiline code span', '> `code\n> # [old](Target.md)\n> code`', false],
     ['heading interruption ends quoted multiline code span', '> `code\n# [old](Target.md)\n> code`', false],
     ['list boundary ends multiline code span', '- `code\n[old](Target.md)\ncode`', false],
@@ -699,6 +703,8 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'deleted symlink target with formerly valid inbound link', md: null, extra: 'deleted-symlink-target',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'deleted Markdown symlink to text target preserves base anchor validation', md: null,
+    extra: 'deleted-symlink-text-target-anchor', pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'escaped HTML comment opener leaves active deleted link', md: null, extra: 'deleted-escaped-comment',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'unused reference definition to deleted target ignored', md: null, extra: 'deleted-unused-ref',
@@ -911,6 +917,7 @@ function executeFixture(test) {
       'deleted-many-shortcuts': '# Consumer\n' + '[old]\n'.repeat(11000) + '\n[old]: Target.md\n',
       'deleted-large-target': '# Consumer\n[old](Target.md)\n',
       'deleted-symlink-target': '# Consumer\n[old](Alias.md)\n',
+      'deleted-symlink-text-target-anchor': '# Consumer\n[old](Alias.md#real)\n',
       'deleted-escaped-comment': '# Consumer\n\\<!-- not a comment: [old](Target.md) -->\n',
       'deleted-unused-ref': '# Consumer\n[unused]: Target.md\n',
       'deleted-shortcut-ref': '# Consumer\n[old]\n\n[old]: Target.md\n',
@@ -1096,10 +1103,11 @@ function executeFixture(test) {
     if (test.extra === 'deleted-large-target') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Target\n' + 'x'.repeat(1024 * 1024 + 1));
     }
-    if (test.extra === 'deleted-symlink-target') {
-      fs.writeFileSync(path.join(root, 'docs', 'Real.md'), '# Real\n');
+    if (test.extra === 'deleted-symlink-target' || test.extra === 'deleted-symlink-text-target-anchor') {
+      const realFile = test.extra === 'deleted-symlink-text-target-anchor' ? 'Real.txt' : 'Real.md';
+      fs.writeFileSync(path.join(root, 'docs', realFile), '# Real\n');
       try {
-        fs.symlinkSync('Real.md', path.join(root, 'docs', 'Alias.md'));
+        fs.symlinkSync(realFile, path.join(root, 'docs', 'Alias.md'));
       } catch (error) {
         if (['EPERM', 'ENOSYS', 'EACCES', 'EOPNOTSUPP', 'ENOTSUP'].includes(error.code)) {
           return { skip: 'symlink creation unsupported on current host' };
@@ -1334,7 +1342,7 @@ function executeFixture(test) {
       fs.rmSync(path.join(root, 'docs', 'a.md'));
       fs.rmSync(path.join(root, 'docs', 'a.md#x.md'));
     }
-    if (test.extra === 'deleted-symlink-target') fs.rmSync(path.join(root, 'docs', 'Alias.md'));
+    if (test.extra === 'deleted-symlink-target' || test.extra === 'deleted-symlink-text-target-anchor') fs.rmSync(path.join(root, 'docs', 'Alias.md'));
     if (rawName) fs.rmSync(rawName);
     if (test.extra === 'renamed-inbound') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
     if (['typechange-anchor-broken', 'typechange-anchor-preserved',
