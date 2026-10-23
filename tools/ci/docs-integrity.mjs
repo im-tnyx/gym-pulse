@@ -234,10 +234,19 @@ function removeCode(markdown, collectedIds = null) {
     }
     searchTail = bracket + 2;
   }
-  for (const m of markdown.matchAll(/^ {0,3}\[([^\]]+)\]:[ \t]*/gm)) {
-    const parsedDef = parseReferenceDefinition(markdown, m.index + m[0].indexOf('['), markdown.length);
+  const prepassDefText = normalizeReferenceContainers(markdown);
+  const prepassLastDefClose = prepassDefText.lastIndexOf(']:');
+  let priorDef = null;
+  for (const ref of markdown.matchAll(/^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/gm)) {
+    if (priorDef && ref.index < priorDef.end) continue;
+    if (!referenceDefinitionCanStart(markdown, ref.index, priorDef)) continue;
+    const bracket = ref.index + ref[0].length - 1;
+    const parsedDef = parseReferenceDefinition(prepassDefText, bracket, prepassLastDefClose, prepassDefText);
     if (parsedDef) {
-      multilineProtectedRanges.push({ start: m.index + m[0].length, end: parsedDef.end });
+      priorDef = { start: ref.index, end: parsedDef.end };
+      const colon = prepassDefText.indexOf(']:', bracket);
+      const afterColon = colon >= 0 ? colon + 2 : bracket + 1;
+      multilineProtectedRanges.push({ start: afterColon, end: parsedDef.end });
     }
   }
   multilineProtectedRanges.sort((a, b) => a.start - b.start || a.end - b.end);
@@ -544,11 +553,16 @@ function removeCode(markdown, collectedIds = null) {
       }
       tailSearch = bracket + 2;
     }
-    const defMatch = /^ {0,3}\[([^\]]+)\]:[ \t]*/.exec(line);
-    if (defMatch) {
-      const parsedDef = parseReferenceDefinition(line, line.indexOf('['), line.length);
-      if (parsedDef) {
-        protectedRanges.push({ start: defMatch[0].length, end: parsedDef.end });
+    if (!paragraphOpen && referenceDefinitionCanStart(markdown, currentLineOffset)) {
+      const defMatch = /^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/.exec(line);
+      if (defMatch) {
+        const bracket = defMatch[0].length - 1;
+        const parsedDef = parseReferenceDefinition(line, bracket, line.length);
+        if (parsedDef) {
+          const colon = line.indexOf(']:', bracket);
+          const afterColon = colon >= 0 ? colon + 2 : bracket + 1;
+          protectedRanges.push({ start: afterColon, end: parsedDef.end });
+        }
       }
     }
     protectedRanges.sort((a, b) => a.start - b.start || a.end - b.end);
@@ -2075,7 +2089,7 @@ function referenceDefinitionCanStart(text, offset, last) {
   const currentInQuote = /^ {0,3}>/.test(text.slice(lineStart));
   if (currentInQuote && !priorInQuote) return true;
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
-  if (/^[ \t]*$/.test(prior) || /^#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
+  if (/^[ \t]*$/.test(prior) || /^ {0,3}#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
   const listMatch = /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(prior);
   if (listMatch) {
     const markerCol = visualColumn(listMatch[0].slice(0, listMatch[0].length - listMatch[1].length));

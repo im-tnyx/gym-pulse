@@ -538,6 +538,8 @@ const fixtures = [
     ['autolink backtick cannot open code span', '<https://example.invalid/`> [old](Target.md) `', false],
     ['blockquote paragraph continuation with indentation', '> paragraph\n>     [old](Target.md)\n', false],
     ['list paragraph continuation with indentation', '- paragraph\n      [old](Target.md)\n', false],
+    ['indented ATX heading permits reference definition', ' # Heading\n[old]: Target.md\n\n[old]\n', false],
+    ['reference definition continuing paragraph does not protect title code span', 'paragraph\n[x]: README.md "`[old](Target.md)`"\n', true],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
     name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',
