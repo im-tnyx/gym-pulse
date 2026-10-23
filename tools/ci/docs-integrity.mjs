@@ -162,6 +162,20 @@ function removeCode(markdown) {
     const activeListIndent = listIndent;
     const lineInList = activeListIndent !== null && line.startsWith(' '.repeat(activeListIndent));
     const containerLine = lineInList ? line.slice(listIndent) : line;
+    const continuationInput = state =>
+      state.outerListIndent === null && lineInList &&
+        state.containers?.some(part => part.kind === 'list') ? line : containerLine;
+    if (fenced) {
+      const continuation = continuingContainer(fenced, continuationInput(fenced), lineInList);
+      if (continuation.continues) {
+        const closer = continuation.content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+        if (closer && closer[1][0] === fenced.marker &&
+            closer[1].length >= fenced.count && /^[ \t]*$/.test(closer[2])) fenced = null;
+        paragraphOpen = false;
+        return '';
+      }
+      fenced = null;
+    }
     const container = markdownContainer(containerLine);
     // Apply this only when opening a new container below. List-like text in
     // an existing fence/raw block/comment is literal and must not mutate the
@@ -171,9 +185,6 @@ function removeCode(markdown) {
         listIndent = (lineInList ? activeListIndent : 0) + container.listIndent;
       }
     };
-    const continuationInput = state =>
-      state.outerListIndent === null && lineInList &&
-        state.containers?.some(part => part.kind === 'list') ? line : containerLine;
     const fence = container.content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (comment && !commentIsBlock) {
       const continuation = continuingContainer(
@@ -188,17 +199,6 @@ function removeCode(markdown) {
         !continuingContainer(commentContainer, continuationInput(commentContainer), lineInList).continues) {
       comment = false;
       commentContainer = null;
-    }
-    if (fenced) {
-      const continuation = continuingContainer(fenced, continuationInput(fenced), lineInList);
-      if (!continuation.continues) fenced = null;
-      else {
-        const closer = continuation.content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
-        if (closer && closer[1][0] === fenced.marker &&
-            closer[1].length >= fenced.count && /^[ \t]*$/.test(closer[2])) fenced = null;
-        paragraphOpen = false;
-        return '';
-      }
     }
     if (rawBlock) {
       // A block opened inside a blockquote/list ends when that container
@@ -406,9 +406,13 @@ function removeCode(markdown) {
         break;
       }
     }
-    if (/^[ \t]*$/.test(line)) paragraphOpen = false;
-    else if (!/^[ \t]*$/.test(visible) && !/^ {0,3}(?:#{1,6}[ \t]|>|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(line) &&
-             !/^ {0,3}(?:={2,}|-{2,})[ \t]*$/.test(line)) paragraphOpen = true;
+    if (/^[ \t]*$/.test(line) || isAtxHeading ||
+        /^ {0,3}(?:={2,}|-{2,})[ \t]*$/.test(line) ||
+        /^ {0,3}(?:[-*_][ \t]*){3,}$/.test(line)) {
+      paragraphOpen = false;
+    } else if (!/^[ \t]*$/.test(visible) && !/^ {0,3}(?:>|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(line)) {
+      paragraphOpen = true;
+    }
     return visible;
   }).join('\n');
 }
@@ -724,8 +728,10 @@ function headingsIn(text, original = text) {
   // introduce a fake id attribute. Code/comment masks remain authoritative.
   for (const range of htmlTagRanges(text)) {
     const tag = text.slice(range.start, range.end);
+    const tagMatch = /^<\/?[A-Za-z][A-Za-z0-9-]*/.exec(tag);
+    if (!tagMatch) continue;
     const attrs = /([A-Za-z_:][A-Za-z0-9_.:-]*)(?:[ \t\r\n]*=[ \t\r\n]*(?:"([^"]*)"|'([^']*)'|([^\t\r\n "'=<>`]+)))?/g;
-    attrs.lastIndex = /^<\/?[A-Za-z][A-Za-z0-9-]*/.exec(tag)[0].length;
+    attrs.lastIndex = tagMatch[0].length;
     let attr;
     while ((attr = attrs.exec(tag))) {
       if (attr[1].toLowerCase() !== 'id') continue;
@@ -788,23 +794,9 @@ function decodeDestinationText(value) {
     (token, escaped) => escaped === undefined ? decodeLinkEntities(token) : escaped);
 }
 
-function hasEscapedAngleDelimiter(raw) {
-  if (!raw.startsWith('<')) return false;
-  // Under CommonMark a backslash-escaped '>' cannot delimit an angle link.
-  for (let i = 1; i < raw.length; i++) {
-    if (raw[i] !== '\\') continue;
-    if (raw[i + 1] === '>') return true;
-    i++;
-  }
-  return false;
-}
-
 function destination(raw) {
   const value = raw.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '');
   if (value.startsWith('<')) {
-    if (hasEscapedAngleDelimiter(value)) {
-      throw new Error('Escaped angle destination delimiter is invalid');
-    }
     let end = -1;
     for (let i = 1; i < value.length; i++) {
       if (value[i] === '\\') { i++; continue; }
@@ -1037,7 +1029,12 @@ function resolveBaseParentAliases(parent) {
 function extractDestinationFilenamePart(raw) {
   let text = raw.trim();
   if (text.startsWith('<')) {
-    text = text.slice(1).replace(/>\s*$/, '');
+    let end = -1;
+    for (let i = 1; i < text.length; i++) {
+      if (text[i] === '\\') { i++; continue; }
+      if (text[i] === '>') { end = i; break; }
+    }
+    text = end > 0 ? text.slice(1, end) : text.slice(1).replace(/>\s*$/, '');
   }
   let i = 0;
   while (i < text.length) {
@@ -1413,7 +1410,7 @@ function readAngleDestination(text, index, limit) {
         separatorExceeded(index + 1, limit, text);
         return null;
       }
-      if (text[index + 1] === '>' || text[index + 1] === '\n') return null;
+      if (text[index + 1] === '\n') return null;
       index += /[!-/:-@\[-`{-~]/.test(text[index + 1]) ? 2 : 1;
       continue;
     }
@@ -1724,7 +1721,7 @@ function referenceDefinitionCanStart(text, offset, last) {
 // leave text BETWEEN tags visible. Respect quotes around attributes and limit
 // each tag scan so malformed PR input cannot force unbounded work.
 function htmlTagRanges(text) {
-  const ranges = [], starts = /<\/?[A-Za-z][A-Za-z0-9-]*/g;
+  const ranges = [], starts = /<\/?[A-Za-z][A-Za-z0-9-]*|<\?|<!\[CDATA\[|<![A-Z]+/g;
   let scanned = 0;
   const maxScanned = Math.min(4 * text.length + 4096, 2 * 1024 * 1024);
   const tick = () => {
@@ -1735,8 +1732,31 @@ function htmlTagRanges(text) {
   for (const start of text.matchAll(starts)) {
     const begin = start.index;
     if (escapedAt(text, begin)) continue; // Escaped '<' is literal prose.
-    if (!/[\s/>]/.test(text[begin + start[0].length] || '')) continue;
     if (ranges.length && begin < ranges.at(-1).end) continue;
+    if (start[0] === '<?') {
+      const closer = text.indexOf('?>', begin + 2);
+      if (closer >= 0 && !/\n[ \t]*\r?\n/.test(text.slice(begin, closer))) {
+        ranges.push({ start: begin, end: closer + 2 });
+      }
+      continue;
+    }
+    if (start[0] === '<![CDATA[') {
+      const closer = text.indexOf(']]>', begin + 9);
+      if (closer >= 0 && !/\n[ \t]*\r?\n/.test(text.slice(begin, closer))) {
+        ranges.push({ start: begin, end: closer + 3 });
+      }
+      continue;
+    }
+    if (start[0].startsWith('<!')) {
+      if (/^<![A-Z]+[\s/]/.test(text.slice(begin))) {
+        const closer = text.indexOf('>', begin + 2);
+        if (closer >= 0 && !/\n[ \t]*\r?\n/.test(text.slice(begin, closer))) {
+          ranges.push({ start: begin, end: closer + 1 });
+        }
+      }
+      continue;
+    }
+    if (!/[\s/>]/.test(text[begin + start[0].length] || '')) continue;
     const end = parseHtmlTagEnd(text, begin, start[0].length, tick);
     if (end > begin) ranges.push({ start: begin, end });
   }
