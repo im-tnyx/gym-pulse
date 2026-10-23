@@ -137,9 +137,10 @@ function hasMatchingLinkOpener(text, bracket) {
         const inner = text.slice(k + 1, bracket);
         let innerTail = 0;
         while ((innerTail = inner.indexOf('](', innerTail)) >= 0) {
-          if (!escapedAt(inner, innerTail) && parseInlineTail(inner, innerTail + 1)) {
+          if (!inRanges(ignored, k + 1 + innerTail) && !escapedAt(inner, innerTail) && parseInlineTail(inner, innerTail + 1)) {
             let img = false, d = 1;
             for (let j = innerTail - 1; j >= 0; j--) {
+              if (inRanges(ignored, k + 1 + j)) continue;
               if (inner[j] === ']' && !escapedAt(inner, j)) d++;
               else if (inner[j] === '[' && !escapedAt(inner, j)) {
                 if (--d === 0) {
@@ -443,17 +444,22 @@ function removeCode(markdown) {
           }
         }
       }
-      const list = line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])\s+/);
-      if (list) { listIndent = list[0].length; paragraphOpen = false; }
+      const list = line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/);
+      if (list) {
+        const markerLen = list[0].length - list[1].length;
+        const padding = list[1].length >= 5 ? 1 : list[1].length;
+        listIndent = markerLen + padding;
+        paragraphOpen = false;
+      }
       else if (!/^[ \t]*$/.test(line) && listIndent !== null &&
           !line.startsWith(' '.repeat(listIndent))) listIndent = null;
       const indent = (line.match(/^ */) || [''])[0].length;
       if ((indent >= 4 || line.startsWith('\t')) && !paragraphOpen &&
           (listIndent === null || indent < listIndent || indent >= listIndent + 4)) return ' '.repeat(line.length);
-      if (container.quoteDepth > 0 && !paragraphOpen) {
-        const quotedIndent = (container.content.match(/^ */) || [''])[0].length;
-        if ((quotedIndent >= 4 || container.content.startsWith('\t')) &&
-            (!container.listIndent || quotedIndent >= container.listIndent + 4)) return ' '.repeat(line.length);
+      const contentIndent = (container.content.match(/^ */) || [''])[0].length;
+      if ((contentIndent >= 4 || container.content.startsWith('\t')) && !paragraphOpen &&
+          (container.quoteDepth > 0 || container.listIndent > 0)) {
+        return ' '.repeat(line.length);
       }
     }
 
@@ -815,11 +821,14 @@ function markdownContainer(raw, paragraphOpen = false) {
       containers.push({ kind: 'quote' });
       content = content.slice(quote[0].length);
     }
-    const list = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])[ \t]+/.exec(content);
+    const list = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+)/.exec(content);
     if (list && (!paragraphOpen || !list[1] || list[1] === '1')) {
-      listIndent += list[0].length;
-      containers.push({ kind: 'list', indent: list[0].length });
-      content = content.slice(list[0].length);
+      const markerLen = list[0].length - list[2].length;
+      const padding = list[2].length >= 5 ? 1 : list[2].length;
+      const consumed = markerLen + padding;
+      listIndent += consumed;
+      containers.push({ kind: 'list', indent: consumed });
+      content = content.slice(consumed);
     }
     if (content === before) break;
   }
@@ -1752,28 +1761,28 @@ function parseInlineTail(text, parenIndex) {
   if (!lead) return null;
   let index = lead.index;
   if (text[index] === ')') return { raw: '', end: index + 1 };
-  let raw = '';
   if (lead.consumed && (text[index] === '"' || text[index] === "'" || text[index] === '(')) {
+    const title = readLinkTitle(text, index, limit);
+    if (title) {
+      const afterTitle = skipLinkSeparator(text, title.end, limit);
+      if (afterTitle && text[afterTitle.index] === ')') {
+        return { raw: '', end: afterTitle.index + 1 };
+      }
+    }
+  }
+  const dest = readDestinationAt(text, index, limit);
+  if (!dest) return null;
+  const raw = dest.raw;
+  index = dest.end;
+  const afterDest = skipLinkSeparator(text, index, limit);
+  if (!afterDest) return null;
+  index = afterDest.index;
+  if (afterDest.consumed && (text[index] === '"' || text[index] === "'" || text[index] === '(')) {
     const title = readLinkTitle(text, index, limit);
     if (!title) return null;
     const afterTitle = skipLinkSeparator(text, title.end, limit);
     if (!afterTitle) return null;
     index = afterTitle.index;
-  } else {
-    const dest = readDestinationAt(text, index, limit);
-    if (!dest) return null;
-    raw = dest.raw;
-    index = dest.end;
-    const afterDest = skipLinkSeparator(text, index, limit);
-    if (!afterDest) return null;
-    index = afterDest.index;
-    if (afterDest.consumed && (text[index] === '"' || text[index] === "'" || text[index] === '(')) {
-      const title = readLinkTitle(text, index, limit);
-      if (!title) return null;
-      const afterTitle = skipLinkSeparator(text, title.end, limit);
-      if (!afterTitle) return null;
-      index = afterTitle.index;
-    }
   }
   if (text[index] !== ')') {
     separatorExceeded(index, limit, text);
@@ -1968,7 +1977,8 @@ function referenceDefinitionCanStart(text, offset, last) {
   if (last && start >= last.start && end <= last.end) return true;
   const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '');
   const priorInQuote = /^ {0,3}>/.test(text.slice(start, end));
-  const currentInQuote = /^ {0,3}>/.test(text.slice(text.lastIndexOf('\n', offset - 1) + 1, offset));
+  const lineStart = offset <= 0 || text[offset - 1] === '\n' ? offset : text.lastIndexOf('\n', offset - 1) + 1;
+  const currentInQuote = /^ {0,3}>/.test(text.slice(lineStart));
   if (currentInQuote && !priorInQuote) return true;
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
   if (/^[ \t]*$/.test(prior) || /^#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
@@ -2188,8 +2198,12 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     const lineBreak = text.indexOf('\n', scanAt);
     const lineLimit = lineBreak < 0 ? text.length : lineBreak;
     const line = text.slice(scanAt, lineLimit);
-    const list = /^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+/.exec(line);
-    if (list) listContinuationIndent = list[0].length;
+    const list = /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(line);
+    if (list) {
+      const markerLen = list[0].length - list[1].length;
+      const padding = list[1].length >= 5 ? 1 : list[1].length;
+      listContinuationIndent = markerLen + padding;
+    }
     else if (!/^[ \t]*$/.test(line) && listContinuationIndent !== null &&
         !line.startsWith(' '.repeat(listContinuationIndent))) listContinuationIndent = null;
     const continuation = !list && listContinuationIndent !== null &&
