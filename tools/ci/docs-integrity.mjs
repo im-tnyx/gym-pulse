@@ -80,7 +80,7 @@ function codeSpanRanges(text, from, to) {
     const len = opener[0].length;
     let closer = null;
     for (let j = i + 1; j < runs.length; j++) {
-      if (runs[j][0].length === len && !escapedAt(text, from + runs[j].index)) {
+      if (runs[j][0].length === len) {
         const between = text.slice(from + opener.index, from + runs[j].index);
         if (!/\n[ \t]*\n/.test(between)) {
           closer = runs[j];
@@ -101,10 +101,21 @@ function codeSpanRanges(text, from, to) {
 function hasMatchingLinkOpener(text, bracket) {
   let depth = 1;
   const minIndex = Math.max(0, bracket - LINK_LABEL_LIMIT - 1);
-  const ignored = [
+  const rawIgnored = [
     ...codeSpanRanges(text, minIndex, bracket),
     ...htmlTagRanges(text.slice(minIndex, bracket)).map(r => ({ start: minIndex + r.start, end: minIndex + r.end })),
-  ].sort((a, b) => a.start - b.start);
+  ].sort((a, b) => a.start - b.start || a.end - b.end);
+  const ignored = [];
+  let curEnd = 0;
+  for (const r of rawIgnored) {
+    if (ignored.length && r.start <= curEnd) {
+      curEnd = Math.max(curEnd, r.end);
+      ignored.at(-1).end = curEnd;
+    } else {
+      curEnd = r.end;
+      ignored.push({ start: r.start, end: r.end });
+    }
+  }
   for (let k = bracket - 1; k >= minIndex; k--) {
     if (inRanges(ignored, k)) continue;
     if (text[k] === '\n') {
