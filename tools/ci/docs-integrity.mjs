@@ -109,7 +109,7 @@ function removeCode(markdown) {
     // HTML block openers handled below as well: even a same-line <script>
     // opener/closer interrupts the preceding paragraph.
     const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<(?:script|pre|style|textarea)(?=[ \t>]|$)|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)|<\/(?:script|pre|style|textarea)(?=[ \t/>]|$))/i;
-    return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|(?:[-*_][ \t]*){3,}$|=+[ \t]*$)/.test(raw);
+    return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$|=+[ \t]*$)/.test(raw);
   }
   function laterCommentCloserInline(index, openerContainer, outerListIndent) {
     let inspected = 0;
@@ -427,7 +427,7 @@ function removeCode(markdown) {
     }
     if (/^[ \t]*$/.test(line) || isAtxHeading ||
         /^ {0,3}(?:={2,}|-{2,})[ \t]*$/.test(line) ||
-        /^ {0,3}(?:[-*_][ \t]*){3,}$/.test(line)) {
+        /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line)) {
       paragraphOpen = false;
     } else if (!/^[ \t]*$/.test(visible) && !/^ {0,3}(?:>|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(line)) {
       paragraphOpen = true;
@@ -1600,10 +1600,11 @@ function linkBlockBoundaries(text) {
 // One forward pass. Images do not deactivate an enclosing link, so a badge
 // wrapped in a link reports both destinations. A nested link keeps the inner
 // destination and leaves the outer brackets inactive.
-function scanBracketLinks(text, masks = [], collectShortcuts = false, definedRefs = null) {
+function scanBracketLinks(rawText, masks = [], collectShortcuts = false, definedRefs = null) {
   const inlines = [], fullRefs = [], unresolvedFullRefs = [], shortcuts = [];
   const stack = [];
-  const boundaries = linkBlockBoundaries(text);
+  const boundaries = linkBlockBoundaries(rawText);
+  const text = normalizeReferenceContainers(rawText);
   let nextBoundary = 0;
   for (let i = 0; i < text.length; i++) {
     while (nextBoundary < boundaries.length && boundaries[nextBoundary] <= i) {
@@ -1751,29 +1752,56 @@ function htmlTagRanges(text) {
       throw new Error('Malformed inline HTML scan budget exceeded; fail closed');
     }
   };
+  let nextPiCloser = -2, nextCdataCloser = -2, nextDeclCloser = -2, nextBlank = -2;
+  const blankLineRegex = /\n[ \t]*\r?\n/g;
+  const findNextBlank = from => {
+    if (nextBlank === -1) return -1;
+    if (nextBlank < from) {
+      blankLineRegex.lastIndex = from;
+      const m = blankLineRegex.exec(text);
+      nextBlank = m ? m.index : -1;
+    }
+    return nextBlank;
+  };
   for (const start of text.matchAll(starts)) {
     const begin = start.index;
     if (escapedAt(text, begin)) continue; // Escaped '<' is literal prose.
     if (ranges.length && begin < ranges.at(-1).end) continue;
+    tick();
     if (start[0] === '<?') {
-      const closer = text.indexOf('?>', begin + 2);
-      if (closer >= 0 && !/\n[ \t]*\r?\n/.test(text.slice(begin, closer))) {
-        ranges.push({ start: begin, end: closer + 2 });
+      if (nextPiCloser !== -1) {
+        if (nextPiCloser < begin + 2) nextPiCloser = text.indexOf('?>', begin + 2);
+        if (nextPiCloser >= 0) {
+          const blank = findNextBlank(begin);
+          if (blank === -1 || blank > nextPiCloser) {
+            ranges.push({ start: begin, end: nextPiCloser + 2 });
+          }
+        }
       }
       continue;
     }
     if (start[0] === '<![CDATA[') {
-      const closer = text.indexOf(']]>', begin + 9);
-      if (closer >= 0 && !/\n[ \t]*\r?\n/.test(text.slice(begin, closer))) {
-        ranges.push({ start: begin, end: closer + 3 });
+      if (nextCdataCloser !== -1) {
+        if (nextCdataCloser < begin + 9) nextCdataCloser = text.indexOf(']]>', begin + 9);
+        if (nextCdataCloser >= 0) {
+          const blank = findNextBlank(begin);
+          if (blank === -1 || blank > nextCdataCloser) {
+            ranges.push({ start: begin, end: nextCdataCloser + 3 });
+          }
+        }
       }
       continue;
     }
     if (start[0].startsWith('<!')) {
-      if (/^<![A-Z]+[\s/]/.test(text.slice(begin))) {
-        const closer = text.indexOf('>', begin + 2);
-        if (closer >= 0 && !/\n[ \t]*\r?\n/.test(text.slice(begin, closer))) {
-          ranges.push({ start: begin, end: closer + 1 });
+      if (/^[\s/]/.test(text[begin + start[0].length] || '')) {
+        if (nextDeclCloser !== -1) {
+          if (nextDeclCloser < begin + 2) nextDeclCloser = text.indexOf('>', begin + 2);
+          if (nextDeclCloser >= 0) {
+            const blank = findNextBlank(begin);
+            if (blank === -1 || blank > nextDeclCloser) {
+              ranges.push({ start: begin, end: nextDeclCloser + 1 });
+            }
+          }
         }
       }
       continue;
