@@ -108,7 +108,7 @@ function removeCode(markdown) {
     // Inline code cannot cross a paragraph boundary. Recognize the CommonMark
     // HTML block openers handled below as well: even a same-line <script>
     // opener/closer interrupts the preceding paragraph.
-    const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$))/i;
+    const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<(?:script|pre|style|textarea)(?=[ \t>]|$)|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)|<\/(?:script|pre|style|textarea)(?=[ \t/>]|$))/i;
     return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|(?:[-*_][ \t]*){3,}$|=+[ \t]*$)/.test(raw);
   }
   function laterCommentCloserInline(index, openerContainer, outerListIndent) {
@@ -262,18 +262,25 @@ function removeCode(markdown) {
         paragraphOpen = false;
         return '';
       }
-      const rawOpen = container.content.match(/^ {0,3}(<\/?)((?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul))(?=[ \t/>]|$)/i);
-      if (rawOpen) {
-        const isClosing = rawOpen[1] === '</';
-        const tag = rawOpen[2].toLowerCase();
-        const endOnBlank = isClosing || !/^(?:pre|script|style|textarea)$/.test(tag);
-        if (endOnBlank ||
-            !new RegExp('</' + tag + '\\s*>', 'i').test(container.content.slice(rawOpen[0].length))) {
-          rawBlock = { tag, endOnBlank, quoteDepth: container.quoteDepth,
+      const type1 = container.content.match(/^ {0,3}<(script|pre|style|textarea)(?=[ \t>]|$)/i);
+      if (type1) {
+        const tag = type1[1].toLowerCase();
+        if (!new RegExp('</' + tag + '\\s*>', 'i').test(container.content.slice(type1[0].length))) {
+          rawBlock = { tag, endOnBlank: false, quoteDepth: container.quoteDepth,
             listIndent: container.listIndent, containers: container.containers,
             outerListIndent: lineInList ? activeListIndent : null };
           rawBlock.pendingTag = htmlTagRanges(line).length ? null : line;
         }
+        paragraphOpen = false;
+        return idTagsOnly(line);
+      }
+      const type6 = container.content.match(/^ {0,3}(?:<\/?(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)|<\/(script|pre|style|textarea))(?=[ \t/>]|$)/i);
+      if (type6) {
+        const tag = (type6[1] || type6[2]).toLowerCase();
+        rawBlock = { tag, endOnBlank: true, quoteDepth: container.quoteDepth,
+          listIndent: container.listIndent, containers: container.containers,
+          outerListIndent: lineInList ? activeListIndent : null };
+        rawBlock.pendingTag = htmlTagRanges(line).length ? null : line;
         paragraphOpen = false;
         return idTagsOnly(line);
       }
@@ -352,6 +359,12 @@ function removeCode(markdown) {
       if (comment) {
         const end = line.indexOf('-->', from);
         if (end < 0) { visible += ' '.repeat(line.length - from); break; }
+        if (commentIsBlock) {
+          visible += ' '.repeat(line.length - from);
+          comment = false;
+          commentIsBlock = false;
+          break;
+        }
         visible += ' '.repeat(end + 3 - from);
         from = end + 3;
         comment = false;
@@ -401,6 +414,12 @@ function removeCode(markdown) {
           ? { containers: openerShape.containers,
               outerListIndent: lineInList ? activeListIndent : null }
           : null;
+        if (commentIsBlock && hasSameLineCloser) {
+          visible += ' '.repeat(line.length - from);
+          comment = false;
+          commentIsBlock = false;
+          break;
+        }
       } else {
         visible += line.slice(from);
         break;
@@ -950,8 +969,11 @@ function baseTargetValid(relative, anchor, isMarkdown = relative.toLowerCase().e
       if (target && !path.isAbsolute(target) && !target.includes('\0')) {
         const resolved = path.resolve(root, path.dirname(relative), target);
         if (withinRoot(resolved)) {
-          const targetRel = path.relative(root, resolved).split(path.sep).join('/');
-          valid = baseTargetValid(targetRel, anchor, isMarkdown || targetRel.toLowerCase().endsWith('.md'));
+          const canonical = resolveBaseParentAliases(resolved);
+          if (withinRoot(canonical)) {
+            const targetRel = path.relative(root, canonical).split(path.sep).join('/');
+            valid = baseTargetValid(targetRel, anchor, isMarkdown || targetRel.toLowerCase().endsWith('.md'));
+          }
         }
       }
     }

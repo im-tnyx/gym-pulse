@@ -225,6 +225,14 @@ const fixtures = [
       'text <![CDATA[ [old](Target.md) ]]\>\n', true],
     ['review: inline declaration masks contained link',
       'text <!DECL [old](Target.md)>\n', true],
+    ['review: self-closing script tag is inline HTML leaving following link active',
+      '<script/> [old](Target.md)\n', false],
+    ['review: block comment closing line masks contained link',
+      '<!-- note --> [old](Target.md)\n', true],
+    ['review: multiline block comment closing line masks contained link',
+      '<!-- note\n--> [old](Target.md)\n', true],
+    ['review: inline comment allows subsequent link on same line',
+      'text <!-- note --> [old](Target.md)\n', false],
     ['quoted heading interruption ends multiline code span', '> `code\n> # [old](Target.md)\n> code`', false],
     ['heading interruption ends quoted multiline code span', '> `code\n# [old](Target.md)\n> code`', false],
     ['list boundary ends multiline code span', '- `code\n[old](Target.md)\ncode`', false],
@@ -721,8 +729,14 @@ const fixtures = [
     pass: true, markdownCount: 0 },
   { name: 'shortcut reference to deleted Markdown target rejected', md: null, extra: 'deleted-shortcut-ref',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
-  { name: 'HTML comment followed by active link remains visible', md: null, extra: 'deleted-comment-then-active',
+  { name: 'inline HTML comment followed by active link remains visible', md: null, extra: 'deleted-comment-then-active',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'block HTML comment closing line masks remainder of line', md: null, extra: 'deleted-comment-block-masks-line',
+    pass: true, markdownCount: 0 },
+  { name: 'multiline block HTML comment closing line masks remainder of line', md: null, extra: 'deleted-comment-multiline-masks-line',
+    pass: true, markdownCount: 0 },
+  { name: 'deleted Markdown symlink through BASE directory alias preserves target validation', md: null,
+    extra: 'deleted-symlink-dir-alias', pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'inline code prefix does not make following link indented', md: null, extra: 'deleted-inline-code-prefix',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'raw HTML terminator inside backticks must expose following link', md: null, extra: 'deleted-comment-backtick-terminator',
@@ -931,10 +945,13 @@ function executeFixture(test) {
       'deleted-escaped-comment': '# Consumer\n\\<!-- not a comment: [old](Target.md) -->\n',
       'deleted-unused-ref': '# Consumer\n[unused]: Target.md\n',
       'deleted-shortcut-ref': '# Consumer\n[old]\n\n[old]: Target.md\n',
-      'deleted-comment-then-active': '# Consumer\n<!-- note --> [old](Target.md)\n',
+      'deleted-comment-then-active': '# Consumer\ntext <!-- note --> [old](Target.md)\n',
+      'deleted-comment-block-masks-line': '# Consumer\n<!-- note --> [old](Target.md)\n',
+      'deleted-comment-multiline-masks-line': '# Consumer\n<!-- note\n--> [old](Target.md)\n',
+      'deleted-symlink-dir-alias': '# Consumer\n[old](../Target.md)\n',
       'deleted-inline-code-prefix': '# Consumer\n`note` [old](Target.md)\n',
-      'deleted-comment-backtick-terminator': '# Consumer\n<!-- `-->` [old](Target.md)\n',
-      'deleted-comment-multiline-terminator': '# Consumer\n<!--\n`-->` [old](Target.md)\n',
+      'deleted-comment-backtick-terminator': '# Consumer\ntext <!-- `-->` [old](Target.md)\n',
+      'deleted-comment-multiline-terminator': '# Consumer\ntext <!--\n`-->` [old](Target.md)\n',
       'deleted-comment-backtick-fence': '# Consumer\n<!--\n```md\n-->\n[old](Target.md)\n',
       'deleted-comment-tilde-fence': '# Consumer\n<!--\n~~~\n-->\n[old](Target.md)\n',
       'deleted-fenced-fake-comment': '# Consumer\n```md\n<!--\n```\n[old](Target.md)\n',
@@ -1125,6 +1142,18 @@ function executeFixture(test) {
         throw error;
       }
     }
+    if (test.extra === 'deleted-symlink-dir-alias') {
+      fs.writeFileSync(path.join(root, 'docs', 'Real.md'), '# Real\n');
+      try {
+        fs.symlinkSync('docs', path.join(root, 'aliasdir'));
+        fs.symlinkSync('aliasdir/Real.md', path.join(root, 'Target.md'));
+      } catch (error) {
+        if (['EPERM', 'ENOSYS', 'EACCES', 'EOPNOTSUPP', 'ENOTSUP'].includes(error.code)) {
+          return { skip: 'symlink creation unsupported on current host' };
+        }
+        throw error;
+      }
+    }
     if (test.extra === 'deleted-cache-collision') {
       fs.writeFileSync(path.join(root, 'docs', 'a.md'), '# Unrelated\n');
       fs.writeFileSync(path.join(root, 'docs', 'a.md#x.md'), '# y\n');
@@ -1247,7 +1276,8 @@ function executeFixture(test) {
       'deleted-escaped-inline', 'deleted-escaped-reference', 'deleted-many-links',
       'deleted-many-shortcuts',
       'deleted-large-target', 'deleted-escaped-comment', 'deleted-unused-ref',
-      'deleted-shortcut-ref', 'deleted-comment-then-active', 'deleted-inline-code-prefix',
+      'deleted-shortcut-ref', 'deleted-comment-then-active', 'deleted-comment-block-masks-line',
+      'deleted-comment-multiline-masks-line', 'deleted-inline-code-prefix',
       'deleted-fenced-fake-comment', 'deleted-comment-backtick-terminator',
       'deleted-comment-multiline-terminator', 'deleted-comment-backtick-fence',
       'deleted-comment-tilde-fence', 'deleted-code-comment', 'deleted-escaped-then-comment',
@@ -1353,6 +1383,7 @@ function executeFixture(test) {
       fs.rmSync(path.join(root, 'docs', 'a.md#x.md'));
     }
     if (test.extra === 'deleted-symlink-target' || test.extra === 'deleted-symlink-text-target-anchor') fs.rmSync(path.join(root, 'docs', 'Alias.md'));
+    if (test.extra === 'deleted-symlink-dir-alias') fs.rmSync(path.join(root, 'Target.md'));
     if (rawName) fs.rmSync(rawName);
     if (test.extra === 'renamed-inbound') git(root, 'mv', 'docs/Target.md', 'docs/Renamed.md');
     if (['typechange-anchor-broken', 'typechange-anchor-preserved',
