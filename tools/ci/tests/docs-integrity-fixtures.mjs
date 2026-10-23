@@ -532,6 +532,12 @@ const fixtures = [
     ['incomplete type-6 HTML block opening line masked', '<div [old](Target.md)\n', true],
     ['short HTML comment in heading exposes slug', '[old](Target.md#helloworld)', false, '# Hello<!-->World<!-- real -->\n'],
     ['lowercase HTML declaration masks block', '<!doctype html\n[old](Target.md)\n>\n', true],
+    ['multiline HTML id on opening line', '[old](Target.md#foo)', false, '<div id="foo"\n>\n'],
+    ['list paragraph cannot be interrupted by definition', '- paragraph\n  [x]: README.md "[old](Target.md)"', false],
+    ['tab-indented reference definition in list', '-\t[old]\n\n\t[old]: Target.md\n', false],
+    ['autolink backtick cannot open code span', '<https://example.invalid/`> [old](Target.md) `', false],
+    ['blockquote paragraph continuation with indentation', '> paragraph\n>     [old](Target.md)\n', false],
+    ['list paragraph continuation with indentation', '- paragraph\n      [old](Target.md)\n', false],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
     name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',

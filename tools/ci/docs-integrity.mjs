@@ -86,7 +86,8 @@ function hasInterveningBlockBoundary(text, begin, end) {
     const nextNl = text.indexOf('\n', nl + 1);
     const lineEnd = nextNl === -1 ? text.length : nextNl;
     const fullLine = text.slice(nl + 1, lineEnd);
-    if (/^[ \t]*\r?$/.test(fullLine) || isBlockInterruption(fullLine)) {
+    const isTagCloser = /^[ \t]*\/?>(?=[ \t]*$|[ \t]+)/.test(fullLine);
+    if (!isTagCloser && (/^[ \t]*\r?$/.test(fullLine) || isBlockInterruption(fullLine))) {
       return true;
     }
     nl = nextNl;
@@ -185,7 +186,17 @@ function hasMatchingLinkOpener(text, bracket) {
   }
   return false;
 }
-function removeCode(markdown) {
+function uriAutolinkRanges(text) {
+  const ranges = [];
+  for (const match of text.matchAll(/<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*>/g)) {
+    if (!escapedAt(text, match.index)) {
+      ranges.push({ start: match.index, end: match.index + match[0].length });
+    }
+  }
+  return ranges;
+}
+
+function removeCode(markdown, collectedIds = null) {
   // Bounded, order-sensitive Markdown masking. Preserve newlines and offsets.
   // Multiline code spans and HTML comments cannot change fence ownership.
   const lines = markdown.split(/\r\n|\n|\r/);
@@ -394,9 +405,27 @@ function removeCode(markdown) {
             pendingHtmlScanBytes += rawBlock.pendingTag.length;
             if (pendingHtmlScanBytes > 16 * 1024 * 1024) failParserBound();
             const ranges = htmlTagRanges(rawBlock.pendingTag);
-            if (ranges.length && /\sid\s*=/i.test(rawBlock.pendingTag.slice(ranges[0].start, ranges[0].end))) {
-              const tagEndOnLine = ranges[0].end - (prevTag.length + 1);
-              keptLine = line.slice(0, tagEndOnLine) + ' '.repeat(line.length - tagEndOnLine);
+            if (ranges.length) {
+              if (collectedIds) {
+                const tag = rawBlock.pendingTag.slice(ranges[0].start, ranges[0].end);
+                const tagMatch = /^<\/?[A-Za-z][A-Za-z0-9-]*/.exec(tag);
+                if (tagMatch) {
+                  const attrs = /([A-Za-z_:][A-Za-z0-9_.:-]*)(?:[ \t\r\n]*=[ \t\r\n]*(?:"([^"]*)"|'([^']*)'|([^\t\r\n "'=<>`]+)))?/g;
+                  attrs.lastIndex = tagMatch[0].length;
+                  let attr;
+                  while ((attr = attrs.exec(tag))) {
+                    if (attr[1].toLowerCase() === 'id') {
+                      try { collectedIds.add(decodeLinkEntities(attr[2] ?? attr[3] ?? attr[4] ?? '')); }
+                      catch { collectedIds.add(UNCERTAIN_HEADING_ENTITY); }
+                      break;
+                    }
+                  }
+                }
+              }
+              if (/\sid\s*=/i.test(rawBlock.pendingTag.slice(ranges[0].start, ranges[0].end))) {
+                const tagEndOnLine = ranges[0].end - (prevTag.length + 1);
+                keptLine = line.slice(0, tagEndOnLine) + ' '.repeat(line.length - tagEndOnLine);
+              }
             }
             rawBlock.pendingTag = null;
           }
@@ -456,10 +485,6 @@ function removeCode(markdown) {
           outerListIndent: lineInList ? activeListIndent : null };
         rawBlock.pendingTag = htmlTagRanges(line).length ? null : line;
         paragraphOpen = false;
-        if (rawBlock.pendingTag) {
-          const openerEnd = (line.indexOf(type6[0]) >= 0 ? line.indexOf(type6[0]) : 0) + type6[0].length;
-          return line.slice(0, openerEnd) + ' '.repeat(line.length - openerEnd);
-        }
         return idTagsOnly(line);
       }
       if (!paragraphOpen) {
@@ -503,7 +528,8 @@ function removeCode(markdown) {
 
     let visible = '', from = 0;
     const inlineTagRanges = htmlTagRanges(line);
-    const protectedRanges = [...inlineTagRanges];
+    const autolinkTagRanges = uriAutolinkRanges(line);
+    const protectedRanges = [...inlineTagRanges, ...autolinkTagRanges];
     let tailSearch = 0;
     while (tailSearch < line.length) {
       const bracket = line.indexOf('](', tailSearch);
@@ -663,11 +689,14 @@ function removeCode(markdown) {
         break;
       }
     }
-    if (/^[ \t]*$/.test(line) || isAtxHeading ||
-        /^ {0,3}(?:={2,}|-{2,})[ \t]*$/.test(line) ||
-        /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line)) {
+    const innerContent = container.content;
+    const isAtx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(innerContent);
+    const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(innerContent);
+    const isSetext = /^ {0,3}(?:={2,}|-{2,})[ \t]*$/.test(innerContent);
+    const isBlank = /^[ \t]*$/.test(innerContent);
+    if (isBlank || isAtx || isThematic || isSetext) {
       paragraphOpen = false;
-    } else if (!/^[ \t]*$/.test(visible) && !/^ {0,3}(?:>|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(line)) {
+    } else if (!/^[ \t]*$/.test(visible)) {
       paragraphOpen = true;
     }
     return visible;
@@ -911,11 +940,11 @@ function continuingHeadingContainer(shape, raw) {
   }
   return { continues: true, content };
 }
-function headingsIn(text, original = text) {
+function headingsIn(text, original = text, collectedIds = null) {
   // Use masked text to decide which lines are headings, and the original
   // line to retain rendered inline-code text for baseline anchor slugs.
   const originalLines = original.split(/\r\n|\n|\r/);
-  const found = new Set(), occurrences = new Map();
+  const found = new Set(collectedIds || []), occurrences = new Map();
   // Only defined reference-style links contribute their rendered link text.
   // Undefined [text][id] remains literal heading text.
   const lines = text.split('\n');
@@ -1054,7 +1083,8 @@ function headingsIn(text, original = text) {
 
 function headingsFor(filename) {
   const original = fs.readFileSync(filename, 'utf8');
-  return headingsIn(removeCode(original), original);
+  const collectedIds = new Set();
+  return headingsIn(removeCode(original, collectedIds), original, collectedIds);
 }
 
 const NAMED_DESTINATION_ENTITIES = Object.freeze({
@@ -1235,7 +1265,8 @@ function baseTargetValid(relative, anchor, isMarkdown = relative.toLowerCase().e
                baseHeadingParses++;
                baseHeadingParsedBytes += blobSize;
                const original = git(['show', base + ':' + relative], true).toString('utf8');
-               headings = headingsIn(removeCode(original), original);
+               const collectedIds = new Set();
+               headings = headingsIn(removeCode(original, collectedIds), original, collectedIds);
                if (baseHeadingCache.size >= MAX_BASE_HEADING_CACHE_FILES) {
                  baseHeadingCache.delete(baseHeadingCache.keys().next().value);
                }
@@ -2038,14 +2069,34 @@ function referenceDefinitionCanStart(text, offset, last) {
   if (end < 0) return true;
   const start = text.lastIndexOf('\n', end - 1) + 1;
   if (last && start >= last.start && end <= last.end) return true;
-  const prior = text.slice(start, end).replace(/^ {0,3}(?:>[ \t]?){0,4}/, '');
+  const prior = text.slice(start, end).replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
   const priorInQuote = /^ {0,3}>/.test(text.slice(start, end));
   const lineStart = offset <= 0 || text[offset - 1] === '\n' ? offset : text.lastIndexOf('\n', offset - 1) + 1;
   const currentInQuote = /^ {0,3}>/.test(text.slice(lineStart));
   if (currentInQuote && !priorInQuote) return true;
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
   if (/^[ \t]*$/.test(prior) || /^#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
-  if (/^(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(prior)) return true;
+  const listMatch = /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(prior);
+  if (listMatch) {
+    const markerCol = visualColumn(listMatch[0].slice(0, listMatch[0].length - listMatch[1].length));
+    const afterWsCol = visualColumn(listMatch[1], markerCol);
+    const spacesCol = afterWsCol - markerCol;
+    const padding = spacesCol >= 5 ? 1 : spacesCol;
+    const listContIndent = markerCol + padding;
+    const lineEnd = text.indexOf('\n', lineStart);
+    const curLine = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd)
+      .replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
+    const curIndent = /^[ \t]*/.exec(curLine)[0];
+    const currentCol = visualColumn(curIndent);
+    const afterMarker = prior.slice(listMatch[0].length);
+    const priorHasParagraph = !/^[ \t]*$/.test(afterMarker) &&
+      !/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(afterMarker);
+    if (currentCol >= listContIndent) {
+      if (!priorHasParagraph) return true;
+      return false;
+    }
+    return true;
+  }
   if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prior)) return true;
   if (/^(?:=+|-+)[ \t]*$/.test(prior)) {
     // A setext underline only interrupts a paragraph when it actually has a
@@ -2149,7 +2200,8 @@ function parseHtmlTagEnd(text, begin, nameLength, tick) {
         if (sawBreak) return consumed;
         const nextNl = text.indexOf('\n', index + 1);
         const line = text.slice(index + 1, nextNl === -1 ? text.length : nextNl);
-        if (/^[ \t]*\r?$/.test(line) || isBlockInterruption(line)) return consumed;
+        const isTagCloser = /^[ \t]*\/?>(?=[ \t]*$|[ \t]+)/.test(line);
+        if (!isTagCloser && (/^[ \t]*\r?$/.test(line) || isBlockInterruption(line))) return consumed;
         tick(); index++; sawBreak = true; consumed = true; continue;
       }
       return consumed;
@@ -2223,15 +2275,6 @@ function inRanges(ranges, offset) {
   return low > 0 && offset < ranges[low - 1].end;
 }
 
-function uriAutolinkRanges(text) {
-  const ranges = [];
-  for (const match of text.matchAll(/<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*>/g)) {
-    if (!escapedAt(text, match.index)) {
-      ranges.push({ start: match.index, end: match.index + match[0].length });
-    }
-  }
-  return ranges;
-}
 function validateMarkdown(filename, deletedTargets = null, budget = null) {
   let resolved;
   try { resolved = localFile(filename); } catch { fail(safe(filename) + ': missing/unsafe Markdown'); return; }
@@ -2263,14 +2306,18 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     const line = text.slice(scanAt, lineLimit);
     const list = /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(line);
     if (list) {
-      const markerLen = list[0].length - list[1].length;
-      const padding = list[1].length >= 5 ? 1 : list[1].length;
-      listContinuationIndent = markerLen + padding;
+      const markerStr = list[0].slice(0, list[0].length - list[1].length);
+      const markerCol = visualColumn(markerStr);
+      const wsStr = list[1];
+      const afterWsCol = visualColumn(wsStr, markerCol);
+      const spacesCol = afterWsCol - markerCol;
+      const padding = spacesCol >= 5 ? 1 : spacesCol;
+      listContinuationIndent = markerCol + padding;
     }
     else if (!/^[ \t]*$/.test(line) && listContinuationIndent !== null &&
-        !line.startsWith(' '.repeat(listContinuationIndent))) listContinuationIndent = null;
-    const continuation = !list && listContinuationIndent !== null &&
-      line.startsWith(' '.repeat(listContinuationIndent)) ? listContinuationIndent : 0;
+        !stripIndent(line, listContinuationIndent)) listContinuationIndent = null;
+    const strippedCont = !list && listContinuationIndent !== null ? stripIndent(line, listContinuationIndent) : null;
+    const continuation = strippedCont ? strippedCont.consumedChars : 0;
     const prefix = definitionPrefix.exec(line.slice(continuation));
     const bracket = scanAt + continuation + (prefix ? prefix[0].length : 0);
     if (prefix && /^ {0,3}>/.test(text.slice(bracket, lineLimit))) failParserBound();
