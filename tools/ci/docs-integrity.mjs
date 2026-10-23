@@ -109,7 +109,7 @@ function removeCode(markdown) {
     // HTML block openers handled below as well: even a same-line <script>
     // opener/closer interrupts the preceding paragraph.
     const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<(?:script|pre|style|textarea)(?=[ \t>]|$)|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)|<\/(?:script|pre|style|textarea)(?=[ \t/>]|$))/i;
-    return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$|=+[ \t]*$)/.test(raw);
+    return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|1[.)])[ \t]+|(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$|=+[ \t]*$)/.test(raw);
   }
   function laterCommentCloserInline(index, openerContainer, outerListIndent) {
     let inspected = 0;
@@ -307,6 +307,11 @@ function removeCode(markdown) {
       const indent = (line.match(/^ */) || [''])[0].length;
       if ((indent >= 4 || line.startsWith('\t')) && !paragraphOpen &&
           (listIndent === null || indent < listIndent || indent >= listIndent + 4)) return '';
+      if (container.quoteDepth > 0 && !paragraphOpen) {
+        const quotedIndent = (container.content.match(/^ */) || [''])[0].length;
+        if ((quotedIndent >= 4 || container.content.startsWith('\t')) &&
+            (!container.listIndent || quotedIndent >= container.listIndent + 4)) return '';
+      }
     }
 
     let visible = '', from = 0;
@@ -324,7 +329,18 @@ function removeCode(markdown) {
       runs.lastIndex = startAt;
       let run;
       while ((run = runs.exec(line))) {
-        if (!escapedAt(line, run.index) && !insideInlineTag(run.index)) {
+        if (escapedAt(line, run.index)) {
+          if (run[0].length > 1) {
+            const remainder = { 0: run[0].slice(1), index: run.index + 1 };
+            if (!insideInlineTag(remainder.index)) {
+              cachedTick = remainder;
+              cachedTickFrom = startAt;
+              return remainder;
+            }
+          }
+          continue;
+        }
+        if (!insideInlineTag(run.index)) {
           cachedTick = run;
           cachedTickFrom = startAt;
           return run;
@@ -728,13 +744,13 @@ function headingsIn(text, original = text) {
           (previousShape.containers.length || !markdownContainer(candidate).containers.length);
       };
       if (!definitionLines.has(i - 1) && sameParagraph(line) && !/^[ \t]*$/.test(previousContent) &&
-          !/^ {0,3}#/.test(previousContent)) {
+          !/^ {0,3}#{1,6}(?:[ \t]|$)/.test(previousContent)) {
         // A setext heading spans the entire immediately preceding paragraph,
         // not just the final line above the underline.
         let begin = i - 1;
         while (begin > 0 && !definitionLines.has(begin - 1) && sameParagraph(lines[begin - 1]) &&
           !/^[ \t]*$/.test(headingContainerContent(lines[begin - 1])) &&
-          !/^ {0,3}(?:#|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(headingContainerContent(lines[begin - 1])) &&
+          !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|[-+*][ \t]|\d{1,9}[.)][ \t])/.test(headingContainerContent(lines[begin - 1])) &&
           !/^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(lines[begin - 1]))) begin--;
         addSlug(originalLines.slice(begin, i).map(x =>
           headingContainerContent(x).replace(/^[ \t]+|[ \t]+$/g, '')).join(' '));
