@@ -188,7 +188,8 @@ function hasMatchingLinkOpener(text, bracket) {
 }
 function uriAutolinkRanges(text) {
   const ranges = [];
-  for (const match of text.matchAll(/<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*>/g)) {
+  const autolink = /<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*|[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)>/g;
+  for (const match of text.matchAll(autolink)) {
     if (!escapedAt(text, match.index)) {
       ranges.push({ start: match.index, end: match.index + match[0].length });
     }
@@ -553,6 +554,7 @@ function removeCode(markdown, collectedIds = null) {
       }
       tailSearch = bracket + 2;
     }
+    let lineIsRefDef = false;
     if (!paragraphOpen && referenceDefinitionCanStart(markdown, currentLineOffset)) {
       const defMatch = /^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/.exec(line);
       if (defMatch) {
@@ -562,6 +564,7 @@ function removeCode(markdown, collectedIds = null) {
           const colon = line.indexOf(']:', bracket);
           const afterColon = colon >= 0 ? colon + 2 : bracket + 1;
           protectedRanges.push({ start: afterColon, end: parsedDef.end });
+          lineIsRefDef = true;
         }
       }
     }
@@ -706,9 +709,9 @@ function removeCode(markdown, collectedIds = null) {
     const innerContent = container.content;
     const isAtx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(innerContent);
     const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(innerContent);
-    const isSetext = /^ {0,3}(?:={2,}|-{2,})[ \t]*$/.test(innerContent);
+    const isSetext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(innerContent);
     const isBlank = /^[ \t]*$/.test(innerContent);
-    if (isBlank || isAtx || isThematic || isSetext) {
+    if (isBlank || isAtx || isThematic || isSetext || lineIsRefDef) {
       paragraphOpen = false;
     } else if (!/^[ \t]*$/.test(visible)) {
       paragraphOpen = true;
@@ -957,7 +960,8 @@ function continuingHeadingContainer(shape, raw) {
 function headingsIn(text, original = text, collectedIds = null) {
   // Use masked text to decide which lines are headings, and the original
   // line to retain rendered inline-code text for baseline anchor slugs.
-  const originalLines = original.split(/\r\n|\n|\r/);
+  const normOriginal = original.replace(/\r\n|\r/g, '\n');
+  const originalLines = normOriginal.split('\n');
   const found = new Set(collectedIds || []), occurrences = new Map();
   // Only defined reference-style links contribute their rendered link text.
   // Undefined [text][id] remains literal heading text.
@@ -972,7 +976,7 @@ function headingsIn(text, original = text, collectedIds = null) {
   const definedRefs = new Set();
   // Reference definitions in fenced code or other masked content are not live.
   const definitionText = normalizeReferenceContainers(text);
-  const rawDefinitionText = normalizeReferenceContainers(original);
+  const rawDefinitionText = normalizeReferenceContainers(normOriginal);
   const lastDefinitionClose = definitionText.lastIndexOf(']:');
   let priorDefinition = null, definitionCount = 0, defLine = 0;
   for (const ref of text.matchAll(/^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/gm)) {
@@ -2103,8 +2107,11 @@ function referenceDefinitionCanStart(text, offset, last) {
     const curIndent = /^[ \t]*/.exec(curLine)[0];
     const currentCol = visualColumn(curIndent);
     const afterMarker = prior.slice(listMatch[0].length);
-    const priorHasParagraph = !/^[ \t]*$/.test(afterMarker) &&
-      !/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(afterMarker);
+    const isHeading = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(afterMarker);
+    const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(afterMarker);
+    const isBlank = /^[ \t]*$/.test(afterMarker);
+    const isRefDef = /^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(afterMarker);
+    const priorHasParagraph = !isBlank && !isRefDef && !isHeading && !isThematic;
     if (currentCol >= listContIndent) {
       if (!priorHasParagraph) return true;
       return false;

@@ -540,6 +540,11 @@ const fixtures = [
     ['list paragraph continuation with indentation', '- paragraph\n      [old](Target.md)\n', false],
     ['indented ATX heading permits reference definition', ' # Heading\n[old]: Target.md\n\n[old]\n', false],
     ['reference definition continuing paragraph does not protect title code span', 'paragraph\n[x]: README.md "`[old](Target.md)`"\n', true],
+    ['list item completed heading before definition', '- # Heading\n  [old]: Target.md\n\n  [old]\n', false],
+    ['email autolink backtick cannot open code span', '<a`b@example.invalid> [old](Target.md) `\n', false],
+    ['reference definition does not open paragraph before HTML block', '[x]: https://example.invalid\n<custom>\n[old](Target.md)\n', true],
+    ['single-character setext underline does not open paragraph for indented code', 'Heading\n=\n    [old](Target.md)\n', true],
+    ['CRLF target heading with reference definition resolves anchor', '[old](Target.md#hello)\n', false, '# [Hello][ref]\r\n\r\n[ref]: https://example.invalid\r\n'],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
     name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',
