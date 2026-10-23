@@ -75,8 +75,14 @@ function codeSpanRanges(text, from, to) {
   const slice = text.slice(from, to);
   const runs = [...slice.matchAll(/`+/g)];
   for (let i = 0; i < runs.length; i++) {
-    const opener = runs[i];
-    if (escapedAt(text, from + opener.index)) continue;
+    let opener = runs[i];
+    if (escapedAt(text, from + opener.index)) {
+      if (opener[0].length > 1) {
+        opener = { 0: opener[0].slice(1), index: opener.index + 1 };
+      } else {
+        continue;
+      }
+    }
     const len = opener[0].length;
     let closer = null;
     for (let j = i + 1; j < runs.length; j++) {
@@ -1745,25 +1751,35 @@ function parseInlineTail(text, parenIndex) {
   const lead = skipLinkSeparator(text, start, limit);
   if (!lead) return null;
   let index = lead.index;
-  if (text[index] === ')') return { raw: text.slice(start, index), end: index + 1 };
-  const dest = readDestinationAt(text, index, limit);
-  if (!dest) return null;
-  index = dest.end;
-  const afterDest = skipLinkSeparator(text, index, limit);
-  if (!afterDest) return null;
-  index = afterDest.index;
-  if (afterDest.consumed && (text[index] === '"' || text[index] === "'" || text[index] === '(')) {
+  if (text[index] === ')') return { raw: '', end: index + 1 };
+  let raw = '';
+  if (lead.consumed && (text[index] === '"' || text[index] === "'" || text[index] === '(')) {
     const title = readLinkTitle(text, index, limit);
     if (!title) return null;
     const afterTitle = skipLinkSeparator(text, title.end, limit);
     if (!afterTitle) return null;
     index = afterTitle.index;
+  } else {
+    const dest = readDestinationAt(text, index, limit);
+    if (!dest) return null;
+    raw = dest.raw;
+    index = dest.end;
+    const afterDest = skipLinkSeparator(text, index, limit);
+    if (!afterDest) return null;
+    index = afterDest.index;
+    if (afterDest.consumed && (text[index] === '"' || text[index] === "'" || text[index] === '(')) {
+      const title = readLinkTitle(text, index, limit);
+      if (!title) return null;
+      const afterTitle = skipLinkSeparator(text, title.end, limit);
+      if (!afterTitle) return null;
+      index = afterTitle.index;
+    }
   }
   if (text[index] !== ')') {
     separatorExceeded(index, limit, text);
     return null;
   }
-  return { raw: text.slice(start, index), end: index + 1 };
+  return { raw, end: index + 1 };
 }
 
 function parseReferenceLabelAt(text, bracketIndex) {
