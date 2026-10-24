@@ -561,6 +561,13 @@ const fixtures = [
     ['escaped backtick run remainder in heading resolves code slug', '[old](Target.md#amp)\n', false, '# \\``&amp;`\n'],
     ['CRLF line endings preserve reference definition and setext heading offsets', '[old](Target.md#heading)\n', false, 'intro\r\n\r\n[ref]: Target.md "title `"\r\n\r\nHeading `\r\n===\r\n'],
     ['image reference in link label remains live for deleted target', '[![badge][img]](https://example.invalid)\n\n[img]: Target.md\n', false],
+    ['backslash-preceded heading-code closer resolves code slug', '[old](Target.md#amp)\n', false, '# `&amp;\\`\n'],
+    ['escaped heading backtick delimiters reject unrendered code slug', '[old](Target.md#amp)\n', true, '# \\`&amp;\\`\n'],
+    ['reference definition after completed HTML block detects deletion', '<script></script>\n[old]: Target.md\n\n[old]\n', false],
+    ['reference definition after indented code detects deletion', '    indented code\n[old]: Target.md\n\n[old]\n', false],
+    ['indented paragraph continuation line cannot start reference definition', 'paragraph\n    code\n[x]: Consumer.md "[old](Target.md)"\n', false],
+    ['permitted indentation before nested blockquote marker accepts definition', '[x]\n\n>  > [x]: https://example.invalid\n', true],
+    ['excessive blockquote nesting beyond parser cap fails closed', '> > > > > [x]: https://example.invalid\n', false, undefined, 'Markdown parser bound exceeded'],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
     name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',

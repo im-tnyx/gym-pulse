@@ -240,7 +240,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
   const prepassDefText = normalizeReferenceContainers(markdown);
   const prepassLastDefClose = prepassDefText.lastIndexOf(']:');
   let priorDef = null, defScanListIndent = null;
-  const defPrefix = /^( {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
+  const defPrefix = /^((?: {0,3}>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
   let prepassLineOffset = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -596,7 +596,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
       tailSearch = bracket + 2;
     }
     if (!lineIsRefDef && !paragraphOpen && referenceDefinitionCanStart(markdown, currentLineOffset)) {
-      const defMatch = /^ {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/.exec(line);
+      const defMatch = /^(?: {0,3}>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/.exec(line);
       if (defMatch) {
         const bracket = defMatch[0].length - 1;
         const parsedDef = parseReferenceDefinition(line, bracket, line.length);
@@ -799,21 +799,23 @@ function protectHeadingCode(heading, spans, rawSpans = []) {
     if (++scanned > maxScanned) throw new Error('Heading HTML scan budget exceeded; fail closed');
   };
   // Preindex matching run lengths rather than repeatedly searching suffixes.
-  const rawRuns = [...heading.matchAll(/`+/g)];
-  const runs = [];
-  for (const r of rawRuns) {
-    if (escapedAt(heading, r.index)) {
-      if (r[0].length > 1) {
-        runs.push({ 0: r[0].slice(1), index: r.index + 1 });
-      }
-    } else {
-      runs.push(r);
-    }
-  }
+  const runs = [...heading.matchAll(/`+/g)];
   const next = new Map();
   const closers = new Array(runs.length);
+  const openers = new Array(runs.length);
   for (let i = runs.length - 1; i >= 0; i--) {
-    closers[i] = next.get(runs[i][0].length);
+    let opener = runs[i];
+    if (escapedAt(heading, opener.index)) {
+      if (opener[0].length > 1) {
+        opener = { 0: opener[0].slice(1), index: opener.index + 1 };
+      } else {
+        opener = null;
+      }
+    }
+    openers[i] = opener;
+    if (opener) {
+      closers[i] = next.get(opener[0].length);
+    }
     next.set(runs[i][0].length, i);
   }
 
@@ -844,7 +846,7 @@ function protectHeadingCode(heading, spans, rawSpans = []) {
     while (runIndex < runs.length && (runs[runIndex].index < cursor || closers[runIndex] === undefined)) {
       runIndex++;
     }
-    const nextRun = runIndex < runs.length ? runs[runIndex] : null;
+    const nextRun = runIndex < runs.length ? openers[runIndex] : null;
     const match = findNextHtmlOpener(cursor);
 
     if (!nextRun && !match) {
@@ -1038,7 +1040,7 @@ function headingsIn(text, original = text, collectedIds = null) {
   const lastDefinitionClose = definitionText.lastIndexOf(']:');
   let priorDefinition = null, definitionCount = 0, defLine = 0;
   let defScanListIndent = null;
-  const definitionPrefix = /^( {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
+  const definitionPrefix = /^((?: {0,3}>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineStart = lineStarts[i];
@@ -2030,7 +2032,7 @@ function linkBlockBoundaries(text, sourceText = text) {
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const raw = lines[lineIndex];
     const sourceRaw = sourceLines[lineIndex] ?? raw;
-    const quote = /^ {0,3}(?:>[ \t]?){1,4}/.exec(raw);
+    const quote = /^(?: {0,3}>[ \t]?){1,4}/.exec(raw);
     const depth = quote ? (quote[0].match(/>/g) || []).length : 0;
     let content = raw.slice(quote?.[0].length || 0);
     const strippedCont = listIndent !== null ? stripIndent(content, listIndent) : null;
@@ -2213,7 +2215,7 @@ function validDefinitionContinuation(text, startOffset, endOffset, listIndent = 
 function normalizeReferenceContainers(text) {
   // Preserve offsets and line counts while removing blockquote prefixes from
   // continuation destinations, titles and wrapped labels.
-  return text.replace(/^ {0,3}(?:>[ \t]?){1,4}/gm, prefix => ' '.repeat(prefix.length));
+  return text.replace(/^(?: {0,3}>[ \t]?){1,4}/gm, prefix => ' '.repeat(prefix.length));
 }
 
 function referenceDefinitionCanStart(text, offset, last, rawText = text) {
@@ -2232,6 +2234,30 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
   const isFenceCloser = /^ {0,3}(?:`{3,}|~{3,})/.test(rawPrior);
   if (isRawBlank || isFenceCloser || /^ {0,3}#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
   if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prior)) return true;
+  const isPriorMasked = /^[ \t]*$/.test(prior.replace(/<[^>]*>/g, ''));
+  const isHtmlBlockCloser = isPriorMasked && (
+    /<\/(?:script|pre|style|textarea)\s*>/i.test(rawPrior) ||
+    rawPrior.includes('-->') ||
+    rawPrior.includes('?>') ||
+    rawPrior.includes(']]>') ||
+    (/^ {0,3}<![A-Z]/.test(rawPrior) && rawPrior.includes('>'))
+  );
+  if (isHtmlBlockCloser) return true;
+  const isIndentedCode = (() => {
+    if (!/^ {4,}|\t/.test(rawPrior)) return false;
+    if (start <= 0) return true;
+    const prevEnd = text.lastIndexOf('\n', start - 1);
+    if (prevEnd < 0) return true;
+    const prevStart = text.lastIndexOf('\n', prevEnd - 1) + 1;
+    const prevRaw = rawText.slice(prevStart, prevEnd).replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
+    if (/^[ \t]*$/.test(prevRaw)) return true;
+    if (/^ {4,}|\t/.test(prevRaw)) return true;
+    if (/^ {0,3}(?:`{3,}|~{3,})/.test(prevRaw)) return true;
+    if (/^ {0,3}#{1,6}(?:[ \t]+|[ \t]*$)/.test(prevRaw)) return true;
+    if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prevRaw)) return true;
+    return false;
+  })();
+  if (isIndentedCode) return true;
   const listMatch = /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+|[ \t]*$)/.exec(prior);
   if (listMatch) {
     const lineEnd = text.indexOf('\n', lineStart);
@@ -2449,7 +2475,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   // Definitions may place a destination or title on the following line.
   // Paragraph and first-definition rules still apply. A blank line or a
   // suffix after the title means this line is not a definition.
-  const definitionPrefix = /^( {0,3}(?:>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
+  const definitionPrefix = /^((?: {0,3}>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
   let scanAt = 0, listContinuationIndent = null;
   while (scanAt < text.length) {
     const lineBreak = text.indexOf('\n', scanAt);
