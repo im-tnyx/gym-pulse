@@ -551,6 +551,9 @@ const fixtures = [
     ['long spaced thematic break does not exceed parser bound', '* * * * * *\n', true],
     ['list item reference definition in base target resolves heading anchor', '[old](Target.md#hello)\n', false, '10. # [Hello][ref]\n\n    [ref]: https://example.invalid\n'],
     ['lazy list paragraph continuation cannot start reference definition', '- paragraph\n[x]: Consumer.md "[old](Target.md)"\n', false],
+    ['multiline reference definition cannot cross container boundaries', '[x]:\n> Consumer.md "[old](Target.md)"\n', false],
+    ['empty list item cannot interrupt open paragraph before indented link', 'paragraph\n+ \n      [old](Target.md)\n', false],
+    ['multiline setext heading in list item resolves full anchor slug', '[old](Target.md#hello-world)\n', false, '- Hello\n  World\n  ===\n'],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
     name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',

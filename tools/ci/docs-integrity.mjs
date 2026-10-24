@@ -266,7 +266,7 @@ function removeCode(markdown, collectedIds = null) {
     if (prefix && markdown[bracket] === '[' && !escapedAt(markdown, bracket) &&
         referenceDefinitionCanStart(markdown, lineStart, priorDef)) {
       const parsedDef = parseReferenceDefinition(prepassDefText, bracket, prepassLastDefClose, prepassDefText);
-      if (parsedDef) {
+      if (parsedDef && validDefinitionContinuation(markdown, lineStart, parsedDef.end, defScanListIndent)) {
         priorDef = { start: lineStart, end: parsedDef.end };
         const colon = prepassDefText.indexOf(']:', bracket);
         const afterColon = colon >= 0 ? colon + 2 : bracket + 1;
@@ -541,16 +541,21 @@ function removeCode(markdown, collectedIds = null) {
         }
       }
       const isThematicBreak = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line);
-      const list = !isThematicBreak ? line.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/) : null;
+      const list = !isThematicBreak ? line.match(/^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+)/) : null;
       if (list) {
-        const markerStr = list[0].slice(0, list[0].length - list[1].length);
-        const markerCol = visualColumn(markerStr);
-        const wsStr = list[1];
-        const afterWsCol = visualColumn(wsStr, markerCol);
-        const spacesCol = afterWsCol - markerCol;
-        const padding = spacesCol >= 5 ? 1 : spacesCol;
-        listIndent = markerCol + padding;
-        paragraphOpen = false;
+        const rest = line.slice(list[0].length);
+        const isEmptyItem = /^[ \t]*$/.test(rest);
+        const canInterrupt = !paragraphOpen || ((!list[1] || list[1] === '1') && !isEmptyItem);
+        if (canInterrupt) {
+          const markerStr = list[0].slice(0, list[0].length - list[2].length);
+          const markerCol = visualColumn(markerStr);
+          const wsStr = list[2];
+          const afterWsCol = visualColumn(wsStr, markerCol);
+          const spacesCol = afterWsCol - markerCol;
+          const padding = spacesCol >= 5 ? 1 : spacesCol;
+          listIndent = markerCol + padding;
+          paragraphOpen = false;
+        }
       }
       else if (!/^[ \t]*$/.test(line) && listIndent !== null &&
           !stripIndent(line, listIndent)) listIndent = null;
@@ -946,24 +951,29 @@ function markdownContainer(raw, paragraphOpen = false) {
     }
     if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content)) break;
     const list = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+)/.exec(content);
-    if (list && (!paragraphOpen || !list[1] || list[1] === '1')) {
-      const markerStr = list[0].slice(0, list[0].length - list[2].length);
-      const markerCol = visualColumn(markerStr);
-      const wsStr = list[2];
-      const afterWsCol = visualColumn(wsStr, markerCol);
-      const spacesCol = afterWsCol - markerCol;
-      const padding = spacesCol >= 5 ? 1 : spacesCol;
-      const consumedIndent = markerCol + padding;
-      listIndent += consumedIndent;
-      containers.push({ kind: 'list', indent: consumedIndent });
-      const consumedChars = spacesCol >= 5 ? markerStr.length + 1 : list[0].length;
-      content = content.slice(consumedChars);
+    if (list) {
+      const rest = content.slice(list[0].length);
+      const isEmptyItem = /^[ \t]*$/.test(rest);
+      const canInterrupt = !paragraphOpen || ((!list[1] || list[1] === '1') && !isEmptyItem);
+      if (canInterrupt) {
+        const markerStr = list[0].slice(0, list[0].length - list[2].length);
+        const markerCol = visualColumn(markerStr);
+        const wsStr = list[2];
+        const afterWsCol = visualColumn(wsStr, markerCol);
+        const spacesCol = afterWsCol - markerCol;
+        const padding = spacesCol >= 5 ? 1 : spacesCol;
+        const consumedIndent = markerCol + padding;
+        listIndent += consumedIndent;
+        containers.push({ kind: 'list', indent: consumedIndent });
+        const consumedChars = spacesCol >= 5 ? markerStr.length + 1 : list[0].length;
+        content = content.slice(consumedChars);
+      }
     }
     if (content === before) break;
   }
   const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
   const unconsumedContainer = !isThematic && (paragraphOpen
-    ? /^ {0,3}(?:>|(?:[-+*]|1[.)])[ \t]+)/.test(content)
+    ? /^ {0,3}(?:>|(?:[-+*]|1[.)])[ \t]+[^ \t\r\n])/.test(content)
     : /^ {0,3}(?:>|(?:[-+*]|\d{1,9}[.)])[ \t]+)/.test(content));
   if (unconsumedContainer) failParserBound();
   return { content, quoteDepth, listIndent, containers };
@@ -1034,7 +1044,7 @@ function headingsIn(text, original = text, collectedIds = null) {
     if (prefix && text[bracket] === '[' && !escapedAt(text, bracket) &&
         referenceDefinitionCanStart(text, lineStart, priorDefinition)) {
       const parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose, rawDefinitionText);
-      if (parsed) {
+      if (parsed && validDefinitionContinuation(text, lineStart, parsed.end, defScanListIndent)) {
         if (++definitionCount > 10000) failParserBound();
         priorDefinition = { start: lineStart, end: parsed.end };
         definedRefs.add(referenceLabel(parsed.label));
@@ -1109,11 +1119,26 @@ function headingsIn(text, original = text, collectedIds = null) {
         !/^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(lines[i - 2])) &&
         !/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(headingContainerContent(lines[i - 2]));
       const previousShape = markdownContainer(previous, prevParagraphOpen);
+      if (lineInList && !previousShape.containers.some(c => c.kind === 'list')) {
+        previousShape.containers.push({ kind: 'list', indent: activeListIndent });
+      }
       const previousContent = previousShape.content;
       const sameParagraph = candidate => {
+        if (lineInList) {
+          if (stripIndent(candidate, activeListIndent)) return true;
+          const candShape = markdownContainer(candidate);
+          const lastC = candShape.containers.at(-1);
+          return Boolean(lastC && lastC.kind === 'list' && lastC.indent === activeListIndent);
+        }
         const continuation = continuingHeadingContainer(previousShape, candidate);
         return continuation.continues &&
           (previousShape.containers.length || !markdownContainer(candidate).containers.length);
+      };
+      const candidateIsListOpener = candidate => {
+        if (!lineInList) return false;
+        const candShape = markdownContainer(candidate);
+        const lastC = candShape.containers.at(-1);
+        return Boolean(lastC && lastC.kind === 'list' && lastC.indent === activeListIndent);
       };
       if (!definitionLines.has(i - 1) && sameParagraph(line) && !/^[ \t]*$/.test(previousContent) &&
           !/^ {0,3}#{1,6}(?:[ \t]|$)/.test(previousContent)) {
@@ -1123,7 +1148,10 @@ function headingsIn(text, original = text, collectedIds = null) {
         while (begin > 0 && !definitionLines.has(begin - 1) && sameParagraph(lines[begin - 1]) &&
           !/^[ \t]*$/.test(headingContainerContent(lines[begin - 1])) &&
           !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|[-+*][ \t]|1[.)][ \t])/.test(headingContainerContent(lines[begin - 1])) &&
-          !/^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(lines[begin - 1]))) begin--;
+          !/^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(lines[begin - 1]))) {
+          begin--;
+          if (candidateIsListOpener(lines[begin])) break;
+        }
         addSlug(originalLines.slice(begin, i).map((x, idx) =>
           headingContainerContent(x, idx > 0 || (begin > 0 && prevParagraphOpen)).replace(/^[ \t]+|[ \t]+$/g, '')).join(' '));
       }
@@ -2127,6 +2155,34 @@ function parseReferenceDefinition(text, bracketIndex, lastClose, rawText = text)
   return { label, destination: dest.raw, end: lineEnd };
 }
 
+function validDefinitionContinuation(text, startOffset, endOffset, listIndent = null) {
+  const startLineBreak = text.indexOf('\n', startOffset);
+  if (startLineBreak < 0 || endOffset <= startLineBreak) return true;
+  const startLineStart = startOffset <= 0 || text[startOffset - 1] === '\n'
+    ? startOffset
+    : text.lastIndexOf('\n', startOffset - 1) + 1;
+  const startLine = text.slice(startLineStart, startLineBreak);
+  const startQuoteMatch = /^(?: {0,3}>[ \t]?){0,4}/.exec(startLine);
+  const startQuoteDepth = (startQuoteMatch[0].match(/>/g) || []).length;
+
+  let lineStart = startLineBreak + 1;
+  while (lineStart < endOffset && lineStart < text.length) {
+    const nextNl = text.indexOf('\n', lineStart);
+    const lineEnd = nextNl < 0 ? text.length : nextNl;
+    const line = text.slice(lineStart, lineEnd);
+    const contQuoteMatch = /^(?: {0,3}>[ \t]?){0,4}/.exec(line);
+    const contQuoteDepth = (contQuoteMatch[0].match(/>/g) || []).length;
+    if (contQuoteDepth !== startQuoteDepth) return false;
+    if (listIndent !== null && !stripIndent(line, listIndent)) return false;
+    const afterQuotes = line.slice(contQuoteMatch[0].length);
+    if (/^ {0,3}#{1,6}(?:[ \t]|$)/.test(afterQuotes)) return false;
+    if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(afterQuotes)) return false;
+    if (/^ {0,3}(?:`{3,}|~{3,})/.test(afterQuotes)) return false;
+    lineStart = lineEnd + 1;
+  }
+  return true;
+}
+
 function normalizeReferenceContainers(text) {
   // Preserve offsets and line counts while removing blockquote prefixes from
   // continuation destinations, titles and wrapped labels.
@@ -2397,7 +2453,8 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
         !inRanges(inlineHtmlRanges, scanAt) && !inRanges(autolinkRanges, scanAt) &&
         definitionCanStartAt(scanAt)) {
       const parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose, rawDefinitionText);
-      if (parsed && !parsed.label.startsWith('^')) { // GFM footnote, not URL reference.
+      if (parsed && validDefinitionContinuation(text, scanAt, parsed.end, listContinuationIndent) &&
+          !parsed.label.startsWith('^')) { // GFM footnote, not URL reference.
         if (definitionRanges.length >= 10000) failParserBound();
         definitionRanges.push({ start: scanAt, end: parsed.end });
         definitionLabelOffsets.add(bracket);
