@@ -555,6 +555,12 @@ const fixtures = [
     ['empty list item cannot interrupt open paragraph before indented link', 'paragraph\n+ \n      [old](Target.md)\n', false],
     ['multiline setext heading in list item resolves full anchor slug', '[old](Target.md#hello-world)\n', false, '- Hello\n  World\n  ===\n'],
     ['reference definition preserves destination when later title crosses containers', '[old]: Target.md\n> "title"\n\n[old]\n', false],
+    ['sibling list item can start reference definition', '- paragraph\n- [old]: Target.md\n\n[old]\n', false],
+    ['inline code paragraph cannot be interrupted by reference definition', '`code`\n[x]: ../README.md "[old](Target.md)"\n', false],
+    ['empty list marker establishes list continuation for nested fence', '-\n  ```md\n  indented\n  ```\n\n[old](Target.md)\n', false],
+    ['escaped backtick run remainder in heading resolves code slug', '[old](Target.md#amp)\n', false, '# \\``&amp;`\n'],
+    ['CRLF line endings preserve reference definition and setext heading offsets', '[old](Target.md#heading)\n', false, 'intro\r\n\r\n[ref]: Target.md "title `"\r\n\r\nHeading `\r\n===\r\n'],
+    ['image reference in link label remains live for deleted target', '[![badge][img]](https://example.invalid)\n\n[img]: Target.md\n', false],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
     name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',

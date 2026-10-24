@@ -197,7 +197,8 @@ function uriAutolinkRanges(text) {
   return ranges;
 }
 
-function removeCode(markdown, collectedIds = null) {
+function removeCode(rawMarkdown, collectedIds = null) {
+  const markdown = rawMarkdown.replace(/\r\n|\r/g, '\n');
   // Bounded, order-sensitive Markdown masking. Preserve newlines and offsets.
   // Multiline code spans and HTML comments cannot change fence ownership.
   const lines = markdown.split(/\r\n|\n|\r/);
@@ -247,14 +248,14 @@ function removeCode(markdown, collectedIds = null) {
     prepassLineOffset += line.length + 1;
     if (priorDef && lineStart < priorDef.end) continue;
     const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line);
-    const list = !isThematic ? /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(line) : null;
+    const list = !isThematic ? /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+|[ \t]*$)/.exec(line) : null;
     if (list) {
       const markerStr = list[0].slice(0, list[0].length - list[1].length);
       const markerCol = visualColumn(markerStr);
       const wsStr = list[1];
       const afterWsCol = visualColumn(wsStr, markerCol);
       const spacesCol = afterWsCol - markerCol;
-      const padding = spacesCol >= 5 ? 1 : spacesCol;
+      const padding = spacesCol === 0 || spacesCol >= 5 ? 1 : spacesCol;
       defScanListIndent = markerCol + padding;
     } else if (!/^[ \t]*$/.test(line) && defScanListIndent !== null && !stripIndent(line, defScanListIndent)) {
       defScanListIndent = null;
@@ -548,7 +549,7 @@ function removeCode(markdown, collectedIds = null) {
         }
       }
       const isThematicBreak = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line);
-      const list = !isThematicBreak ? line.match(/^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+)/) : null;
+      const list = !isThematicBreak ? line.match(/^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+|[ \t]*$)/) : null;
       if (list) {
         const rest = line.slice(list[0].length);
         const isEmptyItem = /^[ \t]*$/.test(rest);
@@ -559,7 +560,7 @@ function removeCode(markdown, collectedIds = null) {
           const wsStr = list[2];
           const afterWsCol = visualColumn(wsStr, markerCol);
           const spacesCol = afterWsCol - markerCol;
-          const padding = spacesCol >= 5 ? 1 : spacesCol;
+          const padding = spacesCol === 0 || spacesCol >= 5 ? 1 : spacesCol;
           listIndent = markerCol + padding;
           paragraphOpen = false;
         }
@@ -798,7 +799,18 @@ function protectHeadingCode(heading, spans, rawSpans = []) {
     if (++scanned > maxScanned) throw new Error('Heading HTML scan budget exceeded; fail closed');
   };
   // Preindex matching run lengths rather than repeatedly searching suffixes.
-  const runs = [...heading.matchAll(/`+/g)], next = new Map();
+  const rawRuns = [...heading.matchAll(/`+/g)];
+  const runs = [];
+  for (const r of rawRuns) {
+    if (escapedAt(heading, r.index)) {
+      if (r[0].length > 1) {
+        runs.push({ 0: r[0].slice(1), index: r.index + 1 });
+      }
+    } else {
+      runs.push(r);
+    }
+  }
+  const next = new Map();
   const closers = new Array(runs.length);
   for (let i = runs.length - 1; i >= 0; i--) {
     closers[i] = next.get(runs[i][0].length);
@@ -829,7 +841,7 @@ function protectHeadingCode(heading, spans, rawSpans = []) {
   }
 
   while (cursor < heading.length) {
-    while (runIndex < runs.length && (runs[runIndex].index < cursor || escapedAt(heading, runs[runIndex].index) || closers[runIndex] === undefined)) {
+    while (runIndex < runs.length && (runs[runIndex].index < cursor || closers[runIndex] === undefined)) {
       runIndex++;
     }
     const nextRun = runIndex < runs.length ? runs[runIndex] : null;
@@ -957,7 +969,7 @@ function markdownContainer(raw, paragraphOpen = false) {
       content = content.slice(quote[0].length);
     }
     if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content)) break;
-    const list = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+)/.exec(content);
+    const list = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+|[ \t]*$)/.exec(content);
     if (list) {
       const rest = content.slice(list[0].length);
       const isEmptyItem = /^[ \t]*$/.test(rest);
@@ -968,7 +980,7 @@ function markdownContainer(raw, paragraphOpen = false) {
         const wsStr = list[2];
         const afterWsCol = visualColumn(wsStr, markerCol);
         const spacesCol = afterWsCol - markerCol;
-        const padding = spacesCol >= 5 ? 1 : spacesCol;
+        const padding = spacesCol === 0 || spacesCol >= 5 ? 1 : spacesCol;
         const consumedIndent = markerCol + padding;
         listIndent += consumedIndent;
         containers.push({ kind: 'list', indent: consumedIndent });
@@ -981,7 +993,7 @@ function markdownContainer(raw, paragraphOpen = false) {
   const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
   const unconsumedContainer = !isThematic && (paragraphOpen
     ? /^ {0,3}(?:>|(?:[-+*]|1[.)])[ \t]+[^ \t\r\n])/.test(content)
-    : /^ {0,3}(?:>|(?:[-+*]|\d{1,9}[.)])[ \t]+)/.test(content));
+    : /^ {0,3}(?:>|(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|[ \t]*$))/.test(content));
   if (unconsumedContainer) failParserBound();
   return { content, quoteDepth, listIndent, containers };
 }
@@ -1049,7 +1061,7 @@ function headingsIn(text, original = text, collectedIds = null) {
     const prefix = definitionPrefix.exec(line.slice(continuation));
     const bracket = lineStart + continuation + (prefix ? prefix[0].length : 0);
     if (prefix && text[bracket] === '[' && !escapedAt(text, bracket) &&
-        referenceDefinitionCanStart(text, lineStart, priorDefinition)) {
+        referenceDefinitionCanStart(text, lineStart, priorDefinition, normOriginal)) {
       let parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose, rawDefinitionText);
       if (parsed && !validDefinitionContinuation(text, lineStart, parsed.end, defScanListIndent)) {
         if (parsed.destEnd !== null && validDefinitionContinuation(text, lineStart, parsed.destEnd, defScanListIndent)) {
@@ -2204,31 +2216,29 @@ function normalizeReferenceContainers(text) {
   return text.replace(/^ {0,3}(?:>[ \t]?){1,4}/gm, prefix => ' '.repeat(prefix.length));
 }
 
-function referenceDefinitionCanStart(text, offset, last) {
+function referenceDefinitionCanStart(text, offset, last, rawText = text) {
   const end = text.lastIndexOf('\n', offset - 1);
   if (end < 0) return true;
   const start = text.lastIndexOf('\n', end - 1) + 1;
   if (last && start >= last.start && end <= last.end) return true;
   const prior = text.slice(start, end).replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
+  const rawPrior = rawText.slice(start, end).replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
   const priorInQuote = /^ {0,3}>/.test(text.slice(start, end));
   const lineStart = offset <= 0 || text[offset - 1] === '\n' ? offset : text.lastIndexOf('\n', offset - 1) + 1;
   const currentInQuote = /^ {0,3}>/.test(text.slice(lineStart));
   if (currentInQuote && !priorInQuote) return true;
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
-  if (/^[ \t]*$/.test(prior) || /^ {0,3}#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
+  const isRawBlank = /^[ \t]*$/.test(rawPrior);
+  const isFenceCloser = /^ {0,3}(?:`{3,}|~{3,})/.test(rawPrior);
+  if (isRawBlank || isFenceCloser || /^ {0,3}#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
   if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prior)) return true;
-  const listMatch = /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(prior);
+  const listMatch = /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+|[ \t]*$)/.exec(prior);
   if (listMatch) {
-    const markerCol = visualColumn(listMatch[0].slice(0, listMatch[0].length - listMatch[1].length));
-    const afterWsCol = visualColumn(listMatch[1], markerCol);
-    const spacesCol = afterWsCol - markerCol;
-    const padding = spacesCol >= 5 ? 1 : spacesCol;
-    const listContIndent = markerCol + padding;
     const lineEnd = text.indexOf('\n', lineStart);
     const curLine = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd)
       .replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
-    const curIndent = /^[ \t]*/.exec(curLine)[0];
-    const currentCol = visualColumn(curIndent);
+    const curListMatch = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])(?:[ \t]+|[ \t]*$)/.exec(curLine);
+    if (curListMatch) return true;
     const afterMarker = prior.slice(listMatch[0].length);
     const isHeading = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(afterMarker);
     const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(afterMarker);
@@ -2434,7 +2444,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   function definitionCanStartAt(offset) {
     // Definitions cannot interrupt an open paragraph. The bounded pilot
     // supports up to four blockquote markers before a definition.
-    return referenceDefinitionCanStart(text, offset, definitionRanges.at(-1));
+    return referenceDefinitionCanStart(text, offset, definitionRanges.at(-1), rawFileText);
   }
   // Definitions may place a destination or title on the following line.
   // Paragraph and first-definition rules still apply. A blank line or a
@@ -2446,14 +2456,14 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     const lineLimit = lineBreak < 0 ? text.length : lineBreak;
     const line = text.slice(scanAt, lineLimit);
     const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line);
-    const list = !isThematic ? /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+)/.exec(line) : null;
+    const list = !isThematic ? /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+|[ \t]*$)/.exec(line) : null;
     if (list) {
       const markerStr = list[0].slice(0, list[0].length - list[1].length);
       const markerCol = visualColumn(markerStr);
       const wsStr = list[1];
       const afterWsCol = visualColumn(wsStr, markerCol);
       const spacesCol = afterWsCol - markerCol;
-      const padding = spacesCol >= 5 ? 1 : spacesCol;
+      const padding = spacesCol === 0 || spacesCol >= 5 ? 1 : spacesCol;
       listContinuationIndent = markerCol + padding;
     }
     else if (!/^[ \t]*$/.test(line) && listContinuationIndent !== null &&
@@ -2505,7 +2515,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
         inRanges(autolinkRanges, match.index)) continue;
     inlineOpeners.add(match.opener);
     if (inlineRanges.length >= 10000) throw new Error('Inline Markdown range budget exceeded');
-    inlineRanges.push({ start: match.index, end: Math.max(match.end,
+    inlineRanges.push({ start: match.labelEnd + 1, end: Math.max(match.end,
       inlineRanges.at(-1)?.end || 0) });
     if (!deletedTargets || refersToDeletedMarkdown(filename, match.raw, deletedTargets)) {
       checkLink(filename, match.raw, lineOf(match.index));
