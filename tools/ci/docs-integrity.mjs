@@ -96,6 +96,7 @@ function hasInterveningBlockBoundary(text, begin, end) {
 }
 
 const LINK_LABEL_LIMIT = 512;
+const INLINE_CODE_CONTEXT_LIMIT = 8192;
 
 function codeSpanRanges(text, from, to) {
   const ranges = [];
@@ -131,6 +132,32 @@ function codeSpanRanges(text, from, to) {
   }
   return ranges;
 }
+
+// A definition may follow an HTML-block closer, but a closer-shaped token in a
+// multiline code span is ordinary paragraph text. Inspect the owning paragraph
+// prefix once, with a fixed lookback, instead of treating the previous raw line
+// as an independent block. An over-limit prefix is intentionally uncertain and
+// must fail closed at the caller.
+function codeSpanContextBefore(rawText, lineStart, lineEnd) {
+  const currentLine = rawText.slice(lineStart, lineEnd);
+  const currentQuoteDepth = (currentLine.match(/^(?: {0,3}>[ \t]?){1,4}/)?.[0].match(/>/g) || []).length;
+  let start = lineStart;
+  while (start > 0) {
+    const previousEnd = start - 1;
+    const previousStart = rawText.lastIndexOf('\n', previousEnd - 1) + 1;
+    if (lineEnd - previousStart > INLINE_CODE_CONTEXT_LIMIT) return null;
+    const previousLine = rawText.slice(previousStart, previousEnd);
+    const previousQuote = previousLine.match(/^(?: {0,3}>[ \t]?){1,4}/)?.[0] || '';
+    const previousQuoteDepth = (previousQuote.match(/>/g) || []).length;
+    if (previousQuoteDepth !== currentQuoteDepth) break;
+    const content = previousLine.slice(previousQuote.length);
+    if (/^[ \t]*$/.test(content) || isBlockInterruption(content)) break;
+    start = previousStart;
+  }
+  if (lineEnd - start > INLINE_CODE_CONTEXT_LIMIT) return null;
+  return codeSpanRanges(rawText, start, lineEnd);
+}
+
 function hasMatchingLinkOpener(text, bracket) {
   let depth = 1;
   const minIndex = Math.max(0, bracket - LINK_LABEL_LIMIT - 1);
@@ -2237,12 +2264,18 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
   const isPriorMasked = /^[ \t]*$/.test(prior.replace(/<[^>]*>/g, ''));
   // A closer token inside an inline code span in rawPrior cannot end an HTML
   // block: inline code spans are paragraph content, not HTML block boundaries.
-  // Compute code-span ranges once and verify each candidate token is unmasked.
-  const priorCodeRanges = isPriorMasked ? codeSpanRanges(rawPrior, 0, rawPrior.length) : [];
+  // Preserve ownership across the current paragraph, rather than rescanning
+  // only rawPrior. The bounded lookback returns null when it cannot prove the
+  // opener is in range, so a reference definition cannot hide a live link.
+  const rawPriorLine = rawText.slice(start, end);
+  const rawPriorOffset = start + rawPriorLine.length - rawPrior.length;
+  const hasCloserToken = isPriorMasked && /-->|\?>|]]>/.test(rawPrior);
+  const priorCodeRanges = hasCloserToken ? codeSpanContextBefore(rawText, start, end) : [];
+  if (priorCodeRanges === null) return false;
   const rawPriorHasUnmaskedToken = (token) => {
     let idx = rawPrior.indexOf(token);
     while (idx >= 0) {
-      if (!inRanges(priorCodeRanges, idx)) return true;
+      if (!inRanges(priorCodeRanges, rawPriorOffset + idx)) return true;
       idx = rawPrior.indexOf(token, idx + 1);
     }
     return false;
