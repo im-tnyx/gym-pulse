@@ -2235,12 +2235,24 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
   if (isRawBlank || isFenceCloser || /^ {0,3}#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
   if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prior)) return true;
   const isPriorMasked = /^[ \t]*$/.test(prior.replace(/<[^>]*>/g, ''));
+  // A closer token inside an inline code span in rawPrior cannot end an HTML
+  // block: inline code spans are paragraph content, not HTML block boundaries.
+  // Compute code-span ranges once and verify each candidate token is unmasked.
+  const priorCodeRanges = isPriorMasked ? codeSpanRanges(rawPrior, 0, rawPrior.length) : [];
+  const rawPriorHasUnmaskedToken = (token) => {
+    let idx = rawPrior.indexOf(token);
+    while (idx >= 0) {
+      if (!inRanges(priorCodeRanges, idx)) return true;
+      idx = rawPrior.indexOf(token, idx + 1);
+    }
+    return false;
+  };
   const isHtmlBlockCloser = isPriorMasked && (
     /<\/(?:script|pre|style|textarea)\s*>/i.test(rawPrior) ||
-    rawPrior.includes('-->') ||
-    rawPrior.includes('?>') ||
-    rawPrior.includes(']]>') ||
-    (/^ {0,3}<![A-Z]/.test(rawPrior) && rawPrior.includes('>'))
+    rawPriorHasUnmaskedToken('-->') ||
+    rawPriorHasUnmaskedToken('?>') ||
+    rawPriorHasUnmaskedToken(']]>') ||
+    (/^ {0,3}<![A-Z]/.test(rawPrior) && rawPriorHasUnmaskedToken('>'))
   );
   if (isHtmlBlockCloser) return true;
   const isIndentedCode = (() => {

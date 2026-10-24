@@ -568,6 +568,9 @@ const fixtures = [
     ['indented paragraph continuation line cannot start reference definition', 'paragraph\n    code\n[x]: Consumer.md "[old](Target.md)"\n', false],
     ['permitted indentation before nested blockquote marker accepts definition', '[x]\n\n>  > [x]: https://example.invalid\n', true],
     ['excessive blockquote nesting beyond parser cap fails closed', '> > > > > [x]: https://example.invalid\n', false, undefined, 'Markdown parser bound exceeded'],
+    ['inline code span with HTML comment closer must not allow reference definition', '\`x-->\`\n[x]: Consumer.md "[old](Target.md)"\n', false],
+    ['inline code span with processing instruction closer must not allow reference definition', '\`x?>\`\n[x]: Consumer.md "[old](Target.md)"\n', false],
+    ['inline code span with CDATA closer must not allow reference definition', '\`x]]>\`\n[x]: Consumer.md "[old](Target.md)"\n', false],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
     name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',
