@@ -585,8 +585,16 @@ const fixtures = [
       '<![CDATA[\n]]>\n[x]: Consumer.md "[old](Target.md)"\n', true],
     ['over-limit multiline inline-code context fails closed before a reference definition',
       '\`' + 'x'.repeat(8193) + '\nx-->\`\n[x]: Consumer.md "[old](Target.md)"\n', false],
-  ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
-    name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
+    ['inline-code-only paragraph keeps a following indented link live',
+      '\`code\`\n    [old](Target.md)\n', false],
+    ['blockquote ordered-list continuation keeps a following indented link live',
+      '> 10. paragraph\n>\n>     [old](Target.md)\n', false],
+    ['reference definition permits one leading space',
+      '[old]\n\n [old]: Target.md\n', false],
+    ['repeated inline processing instructions remain within checker timeout',
+      ('x <?\n'.repeat(8000)) + '\n?>\n[old](Target.md)\n', false, undefined, undefined, undefined, 3000],
+  ].map(([name, consumer, pass, baseTarget, signal, deletedName, checkerTimeout]) => ({
+    name, consumer, pass, baseTarget, deletedName, checkerTimeout, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',
     markdownCount: signal ? undefined : 0,
   })),

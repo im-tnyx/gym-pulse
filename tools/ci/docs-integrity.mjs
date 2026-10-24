@@ -80,18 +80,31 @@ function isBlockInterruption(raw) {
   return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|1[.)])[ \t]+|(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$|=+[ \t]*$|`{3,}|~{3,})/.test(raw);
 }
 
-function hasInterveningBlockBoundary(text, begin, end) {
-  let nl = text.indexOf('\n', begin);
-  while (nl !== -1 && nl < end) {
-    const nextNl = text.indexOf('\n', nl + 1);
+function htmlBlockBoundaryOffsets(text) {
+  const offsets = [];
+  let lineStart = 0;
+  while (lineStart <= text.length) {
+    const nextNl = text.indexOf('\n', lineStart);
     const lineEnd = nextNl === -1 ? text.length : nextNl;
-    const fullLine = text.slice(nl + 1, lineEnd);
+    const fullLine = text.slice(lineStart, lineEnd);
     const isTagCloser = /^[ \t]*\/?>(?=[ \t]*$|[ \t]+)/.test(fullLine);
     if (!isTagCloser && (/^[ \t]*\r?$/.test(fullLine) || isBlockInterruption(fullLine))) {
-      return true;
+      offsets.push(lineStart);
     }
-    nl = nextNl;
+    if (nextNl === -1) break;
+    lineStart = nextNl + 1;
   }
+  return offsets;
+}
+
+function hasInterveningBlockBoundary(boundaries, begin, end) {
+  let low = 0, high = boundaries.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (boundaries[mid] <= begin) low = mid + 1;
+    else high = mid;
+  }
+  if (low < boundaries.length && boundaries[low] <= end) return true;
   return false;
 }
 
@@ -267,7 +280,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
   const prepassDefText = normalizeReferenceContainers(markdown);
   const prepassLastDefClose = prepassDefText.lastIndexOf(']:');
   let priorDef = null, defScanListIndent = null;
-  const defPrefix = /^((?: {0,3}>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
+  const defPrefix = /^((?: {0,3}>[ \t]?){0,4} {0,3}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
   let prepassLineOffset = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -412,7 +425,18 @@ function removeCode(rawMarkdown, collectedIds = null) {
     // A list item's continuation indentation is a container prefix, not
     // indented code. Match fences after removing that active prefix.
     const activeListIndent = listIndent;
-    const strippedActiveList = activeListIndent !== null ? stripIndent(line, activeListIndent) : null;
+    // A list inside a blockquote must consume the quote prefix before applying
+    // its continuation indentation. Applying stripIndent() to the whole line
+    // misclassifies valid quoted list content as indented code.
+    const listIndentSource = /^(?: {0,3}>[ \t]?){1,4}/.test(line)
+      ? line.replace(/^(?: {0,3}>[ \t]?){1,4}/, '')
+      : line;
+    const strippedActiveList = activeListIndent !== null
+      ? stripIndent(listIndentSource, activeListIndent) ||
+        (/^[ \t]*$/.test(listIndentSource)
+          ? { matches: true, remaining: '', consumedChars: listIndentSource.length }
+          : null)
+      : null;
     const lineInList = strippedActiveList !== null;
     const containerLine = lineInList ? strippedActiveList.remaining : line;
     const continuationInput = state =>
@@ -592,8 +616,8 @@ function removeCode(rawMarkdown, collectedIds = null) {
           paragraphOpen = false;
         }
       }
-      else if (!/^[ \t]*$/.test(line) && listIndent !== null &&
-          !stripIndent(line, listIndent)) listIndent = null;
+      else if (!container.listIndent && !/^[ \t]*$/.test(listIndentSource) && listIndent !== null &&
+          !stripIndent(listIndentSource, listIndent)) listIndent = null;
       const lineCol = visualColumn((line.match(/^[ \t]*/) || [''])[0]);
       if (lineCol >= 4 && !paragraphOpen && !lineIsRefDef &&
           (listIndent === null || lineCol < listIndent || lineCol >= listIndent + 4)) return ' '.repeat(line.length);
@@ -623,7 +647,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
       tailSearch = bracket + 2;
     }
     if (!lineIsRefDef && !paragraphOpen && referenceDefinitionCanStart(markdown, currentLineOffset)) {
-      const defMatch = /^(?: {0,3}>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/.exec(line);
+      const defMatch = /^(?: {0,3}>[ \t]?){0,4} {0,3}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?\[/.exec(line);
       if (defMatch) {
         const bracket = defMatch[0].length - 1;
         const parsedDef = parseReferenceDefinition(line, bracket, line.length);
@@ -780,7 +804,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
     const isBlank = /^[ \t]*$/.test(innerContent);
     if (isBlank || isAtx || isThematic || isSetext || lineIsRefDef) {
       paragraphOpen = false;
-    } else if (!/^[ \t]*$/.test(visible)) {
+    } else if (!/^[ \t]*$/.test(visible) || !/^[ \t]*$/.test(innerContent)) {
       paragraphOpen = true;
     }
     return visible;
@@ -1067,7 +1091,7 @@ function headingsIn(text, original = text, collectedIds = null) {
   const lastDefinitionClose = definitionText.lastIndexOf(']:');
   let priorDefinition = null, definitionCount = 0, defLine = 0;
   let defScanListIndent = null;
-  const definitionPrefix = /^((?: {0,3}>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
+  const definitionPrefix = /^((?: {0,3}>[ \t]?){0,4} {0,3}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineStart = lineStarts[i];
@@ -2343,6 +2367,7 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
 // each tag scan so malformed PR input cannot force unbounded work.
 function htmlTagRanges(text) {
   const ranges = [], starts = /<\/?[A-Za-z][A-Za-z0-9-]*|<\?|<!\[CDATA\[|<![A-Za-z]+/g;
+  const blockBoundaries = htmlBlockBoundaryOffsets(text);
   let scanned = 0;
   const maxScanned = Math.min(4 * text.length + 4096, 2 * 1024 * 1024);
   const tick = () => {
@@ -2360,7 +2385,7 @@ function htmlTagRanges(text) {
       if (nextPiCloser !== -1) {
         if (nextPiCloser < begin + 2) nextPiCloser = text.indexOf('?>', begin + 2);
         if (nextPiCloser >= 0) {
-          if (!hasInterveningBlockBoundary(text, begin, nextPiCloser)) {
+          if (!hasInterveningBlockBoundary(blockBoundaries, begin, nextPiCloser)) {
             ranges.push({ start: begin, end: nextPiCloser + 2 });
           }
         }
@@ -2371,7 +2396,7 @@ function htmlTagRanges(text) {
       if (nextCdataCloser !== -1) {
         if (nextCdataCloser < begin + 9) nextCdataCloser = text.indexOf(']]>', begin + 9);
         if (nextCdataCloser >= 0) {
-          if (!hasInterveningBlockBoundary(text, begin, nextCdataCloser)) {
+          if (!hasInterveningBlockBoundary(blockBoundaries, begin, nextCdataCloser)) {
             ranges.push({ start: begin, end: nextCdataCloser + 3 });
           }
         }
@@ -2383,7 +2408,7 @@ function htmlTagRanges(text) {
         if (nextDeclCloser !== -1) {
           if (nextDeclCloser < begin + 2) nextDeclCloser = text.indexOf('>', begin + 2);
           if (nextDeclCloser >= 0) {
-            if (!hasInterveningBlockBoundary(text, begin, nextDeclCloser)) {
+            if (!hasInterveningBlockBoundary(blockBoundaries, begin, nextDeclCloser)) {
               ranges.push({ start: begin, end: nextDeclCloser + 1 });
             }
           }
@@ -2393,7 +2418,7 @@ function htmlTagRanges(text) {
     }
     if (!/[\s/>]/.test(text[begin + start[0].length] || '')) continue;
     const end = parseHtmlTagEnd(text, begin, start[0].length, tick);
-    if (end > begin && !hasInterveningBlockBoundary(text, begin, end)) ranges.push({ start: begin, end });
+    if (end > begin && !hasInterveningBlockBoundary(blockBoundaries, begin, end)) ranges.push({ start: begin, end });
   }
   return ranges;
 }
@@ -2520,7 +2545,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   // Definitions may place a destination or title on the following line.
   // Paragraph and first-definition rules still apply. A blank line or a
   // suffix after the title means this line is not a definition.
-  const definitionPrefix = /^((?: {0,3}>[ \t]?){0,4}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
+  const definitionPrefix = /^((?: {0,3}>[ \t]?){0,4} {0,3}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
   let scanAt = 0, listContinuationIndent = null;
   while (scanAt < text.length) {
     const lineBreak = text.indexOf('\n', scanAt);
