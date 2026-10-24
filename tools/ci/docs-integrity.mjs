@@ -265,8 +265,15 @@ function removeCode(markdown, collectedIds = null) {
     const bracket = lineStart + continuation + (prefix ? prefix[0].length : 0);
     if (prefix && markdown[bracket] === '[' && !escapedAt(markdown, bracket) &&
         referenceDefinitionCanStart(markdown, lineStart, priorDef)) {
-      const parsedDef = parseReferenceDefinition(prepassDefText, bracket, prepassLastDefClose, prepassDefText);
-      if (parsedDef && validDefinitionContinuation(markdown, lineStart, parsedDef.end, defScanListIndent)) {
+      let parsedDef = parseReferenceDefinition(prepassDefText, bracket, prepassLastDefClose, prepassDefText);
+      if (parsedDef && !validDefinitionContinuation(markdown, lineStart, parsedDef.end, defScanListIndent)) {
+        if (parsedDef.destEnd !== null && validDefinitionContinuation(markdown, lineStart, parsedDef.destEnd, defScanListIndent)) {
+          parsedDef = { ...parsedDef, end: parsedDef.destEnd };
+        } else {
+          parsedDef = null;
+        }
+      }
+      if (parsedDef) {
         priorDef = { start: lineStart, end: parsedDef.end };
         const colon = prepassDefText.indexOf(']:', bracket);
         const afterColon = colon >= 0 ? colon + 2 : bracket + 1;
@@ -1043,8 +1050,15 @@ function headingsIn(text, original = text, collectedIds = null) {
     const bracket = lineStart + continuation + (prefix ? prefix[0].length : 0);
     if (prefix && text[bracket] === '[' && !escapedAt(text, bracket) &&
         referenceDefinitionCanStart(text, lineStart, priorDefinition)) {
-      const parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose, rawDefinitionText);
-      if (parsed && validDefinitionContinuation(text, lineStart, parsed.end, defScanListIndent)) {
+      let parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose, rawDefinitionText);
+      if (parsed && !validDefinitionContinuation(text, lineStart, parsed.end, defScanListIndent)) {
+        if (parsed.destEnd !== null && validDefinitionContinuation(text, lineStart, parsed.destEnd, defScanListIndent)) {
+          parsed = { ...parsed, end: parsed.destEnd };
+        } else {
+          parsed = null;
+        }
+      }
+      if (parsed) {
         if (++definitionCount > 10000) failParserBound();
         priorDefinition = { start: lineStart, end: parsed.end };
         definedRefs.add(referenceLabel(parsed.label));
@@ -2137,6 +2151,7 @@ function parseReferenceDefinition(text, bracketIndex, lastClose, rawText = text)
   if (!lead) return null;
   const dest = readDestinationAt(text, lead.index, limit);
   if (!dest) return null;
+  const destEnd = finishReferenceLine(text, dest.end);
   // A following line is part of the definition only when it continues a title.
   // Otherwise the definition ends on the destination line, even if the next
   // line is blank or is another definition.
@@ -2152,7 +2167,7 @@ function parseReferenceDefinition(text, bracketIndex, lastClose, rawText = text)
   }
   const lineEnd = finishReferenceLine(text, tail);
   if (lineEnd === null) return null;
-  return { label, destination: dest.raw, end: lineEnd };
+  return { label, destination: dest.raw, end: lineEnd, destEnd };
 }
 
 function validDefinitionContinuation(text, startOffset, endOffset, listIndent = null) {
@@ -2452,9 +2467,15 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     if (prefix && text[bracket] === '[' && !escapedAt(text, bracket) &&
         !inRanges(inlineHtmlRanges, scanAt) && !inRanges(autolinkRanges, scanAt) &&
         definitionCanStartAt(scanAt)) {
-      const parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose, rawDefinitionText);
-      if (parsed && validDefinitionContinuation(text, scanAt, parsed.end, listContinuationIndent) &&
-          !parsed.label.startsWith('^')) { // GFM footnote, not URL reference.
+      let parsed = parseReferenceDefinition(definitionText, bracket, lastDefinitionClose, rawDefinitionText);
+      if (parsed && !validDefinitionContinuation(text, scanAt, parsed.end, listContinuationIndent)) {
+        if (parsed.destEnd !== null && validDefinitionContinuation(text, scanAt, parsed.destEnd, listContinuationIndent)) {
+          parsed = { ...parsed, end: parsed.destEnd };
+        } else {
+          parsed = null;
+        }
+      }
+      if (parsed && !parsed.label.startsWith('^')) { // GFM footnote, not URL reference.
         if (definitionRanges.length >= 10000) failParserBound();
         definitionRanges.push({ start: scanAt, end: parsed.end });
         definitionLabelOffsets.add(bracket);

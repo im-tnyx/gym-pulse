@@ -554,6 +554,7 @@ const fixtures = [
     ['multiline reference definition cannot cross container boundaries', '[x]:\n> Consumer.md "[old](Target.md)"\n', false],
     ['empty list item cannot interrupt open paragraph before indented link', 'paragraph\n+ \n      [old](Target.md)\n', false],
     ['multiline setext heading in list item resolves full anchor slug', '[old](Target.md#hello-world)\n', false, '- Hello\n  World\n  ===\n'],
+    ['reference definition preserves destination when later title crosses containers', '[old]: Target.md\n> "title"\n\n[old]\n', false],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName]) => ({
     name, consumer, pass, baseTarget, deletedName, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',
