@@ -1171,6 +1171,15 @@ function headingsIn(text, original = text, collectedIds = null) {
     found.add(candidate);
     occurrences.set(slug, suffix + 1);
   };
+  const isListItemOpening = raw => {
+    let content = raw;
+    for (let depth = 0; depth < 4; depth++) {
+      const quote = /^ {0,3}>[ \t]?/.exec(content);
+      if (!quote) break;
+      content = content.slice(quote[0].length);
+    }
+    return /^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+/.test(content);
+  };
   // A complete leading YAML front-matter block is metadata, not a setext
   // heading. An unmatched opener is not masked.
   let frontMatterEnd = -1;
@@ -1243,6 +1252,10 @@ function headingsIn(text, original = text, collectedIds = null) {
           !/^[ \t]*$/.test(headingContainerContent(lines[begin - 1])) &&
           !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|[-+*][ \t]|1[.)][ \t])/.test(headingContainerContent(lines[begin - 1])) &&
           !/^ {0,3}(?:=+|-+)[ \t]*$/.test(headingContainerContent(lines[begin - 1]))) {
+          if (isListItemOpening(lines[begin - 1])) {
+            if (!isListItemOpening(lines[begin])) begin--;
+            break;
+          }
           begin--;
           if (candidateIsListOpener(lines[begin])) break;
         }
@@ -2361,7 +2374,17 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
     const curLine = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd)
       .replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
     const curListMatch = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])(?:[ \t]+|[ \t]*$)/.exec(curLine);
-    if (curListMatch) return true;
+    if (curListMatch) {
+      const priorMarker = /^(?: {0,3}>[ \t]?){0,4}([ \t]*)(?:[-+*]|(?:\d{1,9})[.)])/.exec(rawPrior);
+      const currentMarker = /^(?: {0,3}>[ \t]?){0,4}([ \t]*)(?:[-+*]|(\d{1,9})[.)])/.exec(rawText.slice(lineStart));
+      const priorIndent = priorMarker ? visualColumn(priorMarker[1]) : 0;
+      const currentIndent = currentMarker ? visualColumn(currentMarker[1]) : 0;
+      const currentOrdered = currentMarker?.[2] || curListMatch[1];
+      // A non-1 ordered marker nested under the current list paragraph is
+      // continuation text, not a sibling that can interrupt the paragraph.
+      if (currentIndent > priorIndent && currentOrdered && currentOrdered !== '1') return false;
+      return true;
+    }
     const afterMarker = prior.slice(listMatch[0].length);
     const isHeading = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(afterMarker);
     const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(afterMarker);
