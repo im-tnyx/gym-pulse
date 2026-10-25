@@ -641,6 +641,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
     }
 
     let visible = '', from = 0;
+    let blockCommentOwnedLine = false;
     const inlineTagRanges = htmlTagRanges(line);
     const autolinkTagRanges = uriAutolinkRanges(line);
     const protectedRanges = [...inlineTagRanges, ...autolinkTagRanges];
@@ -747,6 +748,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
           visible += ' '.repeat(line.length - from);
           comment = false;
           commentIsBlock = false;
+          blockCommentOwnedLine = true;
           break;
         }
         visible += ' '.repeat(end + 3 - from);
@@ -802,6 +804,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
           visible += ' '.repeat(line.length - from);
           comment = false;
           commentIsBlock = false;
+          blockCommentOwnedLine = true;
           break;
         }
       } else {
@@ -814,7 +817,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
     const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(innerContent);
     const isSetext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(innerContent);
     const isBlank = /^[ \t]*$/.test(innerContent);
-    if (isBlank || isAtx || isThematic || isSetext || lineIsRefDef) {
+    if (blockCommentOwnedLine || isBlank || isAtx || isThematic || isSetext || lineIsRefDef) {
       paragraphOpen = false;
     } else if (!/^[ \t]*$/.test(visible) || !/^[ \t]*$/.test(innerContent)) {
       paragraphOpen = true;
@@ -2098,9 +2101,12 @@ function linkBlockBoundaries(text, sourceText = text) {
     const quote = /^(?: {0,3}>[ \t]?){1,4}/.exec(raw);
     const depth = quote ? (quote[0].match(/>/g) || []).length : 0;
     let content = raw.slice(quote?.[0].length || 0);
+    let sourceContent = sourceRaw.slice(quote?.[0].length || 0);
     const strippedCont = listIndent !== null ? stripIndent(content, listIndent) : null;
     const continuationIndent = strippedCont !== null ? listIndent : 0;
     if (strippedCont) content = strippedCont.remaining;
+    const sourceStrippedCont = listIndent !== null ? stripIndent(sourceContent, listIndent) : null;
+    if (sourceStrippedCont) sourceContent = sourceStrippedCont.remaining;
     const thematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
     const list = !thematic ? /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content) : null;
     // Only an ordered list starting at 1 can interrupt an ordinary paragraph.
@@ -2111,9 +2117,17 @@ function linkBlockBoundaries(text, sourceText = text) {
     const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
     const isBlank = /^[ \t]*$/.test(sourceRaw.slice(quote?.[0].length || 0));
     const isInterruption = listStartsBlock || atx || setext || thematic;
+    // removeCode() replaces block contents with spaces. Retain the original
+    // opener as a boundary so brackets cannot span incompatible blocks.
+    const sourceFence = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(sourceContent);
+    const isValidSourceFence = sourceFence &&
+      !(sourceFence[1][0] === '`' && sourceFence[2].includes('`'));
+    const sourceBlockInterruption = /^[ \t]*$/.test(content) &&
+      !/^[ \t]*$/.test(sourceContent) &&
+      (isValidSourceFence || (/^ {0,3}</.test(sourceContent) && isBlockInterruption(sourceContent)));
     const isLazy = paragraphOpen && !isBlank && !isInterruption && depth < quoteDepth;
     const activeQuoteDepth = isLazy ? quoteDepth : depth;
-    if (priorSingleLineBlock || isBlank || depth > quoteDepth || isInterruption) boundaries.push(offset);
+    if (priorSingleLineBlock || isBlank || depth > quoteDepth || isInterruption || sourceBlockInterruption) boundaries.push(offset);
     priorSingleLineBlock = atx || setext || thematic;
     priorBlank = isBlank;
     quoteDepth = activeQuoteDepth;
@@ -2373,7 +2387,9 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
       !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|`{3,}|~{3,})/.test(heading) &&
       !/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(heading);
   }
-  return /^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(prior);
+  // Only a parsed definition establishes a consecutive-definition boundary.
+  // A definition-shaped paragraph line must not hide a later live link.
+  return Boolean(last && start === last.end);
 }
 
 // Ignore Markdown-looking candidates inside a parsed inline HTML tag, but
