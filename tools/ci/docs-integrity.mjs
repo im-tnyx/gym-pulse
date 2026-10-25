@@ -254,7 +254,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
     }
   }
   let fenced = null, comment = false, commentContainer = null, commentIsBlock = false;
-  let rawBlock = null, listIndent = null, inlineTicks = 0;
+  let rawBlock = null, listIndent = null, listQuoteDepth = 0, inlineTicks = 0;
   let pendingHtmlScanBytes = 0;
   let paragraphOpen = false;
   const laterCommentCloser = new Array(lines.length + 1).fill(false);
@@ -425,6 +425,13 @@ function removeCode(rawMarkdown, collectedIds = null) {
     // A list item's continuation indentation is a container prefix, not
     // indented code. Match fences after removing that active prefix.
     const activeListIndent = listIndent;
+    // A blank line without the blockquote marker closes a quoted list. Do not
+    // carry its indentation into a following root-level indented code block.
+    if (activeListIndent !== null && listQuoteDepth > 0 &&
+        /^[ \t]*$/.test(line) && !/^ {0,3}>/.test(line)) {
+      listIndent = null;
+      listQuoteDepth = 0;
+    }
     // A list inside a blockquote must consume the quote prefix before applying
     // its continuation indentation. Applying stripIndent() to the whole line
     // misclassifies valid quoted list content as indented code.
@@ -460,6 +467,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
     const updateListIndent = () => {
       if (container.listIndent) {
         listIndent = (lineInList ? activeListIndent : 0) + container.listIndent;
+        listQuoteDepth = container.quoteDepth;
       }
     };
     const fence = container.content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
@@ -613,11 +621,15 @@ function removeCode(rawMarkdown, collectedIds = null) {
           const spacesCol = afterWsCol - markerCol;
           const padding = spacesCol === 0 || spacesCol >= 5 ? 1 : spacesCol;
           listIndent = markerCol + padding;
+          listQuoteDepth = 0;
           paragraphOpen = false;
         }
       }
       else if (!container.listIndent && !/^[ \t]*$/.test(listIndentSource) && listIndent !== null &&
-          !stripIndent(listIndentSource, listIndent)) listIndent = null;
+          !stripIndent(listIndentSource, listIndent)) {
+        listIndent = null;
+        listQuoteDepth = 0;
+      }
       const lineCol = visualColumn((line.match(/^[ \t]*/) || [''])[0]);
       if (lineCol >= 4 && !paragraphOpen && !lineIsRefDef &&
           (listIndent === null || lineCol < listIndent || lineCol >= listIndent + 4)) return ' '.repeat(line.length);
@@ -2282,7 +2294,9 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
   if (currentInQuote && !priorInQuote) return true;
   // CommonMark blank lines contain ASCII spaces/tabs only; NBSP is text.
   const isRawBlank = /^[ \t]*$/.test(rawPrior);
-  const isFenceCloser = /^ {0,3}(?:`{3,}|~{3,})/.test(rawPrior);
+  // A reference definition can follow a valid fence closer, but an opener
+  // with backticks in its info string cannot be treated as that boundary.
+  const isFenceCloser = /^ {0,3}(?:`{3,}|~{3,})[ \t]*$/.test(rawPrior);
   if (isRawBlank || isFenceCloser || /^ {0,3}#{1,6}(?:[ \t]+|[ \t]*$)/.test(prior)) return true;
   if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prior)) return true;
   const isPriorMasked = /^[ \t]*$/.test(prior.replace(/<[^>]*>/g, ''));
@@ -2313,14 +2327,14 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
   );
   if (isHtmlBlockCloser) return true;
   const isIndentedCode = (() => {
-    if (!/^ {4,}|\t/.test(rawPrior)) return false;
+    if (!/^(?: {4,}|\t)/.test(rawPrior)) return false;
     if (start <= 0) return true;
     const prevEnd = text.lastIndexOf('\n', start - 1);
     if (prevEnd < 0) return true;
     const prevStart = text.lastIndexOf('\n', prevEnd - 1) + 1;
     const prevRaw = rawText.slice(prevStart, prevEnd).replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
     if (/^[ \t]*$/.test(prevRaw)) return true;
-    if (/^ {4,}|\t/.test(prevRaw)) return true;
+    if (/^(?: {4,}|\t)/.test(prevRaw)) return true;
     if (/^ {0,3}(?:`{3,}|~{3,})/.test(prevRaw)) return true;
     if (/^ {0,3}#{1,6}(?:[ \t]+|[ \t]*$)/.test(prevRaw)) return true;
     if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prevRaw)) return true;
