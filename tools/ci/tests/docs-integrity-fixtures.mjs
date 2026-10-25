@@ -638,7 +638,7 @@ const fixtures = [
     ['blockquote list setext heading keeps container identity',
       '[old](Target.md#second)\n', false, '> - First\n> - Second\n>   ===\n'],
     ['duplicate list heading anchors retain suffix allocation',
-      '[old](Target.md#second-1)\n', false, '- Second\n- Second\n  ===\n'],
+      '[old](Target.md#second-1)\n', false, '- Second\n  ===\n- Second\n  ===\n'],
     ['interrupted setext candidate does not create a list heading',
       '[old](Target.md#first-second)\n', true, '- First\n- Second\n> ===\n'],
     ['reference definition permits one leading space',
