@@ -1014,13 +1014,17 @@ function headingSlug(heading, definedRefs = new Set()) {
     catch { uncertain = true; return ''; }
   });
   if (uncertain) return null;
-  return rendered.replace(/\x01(\d+)\x02/g, (_match, index) => spans[Number(index)] || '')
+  const formatSlugPart = (value, preserveUnderscore) => value
     .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
-    .replace(/[\x60*_~]/g, '')
-    .toLowerCase()
     .replace(/\t/g, ' ')
-    .replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, '')
-    .trim().replace(/ +/g, '-');
+    .replace(/[\x60*~]/g, '')
+    .replace(preserveUnderscore ? /[^\p{L}\p{M}\p{N}_\- ]/gu : /[^\p{L}\p{M}\p{N}\- ]/gu, '');
+  const expanded = rendered.replace(/\x01(\d+)\x02/g, (_match, index) => `\x03${Number(index)}\x04`);
+  const formatted = expanded.split(/(\x03\d+\x04)/).map(part => {
+    const marker = /^\x03(\d+)\x04$/.exec(part);
+    return marker ? formatSlugPart(spans[Number(marker[1])] || '', true) : formatSlugPart(part, false);
+  }).join('');
+  return formatted.toLowerCase().replace(/\t/g, ' ').trim().replace(/ +/g, '-');
 }
 
 function markdownContainer(raw, paragraphOpen = false) {
@@ -1610,7 +1614,9 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
   if (!value || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value)) return false;
   let cleanFilePart = null;
   try {
-    cleanFilePart = decodeDestinationText((value.match(/^(?:\\.|[^\x00-\x20\x7f])+/) || [''])[0]);
+    const angleValue = raw.trim().startsWith('<');
+    const candidate = angleValue ? value : (value.match(/^(?:\\.|[^\x00-\x20\x7f])+/) || [''])[0];
+    cleanFilePart = decodeDestinationText(candidate);
   } catch {
     cleanFilePart = null;
   }
@@ -1634,7 +1640,27 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
     return true; // Target IS in deleted, but unparseable query/fragment makes validation fail-closed.
   }
   const hasUnknown = /&(?:[A-Za-z][A-Za-z0-9]+);/.test(value);
-  if (!hasUnknown) return true; // Malformed or numeric content stays fail-closed.
+  if (!hasUnknown) {
+    // An unknown entity may occur only in a query/fragment that was removed
+    // from the filename candidate above. Preserve spaces in angle-wrapped
+    // filenames and still compare the exact BASE path before giving up.
+    try {
+      const filename = decodeURIComponent(decodeDestinationText(value));
+      if (!filename || filename.includes('\0') || filename.includes('\\')) return true;
+      const absolute = filename.startsWith('/')
+        ? path.resolve(root, '.' + filename)
+        : path.resolve(root, path.dirname(source), filename);
+      if (!withinRoot(absolute)) return false;
+      const canonicalBase = resolveBaseParentAliases(absolute);
+      if (filename.includes(' ') && [...deleted].some(target => path.basename(target) === path.basename(filename))) {
+        return true;
+      }
+      return [absolute, canonicalBase].some(candidate => {
+        if (!withinRoot(candidate)) return false;
+        return deleted.has(path.relative(root, candidate).split(path.sep).join('/'));
+      });
+    } catch { return true; }
+  }
   let decoded;
   try {
     decoded = value.replace(/\\([!-/:-@\[-`{-~ ])/g, '$1');
@@ -2087,7 +2113,11 @@ function parseReferenceLabelAt(text, bracketIndex) {
   const start = bracketIndex + 1;
   let index = start;
   while (index < text.length) {
-    if (text[index] === '\\') { index += 2; continue; }
+    if (text[index] === '\\') {
+      if (index + 1 < text.length && /[!-/:-@\[-`{-~]/.test(text[index + 1])) index += 2;
+      else index++;
+      continue;
+    }
     if (text[index] === '[' || (text[index] === '\n' &&
         /^[ \t]*\n/.test(text.slice(index + 1)))) return null;
     if (text[index] === ']') {
@@ -2334,7 +2364,7 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
   // opener is in range, so a reference definition cannot hide a live link.
   const rawPriorLine = rawText.slice(start, end);
   const rawPriorOffset = start + rawPriorLine.length - rawPrior.length;
-  const hasCloserToken = isPriorMasked && /-->|\?>|]]>/.test(rawPrior);
+  const hasCloserToken = isPriorMasked && /-->|\?>|]]>|<\/(?:script|pre|style|textarea)\s*>/i.test(rawPrior);
   const priorCodeRanges = hasCloserToken ? codeSpanContextBefore(rawText, start, end) : [];
   if (priorCodeRanges === null) return false;
   const rawPriorHasUnmaskedToken = (token) => {
@@ -2345,8 +2375,14 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
     }
     return false;
   };
+  const rawPriorHasUnmaskedMatch = regex => {
+    for (const match of rawPrior.matchAll(regex)) {
+      if (match.index === undefined || !inRanges(priorCodeRanges, rawPriorOffset + match.index)) return true;
+    }
+    return false;
+  };
   const isHtmlBlockCloser = isPriorMasked && (
-    /<\/(?:script|pre|style|textarea)\s*>/i.test(rawPrior) ||
+    rawPriorHasUnmaskedMatch(/<\/(?:script|pre|style|textarea)\s*>/gi) ||
     rawPriorHasUnmaskedToken('-->') ||
     rawPriorHasUnmaskedToken('?>') ||
     rawPriorHasUnmaskedToken(']]>') ||
@@ -2410,6 +2446,9 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
       !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|`{3,}|~{3,})/.test(heading) &&
       !/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+/.test(heading);
   }
+  // A malformed definition-shaped line is still a paragraph, but it must not
+  // shadow a valid definition that starts on the following line.
+  if (/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+\S+[ \t]+\S/.test(prior)) return true;
   // Only a parsed definition establishes a consecutive-definition boundary.
   // A definition-shaped paragraph line must not hide a later live link.
   return Boolean(last && start === last.end);
