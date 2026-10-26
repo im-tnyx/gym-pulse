@@ -276,15 +276,12 @@ function gfmTableInfo(rawMarkdown) {
     priorSingleLineBlock = atx || setext || thematic;
     priorBlank = isBlank;
   }
-  const splitCells = (line, semantic = false) => {
+  const splitCells = line => {
     if (!line.includes('|')) return null;
     const cells = [], starts = [0];
-    let bracketDepth = 0;
     for (let index = 0; index < line.length; index++) {
       if (escapedAt(line, index)) { index++; continue; }
-      if (semantic && line[index] === '[') bracketDepth++;
-      else if (semantic && line[index] === ']' && bracketDepth) bracketDepth--;
-      else if (line[index] === '|' && (!semantic || bracketDepth === 0)) starts.push(index + 1);
+      if (line[index] === '|') starts.push(index + 1);
     }
     if (starts.length < 2) return null;
     for (let index = 0; index < starts.length - 1; index++) cells.push(line.slice(starts[index], starts[index + 1] - 1));
@@ -302,9 +299,8 @@ function gfmTableInfo(rawMarkdown) {
     if (containers[index] !== containers[index + 1]) continue;
     const header = splitCells(contents[index]);
     const divider = splitCells(contents[index + 1]);
-    const semanticHeader = divider?.length === 1 ? splitCells(contents[index], true) : header;
     if (header?.length && divider?.length && delimiter(contents[index + 1]) &&
-        (header.length === divider.length || semanticHeader?.length === divider.length)) {
+        header.length === divider.length) {
       starts.set(index, containers[index]);
       starts.set(index + 1, containers[index]);
     }
@@ -694,7 +690,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
             /^[ \t]*$/.test(container.content.slice(ranges[0].end))) {
           const tagMatch = container.content.slice(ranges[0].start).match(/^<\/??([A-Za-z][A-Za-z0-9-]*)/);
           const tag = tagMatch ? tagMatch[1].toLowerCase() : '';
-          if (tag && !/^(?:script|style|textarea)$/.test(tag)) {
+          if (tag && !/^(?:pre|script|style|textarea)$/.test(tag)) {
             rawBlock = { tag, endOnBlank: true, quoteDepth: container.quoteDepth,
               listIndent: container.listIndent, containers: container.containers,
               outerListIndent: lineInList ? activeListIndent : null };
