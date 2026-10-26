@@ -1014,13 +1014,18 @@ function headingSlug(heading, definedRefs = new Set()) {
     catch { uncertain = true; return ''; }
   });
   if (uncertain) return null;
-  const formatSlugPart = (value, preserveUnderscore) => value
-    .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
-    .replace(/\t/g, ' ')
-    .replace(/[\x60*~]/g, '')
-    .replace(/(^|[^\p{L}\p{N}])_+(?=\S)/gu, '$1')
-    .replace(/_+(?=$|[^\p{L}\p{N}])/gu, '')
-    .replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, '');
+  const formatSlugPart = (value, preserveUnderscore) => {
+    let formatted = value
+      .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
+      .replace(/\t/g, ' ')
+      .replace(/[\x60*~]/g, '');
+    if (!preserveUnderscore) {
+      formatted = formatted
+        .replace(/(^|[^\p{L}\p{N}])_+(?=\S)/gu, '$1')
+        .replace(/_+(?=$|[^\p{L}\p{N}])/gu, '');
+    }
+    return formatted.replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, '');
+  };
   const expanded = rendered.replace(/\x01(\d+)\x02/g, (_match, index) => `\x03${Number(index)}\x04`);
   const formatted = expanded.split(/(\x03\d+\x04)/).map(part => {
     const marker = /^\x03(\d+)\x04$/.exec(part);
@@ -2139,13 +2144,16 @@ function parseReferenceLabelAt(text, bracketIndex) {
 function linkBlockBoundaries(text, sourceText = text) {
   const boundaries = [];
   let offset = 0, quoteDepth = 0, listIndent = null, priorSingleLineBlock = false, priorBlank = true;
+  let tableActive = false;
   let paragraphOpen = false;
   const sourceLines = (sourceText ?? text).split('\n');
   const lines = text.split('\n');
   const isTableDelimiter = line => line.includes('|') && /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const raw = lines[lineIndex];
-    const tableRow = isTableDelimiter(lines[lineIndex - 1] || '') || isTableDelimiter(lines[lineIndex + 1] || '') || isTableDelimiter(raw);
+    const delimiterRow = isTableDelimiter(raw);
+    const tableRow = delimiterRow || isTableDelimiter(lines[lineIndex - 1] || '') ||
+      isTableDelimiter(lines[lineIndex + 1] || '') || (tableActive && raw.includes('|'));
     if (tableRow) {
       for (let pipe = 0; pipe < raw.length; pipe++) {
         if (raw[pipe] === '|' && !escapedAt(raw, pipe)) boundaries.push(offset + pipe);
@@ -2171,6 +2179,7 @@ function linkBlockBoundaries(text, sourceText = text) {
     const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
     const isBlank = /^[ \t]*$/.test(sourceRaw.slice(quote?.[0].length || 0));
     const isInterruption = listStartsBlock || atx || setext || thematic;
+    if (delimiterRow) tableActive = true;
     // removeCode() replaces block contents with spaces. Retain the original
     // opener as a boundary so brackets cannot span incompatible blocks.
     const sourceFence = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(sourceContent);
@@ -2195,6 +2204,7 @@ function linkBlockBoundaries(text, sourceText = text) {
       const padding = spacesCol >= 5 ? 1 : spacesCol;
       listIndent = continuationIndent + markerCol + padding;
     } else if (!continuationIndent && !isBlank) listIndent = null;
+    if (tableActive && (isBlank || (!delimiterRow && !raw.includes('|')) || isInterruption)) tableActive = false;
     offset += raw.length + 1;
   }
   return boundaries;
@@ -2459,7 +2469,7 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
   }
   // A malformed definition-shaped line is still a paragraph, but it must not
   // shadow a valid definition that starts on the following line.
-  if (/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+\S+[ \t]+\S/.test(prior)) return true;
+  if (/^\[(?:\\.|[^\]\\\n]){1,512}\]:[ \t]+\S+[ \t]+\S/.test(prior)) return false;
   // Only a parsed definition establishes a consecutive-definition boundary.
   // A definition-shaped paragraph line must not hide a later live link.
   return Boolean(last && start === last.end);
