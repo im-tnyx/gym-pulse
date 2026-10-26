@@ -518,14 +518,15 @@ function removeCode(rawMarkdown, collectedIds = null) {
                 if (tagMatch) {
                   const attrs = /([A-Za-z_:][A-Za-z0-9_.:-]*)(?:[ \t\r\n]*=[ \t\r\n]*(?:"([^"]*)"|'([^']*)'|([^\t\r\n "'=<>`]+)))?/g;
                   attrs.lastIndex = tagMatch[0].length;
+                  const seenAnchorAttrs = new Set();
                   let attr;
                   while ((attr = attrs.exec(tag))) {
                     const attrName = attr[1].toLowerCase();
-                    if (attrName === 'id' || (attrName === 'name' && /^<a\b/i.test(tag))) {
-                      try { collectedIds.add(decodeLinkEntities(attr[2] ?? attr[3] ?? attr[4] ?? '')); }
-                      catch { collectedIds.add(UNCERTAIN_HEADING_ENTITY); }
-                      break;
-                    }
+                    const isAnchorAttr = attrName === 'id' || (attrName === 'name' && /^<a\b/i.test(tag));
+                    if (!isAnchorAttr || seenAnchorAttrs.has(attrName)) continue;
+                    seenAnchorAttrs.add(attrName);
+                    try { collectedIds.add(decodeLinkEntities(attr[2] ?? attr[3] ?? attr[4] ?? '')); }
+                    catch { collectedIds.add(UNCERTAIN_HEADING_ENTITY); }
                   }
                 }
               }
@@ -1346,7 +1347,7 @@ function headingsIn(text, original = text, collectedIds = null) {
           headingContainerContent(x, idx > 0 || (begin > 0 && prevParagraphOpen)).replace(/^[ \t]+|[ \t]+$/g, '')).join(' '));
       }
     }
-    // Capture complete tag first, then find one valid quoted/unquoted ID.
+  // Capture complete tags before collecting their id/name anchors.
     // A single tag regex avoids overlapping attribute backtracking.
   }
   // Parse real attributes, including multiline tags; quoted values cannot
@@ -1357,13 +1358,15 @@ function headingsIn(text, original = text, collectedIds = null) {
     if (!tagMatch) continue;
     const attrs = /([A-Za-z_:][A-Za-z0-9_.:-]*)(?:[ \t\r\n]*=[ \t\r\n]*(?:"([^"]*)"|'([^']*)'|([^\t\r\n "'=<>`]+)))?/g;
     attrs.lastIndex = tagMatch[0].length;
+    const seenAnchorAttrs = new Set();
     let attr;
     while ((attr = attrs.exec(tag))) {
       const attrName = attr[1].toLowerCase();
-      if (attrName !== 'id' && !(attrName === 'name' && /^<a\b/i.test(tag))) continue;
+      const isAnchorAttr = attrName === 'id' || (attrName === 'name' && /^<a\b/i.test(tag));
+      if (!isAnchorAttr || seenAnchorAttrs.has(attrName)) continue;
+      seenAnchorAttrs.add(attrName);
       try { found.add(decodeLinkEntities(attr[2] ?? attr[3] ?? attr[4] ?? '')); }
       catch { found.add(UNCERTAIN_HEADING_ENTITY); }
-      break; // HTML uses the first attribute with a given name.
     }
   }
   return found;
@@ -2219,6 +2222,33 @@ function linkBlockBoundaries(text, sourceText = text) {
   let paragraphOpen = false;
   const sourceLines = (sourceText ?? text).split('\n');
   const lines = text.split('\n');
+  const tableContentLines = [];
+  let tableListIndent = null, tablePriorSingleLineBlock = false, tablePriorBlank = true;
+  for (const raw of lines) {
+    const quote = /^(?: {0,3}>[ \t]?){1,4}/.exec(raw);
+    let content = raw.slice(quote?.[0].length || 0);
+    const strippedCont = tableListIndent !== null ? stripIndent(content, tableListIndent) : null;
+    const continuationIndent = strippedCont !== null ? tableListIndent : 0;
+    if (strippedCont) content = strippedCont.remaining;
+    const thematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
+    const list = !thematic ? /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content) : null;
+    const listStartsBlock = list && ((tableListIndent !== null && !continuationIndent) || tablePriorBlank ||
+      tablePriorSingleLineBlock || /^[-+*]$|^1[.)]$/.test(list[1]));
+    const leaf = listStartsBlock ? content.slice(list[0].length) : content;
+    const atx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(leaf);
+    const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
+    const isBlank = /^[ \t]*$/.test(content);
+    tableContentLines.push(leaf);
+    tablePriorSingleLineBlock = atx || setext || thematic;
+    tablePriorBlank = isBlank;
+    if (listStartsBlock) {
+      const listMarker = list[0].slice(0, list[0].length - (list[0].match(/[ \t]+$/)?.[0].length || 0));
+      const markerCol = visualColumn(listMarker);
+      const ws = list[0].slice(listMarker.length);
+      const spacesCol = visualColumn(ws, markerCol) - markerCol;
+      tableListIndent = continuationIndent + markerCol + (spacesCol >= 5 ? 1 : spacesCol);
+    } else if (!continuationIndent && !isBlank) tableListIndent = null;
+  }
   const splitTableCells = (line, ignoreProtectedPipes = false) => {
     if (!line.includes('|')) return null;
     const cells = [], starts = [0];
@@ -2254,10 +2284,10 @@ function linkBlockBoundaries(text, sourceText = text) {
   };
   const tableStartLines = new Set();
   for (let lineIndex = 0; lineIndex + 1 < lines.length; lineIndex++) {
-    const headerCells = splitTableCells(lines[lineIndex]);
-    const delimiterCells = splitTableCells(lines[lineIndex + 1]);
+    const headerCells = splitTableCells(tableContentLines[lineIndex]);
+    const delimiterCells = splitTableCells(tableContentLines[lineIndex + 1]);
     const semanticHeaderCells = delimiterCells?.length === 1
-      ? splitTableCells(lines[lineIndex], true)
+      ? splitTableCells(tableContentLines[lineIndex], true)
       : headerCells;
     const validPair = Boolean(headerCells?.length && delimiterCells?.length) &&
       delimiterCells.every(cell => /^\s*:?-{1,}:?\s*$/.test(cell)) &&
@@ -2270,9 +2300,10 @@ function linkBlockBoundaries(text, sourceText = text) {
   }
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const raw = lines[lineIndex];
-    const delimiterRow = isTableDelimiter(raw);
+    const tableContent = tableContentLines[lineIndex];
+    const delimiterRow = isTableDelimiter(tableContent);
     if (tableStartLines.has(lineIndex)) tableActive = true;
-    const tableRow = tableActive && raw.includes('|');
+    const tableRow = tableActive && tableContent.includes('|');
     if (tableRow) {
       for (let pipe = 0; pipe < raw.length; pipe++) {
         if (raw[pipe] === '|' && !escapedAt(raw, pipe)) boundaries.push(offset + pipe);
@@ -2322,7 +2353,7 @@ function linkBlockBoundaries(text, sourceText = text) {
       const padding = spacesCol >= 5 ? 1 : spacesCol;
       listIndent = continuationIndent + markerCol + padding;
     } else if (!continuationIndent && !isBlank) listIndent = null;
-    if (tableActive && (isBlank || (!delimiterRow && !raw.includes('|')) || isInterruption)) tableActive = false;
+    if (tableActive && (isBlank || (!delimiterRow && !tableContent.includes('|')) || isInterruption)) tableActive = false;
     offset += raw.length + 1;
   }
   return boundaries;
