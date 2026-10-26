@@ -55,16 +55,17 @@ function visualColumn(str, fromCol = 0) {
   return col;
 }
 
-function stripIndent(str, targetIndent) {
+function stripIndent(str, targetIndent, fromCol = 0) {
   if (targetIndent <= 0) return { matches: true, remaining: str, consumedChars: 0 };
-  let col = 0;
+  let col = fromCol;
+  const targetCol = fromCol + targetIndent;
   for (let i = 0; i < str.length; i++) {
     const ch = str[i];
     if (ch === ' ') col++;
     else if (ch === '\t') col += 4 - (col % 4);
     else return null;
-    if (col >= targetIndent) {
-      const excess = col - targetIndent;
+    if (col >= targetCol) {
+      const excess = col - targetCol;
       const remaining = ' '.repeat(excess) + str.slice(i + 1);
       return { matches: true, remaining, consumedChars: i + 1 };
     }
@@ -76,7 +77,7 @@ function isBlockInterruption(raw) {
   // Inline constructs cannot cross a block boundary. Recognize the CommonMark
   // HTML block openers, ATX headings, block quotes, list items, thematic breaks,
   // setext underlines and code fences.
-  const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<(?:script|pre|style|textarea)(?=[ \t>]|$)|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)|<\/(?:script|pre|style|textarea)(?=[ \t/>]|$))/i;
+  const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<(?:script|pre|style|textarea)(?=[ \t>]|$)|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)|<\/(?:script|pre|style|textarea)(?=[ \t/>]|$))/i;
   return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|1[.)])[ \t]+|(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$|=+[ \t]*$|`{3,}|~{3,})/.test(raw);
 }
 
@@ -332,7 +333,8 @@ function removeCode(rawMarkdown, collectedIds = null) {
     let result = '', last = 0;
     for (const range of ranges) {
       const tag = line.slice(range.start, range.end);
-      if (/\sid\s*=/i.test(tag)) {
+      const tagName = /^<\/?([A-Za-z][A-Za-z0-9-]*)/.exec(tag)?.[1]?.toLowerCase();
+      if (/\sid\s*=/i.test(tag) || (tagName === 'a' && /\sname\s*=/i.test(tag))) {
         result += ' '.repeat(range.start - last) + tag;
         last = range.end;
       }
@@ -518,7 +520,8 @@ function removeCode(rawMarkdown, collectedIds = null) {
                   attrs.lastIndex = tagMatch[0].length;
                   let attr;
                   while ((attr = attrs.exec(tag))) {
-                    if (attr[1].toLowerCase() === 'id') {
+                    const attrName = attr[1].toLowerCase();
+                    if (attrName === 'id' || (attrName === 'name' && /^<a\b/i.test(tag))) {
                       try { collectedIds.add(decodeLinkEntities(attr[2] ?? attr[3] ?? attr[4] ?? '')); }
                       catch { collectedIds.add(UNCERTAIN_HEADING_ENTITY); }
                       break;
@@ -526,7 +529,9 @@ function removeCode(rawMarkdown, collectedIds = null) {
                   }
                 }
               }
-              if (/\sid\s*=/i.test(rawBlock.pendingTag.slice(ranges[0].start, ranges[0].end))) {
+              const pendingTag = rawBlock.pendingTag.slice(ranges[0].start, ranges[0].end);
+              if (/\sid\s*=/i.test(pendingTag) ||
+                  (/^<a\b/i.test(pendingTag) && /\sname\s*=/i.test(pendingTag))) {
                 const tagEndOnLine = ranges[0].end - (prevTag.length + 1);
                 keptLine = line.slice(0, tagEndOnLine) + ' '.repeat(line.length - tagEndOnLine);
               }
@@ -581,7 +586,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
         paragraphOpen = false;
         return idTagsOnly(line);
       }
-      const type6 = container.content.match(/^ {0,3}(?:<\/?(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)|<\/(script|pre|style|textarea))(?=[ \t/>]|$)/i);
+      const type6 = container.content.match(/^ {0,3}(?:<\/?(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)|<\/(script|pre|style|textarea))(?=[ \t/>]|$)/i);
       if (type6) {
         const tag = (type6[1] || type6[2]).toLowerCase();
         rawBlock = { tag, endOnBlank: true, quoteDepth: container.quoteDepth,
@@ -610,7 +615,14 @@ function removeCode(rawMarkdown, collectedIds = null) {
       const isThematicBreak = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line);
       const list = !isThematicBreak ? line.match(/^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+|[ \t]*$)/) : null;
       if (list) {
-        const rest = line.slice(list[0].length);
+        const markerStr = list[0].slice(0, list[0].length - list[2].length);
+        const markerCol = visualColumn(markerStr);
+        const wsStr = list[2];
+        const afterWsCol = visualColumn(wsStr, markerCol);
+        const spacesCol = afterWsCol - markerCol;
+        const padding = spacesCol === 0 || spacesCol >= 5 ? 1 : spacesCol;
+        const consumedWs = stripIndent(wsStr, padding, markerCol);
+        const rest = (consumedWs?.remaining || '') + line.slice(list[0].length);
         const isEmptyItem = /^[ \t]*$/.test(rest);
         const canInterrupt = !paragraphOpen || ((!list[1] || list[1] === '1') && !isEmptyItem);
         if (canInterrupt) {
@@ -1110,21 +1122,21 @@ function markdownContainer(raw, paragraphOpen = false) {
     if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content)) break;
     const list = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+|[ \t]*$)/.exec(content);
     if (list) {
-      const rest = content.slice(list[0].length);
+      const markerStr = list[0].slice(0, list[0].length - list[2].length);
+      const markerCol = visualColumn(markerStr);
+      const wsStr = list[2];
+      const afterWsCol = visualColumn(wsStr, markerCol);
+      const spacesCol = afterWsCol - markerCol;
+      const padding = spacesCol === 0 || spacesCol >= 5 ? 1 : spacesCol;
+      const consumedWs = stripIndent(wsStr, padding, markerCol);
+      const rest = (consumedWs?.remaining || '') + content.slice(list[0].length);
       const isEmptyItem = /^[ \t]*$/.test(rest);
       const canInterrupt = !paragraphOpen || ((!list[1] || list[1] === '1') && !isEmptyItem);
       if (canInterrupt) {
-        const markerStr = list[0].slice(0, list[0].length - list[2].length);
-        const markerCol = visualColumn(markerStr);
-        const wsStr = list[2];
-        const afterWsCol = visualColumn(wsStr, markerCol);
-        const spacesCol = afterWsCol - markerCol;
-        const padding = spacesCol === 0 || spacesCol >= 5 ? 1 : spacesCol;
         const consumedIndent = markerCol + padding;
         listIndent += consumedIndent;
         containers.push({ kind: 'list', indent: consumedIndent });
-        const consumedChars = spacesCol >= 5 ? markerStr.length + 1 : list[0].length;
-        content = content.slice(consumedChars);
+        content = (consumedWs?.remaining || '') + content.slice(list[0].length);
       }
     }
     if (content === before) break;
@@ -1227,8 +1239,8 @@ function headingsIn(text, original = text, collectedIds = null) {
   const addSlug = heading => {
     const slug = headingSlug(heading, definedRefs);
     if (slug === null) { found.add(UNCERTAIN_HEADING_ENTITY); return; }
-    if (!slug) return;
-    // GitHub allocates duplicate suffixes globally. An explicit "foo-1"
+    // GitHub allocates duplicate suffixes globally, including empty slugs.
+    // An explicit "foo-1"
     // can occupy the suffix of a later duplicate "foo".
     let suffix = occurrences.get(slug) || 0;
     let candidate = suffix ? slug + '-' + suffix : slug;
@@ -1347,7 +1359,8 @@ function headingsIn(text, original = text, collectedIds = null) {
     attrs.lastIndex = tagMatch[0].length;
     let attr;
     while ((attr = attrs.exec(tag))) {
-      if (attr[1].toLowerCase() !== 'id') continue;
+      const attrName = attr[1].toLowerCase();
+      if (attrName !== 'id' && !(attrName === 'name' && /^<a\b/i.test(tag))) continue;
       try { found.add(decodeLinkEntities(attr[2] ?? attr[3] ?? attr[4] ?? '')); }
       catch { found.add(UNCERTAIN_HEADING_ENTITY); }
       break; // HTML uses the first attribute with a given name.
@@ -2076,7 +2089,7 @@ function readBareDestination(text, index, limit) {
       index += /[!-/:-@\[-`{-~]/.test(text[index + 1]) ? 2 : 1;
       continue;
     }
-    if (ch === ' ' || ch === '\t' || ch === '\n' || ch < ' ') break;
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch < ' ' || ch === '\x7f') break;
     if (ch === '(') {
       if (++depth > MAX_DEST_DEPTH) failParserBound();
     } else if (ch === ')') {
@@ -2566,7 +2579,7 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
     const headingStart = text.lastIndexOf('\n', headingEnd - 1) + 1;
     const heading = text.slice(headingStart, headingEnd)
       .replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
-    const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|output|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$))/i;
+    const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$))/i;
     return Boolean(heading) && !/^[ \t]*$/.test(heading) &&
       !htmlBlock.test(heading) &&
       !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|`{3,}|~{3,})/.test(heading) &&
