@@ -852,11 +852,11 @@ function stripClosedHeadingComments(text) {
       if (closer >= 0) commentEnd = closer + 3;
     }
     if (commentEnd < 0) break; // An unmatched opener needs only one suffix scan.
-    visible += text.slice(cursor, opener);
+    visible += text.slice(cursor, opener) + '\x06';
     cursor = commentEnd;
     starts.lastIndex = cursor;
   }
-  return visible + text.slice(cursor);
+  return (visible + text.slice(cursor)).replace(/[ ]*\x06[ ]*/g, ' ');
 }
 function protectHeadingCode(heading, spans, rawSpans = []) {
   let scanned = 0;
@@ -1018,13 +1018,17 @@ function headingSlug(heading, definedRefs = new Set()) {
     .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
     .replace(/\t/g, ' ')
     .replace(/[\x60*~]/g, '')
-    .replace(preserveUnderscore ? /[^\p{L}\p{M}\p{N}_\- ]/gu : /[^\p{L}\p{M}\p{N}\- ]/gu, '');
+    .replace(/(^|[^\p{L}\p{N}])_+(?=\S)/gu, '$1')
+    .replace(/_+(?=$|[^\p{L}\p{N}])/gu, '')
+    .replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, '');
   const expanded = rendered.replace(/\x01(\d+)\x02/g, (_match, index) => `\x03${Number(index)}\x04`);
   const formatted = expanded.split(/(\x03\d+\x04)/).map(part => {
     const marker = /^\x03(\d+)\x04$/.exec(part);
     return marker ? formatSlugPart(spans[Number(marker[1])] || '', true) : formatSlugPart(part, false);
   }).join('');
-  return formatted.toLowerCase().replace(/\t/g, ' ').trim().replace(/ +/g, '-');
+  const preserveConsecutiveSpaces = heading.includes('  ') && !/[`]|<!--|<\/?[A-Za-z]/.test(heading);
+  return formatted.toLowerCase().replace(/\t/g, ' ').trim()
+    .replace(preserveConsecutiveSpaces ? / /g : / +/g, '-');
 }
 
 function markdownContainer(raw, paragraphOpen = false) {
@@ -2138,8 +2142,15 @@ function linkBlockBoundaries(text, sourceText = text) {
   let paragraphOpen = false;
   const sourceLines = (sourceText ?? text).split('\n');
   const lines = text.split('\n');
+  const isTableDelimiter = line => line.includes('|') && /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const raw = lines[lineIndex];
+    const tableRow = isTableDelimiter(lines[lineIndex - 1] || '') || isTableDelimiter(lines[lineIndex + 1] || '') || isTableDelimiter(raw);
+    if (tableRow) {
+      for (let pipe = 0; pipe < raw.length; pipe++) {
+        if (raw[pipe] === '|' && !escapedAt(raw, pipe)) boundaries.push(offset + pipe);
+      }
+    }
     const sourceRaw = sourceLines[lineIndex] ?? raw;
     const quote = /^(?: {0,3}>[ \t]?){1,4}/.exec(raw);
     const depth = quote ? (quote[0].match(/>/g) || []).length : 0;
