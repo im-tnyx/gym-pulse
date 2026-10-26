@@ -1014,6 +1014,7 @@ function headingSlug(heading, definedRefs = new Set()) {
     catch { uncertain = true; return ''; }
   });
   if (uncertain) return null;
+  let punctuationExposedSpace = false;
   const formatSlugPart = (value, preserveUnderscore) => {
     const escapedUnderscore = '\x05';
     let formatted = value
@@ -1021,10 +1022,16 @@ function headingSlug(heading, definedRefs = new Set()) {
       .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
       .replace(/\t/g, ' ')
       .replace(/[\x60*~]/g, '');
+    // GitHub retains both spaces around a rendered ampersand after removing
+    // the punctuation. Other punctuation/entities retain the established
+    // single-separator behavior, including bracket entities in link labels.
+    if (/\s&\s/u.test(formatted)) {
+      punctuationExposedSpace = true;
+    }
     if (!preserveUnderscore) {
       const chars = [...formatted];
       const removed = new Set();
-      const delimiters = [];
+      const openers = [];
       const isWhitespace = char => !char || /\s/u.test(char);
       const isPunctuation = char => Boolean(char) && /[\p{P}\p{S}]/u.test(char);
       for (let index = 0; index < chars.length;) {
@@ -1042,14 +1049,31 @@ function headingSlug(heading, definedRefs = new Set()) {
         const canOpen = leftFlanking && (!rightFlanking || isPunctuation(before));
         const canClose = rightFlanking && (!leftFlanking || isPunctuation(after));
         if (canClose) {
-          const opener = delimiters.findLast(item => item.length === end - start);
-          if (opener) {
-            for (let mark = opener.start; mark < opener.end; mark++) removed.add(mark);
-            for (let mark = start; mark < end; mark++) removed.add(mark);
-            delimiters.splice(delimiters.indexOf(opener), 1);
+          let remaining = end - start;
+          let closerConsumed = 0;
+          while (remaining > 0 && openers.length) {
+            const opener = openers.at(-1);
+            const consumed = Math.min(opener.remaining, remaining);
+            for (let mark = opener.start + opener.consumed;
+              mark < opener.start + opener.consumed + consumed; mark++) {
+              removed.add(mark);
+            }
+            for (let mark = start + closerConsumed;
+              mark < start + closerConsumed + consumed; mark++) {
+              removed.add(mark);
+            }
+            opener.consumed += consumed;
+            opener.remaining -= consumed;
+            closerConsumed += consumed;
+            remaining -= consumed;
+            if (!opener.remaining) openers.pop();
           }
+          if (canOpen && remaining > 0) {
+            openers.push({ start: start + closerConsumed, consumed: 0, remaining });
+          }
+        } else if (canOpen) {
+          openers.push({ start, consumed: 0, remaining: end - start });
         }
-        if (canOpen && !removed.has(start)) delimiters.push({ start, end, length: end - start });
       }
       formatted = chars.filter((_char, index) => !removed.has(index)).join('');
     }
@@ -1060,7 +1084,7 @@ function headingSlug(heading, definedRefs = new Set()) {
     const marker = /^\x03(\d+)\x04$/.exec(part);
     return marker ? formatSlugPart(spans[Number(marker[1])] || '', true) : formatSlugPart(part, false);
   }).join('');
-  const preserveConsecutiveSpaces = spans.some(span => span.includes('  ')) ||
+  const preserveConsecutiveSpaces = punctuationExposedSpace || spans.some(span => span.includes('  ')) ||
     (heading.includes('  ') && !/[`]|<!--|<\/?[A-Za-z]/.test(heading));
   return formatted.toLowerCase().replace(/\t/g, ' ').trim()
     .replace(preserveConsecutiveSpaces ? / /g : / +/g, '-');
