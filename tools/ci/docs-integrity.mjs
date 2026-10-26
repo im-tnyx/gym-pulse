@@ -1015,23 +1015,25 @@ function headingSlug(heading, definedRefs = new Set()) {
   });
   if (uncertain) return null;
   let punctuationExposedSpace = false;
-  const formatSlugPart = (value, preserveUnderscore) => {
+  const emphasisState = { openers: [] };
+  const formatSlugPart = (value, preserveUnderscore, state = emphasisState) => {
     const escapedUnderscore = '\x05';
     let formatted = value
       .replace(/\\_/g, escapedUnderscore)
       .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
       .replace(/\t/g, ' ')
       .replace(/[\x60*~]/g, '');
-    // GitHub retains both spaces around a rendered ampersand after removing
-    // the punctuation. Other punctuation/entities retain the established
-    // single-separator behavior, including bracket entities in link labels.
-    if (/\s&\s/u.test(formatted)) {
+    // Preserve each source space around punctuation that is removed from the
+    // slug. Bracket entities remain excluded because their spaces belong to
+    // link-label punctuation rather than ordinary heading punctuation.
+    const exposedPunctuation = formatted.match(/\s([\p{P}\p{S}])\s/gu) || [];
+    if (exposedPunctuation.some(match => !/[()[\]{}]/u.test(match[1]))) {
       punctuationExposedSpace = true;
     }
+    const chars = [...formatted];
+    const removed = new Set();
     if (!preserveUnderscore) {
-      const chars = [...formatted];
-      const removed = new Set();
-      const openers = [];
+      const openers = state.openers;
       const isWhitespace = char => !char || /\s/u.test(char);
       const isPunctuation = char => Boolean(char) && /[\p{P}\p{S}]/u.test(char);
       for (let index = 0; index < chars.length;) {
@@ -1056,7 +1058,7 @@ function headingSlug(heading, definedRefs = new Set()) {
             const consumed = Math.min(opener.remaining, remaining);
             for (let mark = opener.start + opener.consumed;
               mark < opener.start + opener.consumed + consumed; mark++) {
-              removed.add(mark);
+              opener.removed.add(mark);
             }
             for (let mark = start + closerConsumed;
               mark < start + closerConsumed + consumed; mark++) {
@@ -1069,21 +1071,23 @@ function headingSlug(heading, definedRefs = new Set()) {
             if (!opener.remaining) openers.pop();
           }
           if (canOpen && remaining > 0) {
-            openers.push({ start: start + closerConsumed, consumed: 0, remaining });
+            openers.push({ start: start + closerConsumed, consumed: 0, remaining, removed });
           }
         } else if (canOpen) {
-          openers.push({ start, consumed: 0, remaining: end - start });
+          openers.push({ start, consumed: 0, remaining: end - start, removed });
         }
       }
-      formatted = chars.filter((_char, index) => !removed.has(index)).join('');
     }
-    return formatted.replace(/[^\p{L}\p{M}\p{N}_\- \x05]/gu, '').replaceAll(escapedUnderscore, '_');
+    return { chars, removed, escapedUnderscore };
   };
   const expanded = rendered.replace(/\x01(\d+)\x02/g, (_match, index) => `\x03${Number(index)}\x04`);
-  const formatted = expanded.split(/(\x03\d+\x04)/).map(part => {
+  const formattedParts = expanded.split(/(\x03\d+\x04)/).map(part => {
     const marker = /^\x03(\d+)\x04$/.exec(part);
-    return marker ? formatSlugPart(spans[Number(marker[1])] || '', true) : formatSlugPart(part, false);
-  }).join('');
+    return marker ? formatSlugPart(spans[Number(marker[1])] || '', true) : formatSlugPart(part, false, emphasisState);
+  });
+  const formatted = formattedParts.map(({ chars, removed, escapedUnderscore }) =>
+    chars.filter((_char, index) => !removed.has(index)).join('')
+      .replace(/[^\p{L}\p{M}\p{N}_\- \x05]/gu, '').replaceAll(escapedUnderscore, '_')).join('');
   const preserveConsecutiveSpaces = punctuationExposedSpace || spans.some(span => span.includes('  ')) ||
     (heading.includes('  ') && !/[`]|<!--|<\/?[A-Za-z]/.test(heading));
   return formatted.toLowerCase().replace(/\t/g, ' ').trim()
@@ -2202,11 +2206,24 @@ function linkBlockBoundaries(text, sourceText = text) {
   let paragraphOpen = false;
   const sourceLines = (sourceText ?? text).split('\n');
   const lines = text.split('\n');
-  const splitTableCells = line => {
+  const splitTableCells = (line, ignoreProtectedPipes = false) => {
     if (!line.includes('|')) return null;
     const cells = [], starts = [0];
+    let bracketDepth = 0;
     for (let index = 0; index < line.length; index++) {
-      if (line[index] === '|' && !escapedAt(line, index)) starts.push(index + 1);
+      if (escapedAt(line, index)) {
+        index++;
+        continue;
+      }
+      if (ignoreProtectedPipes && line[index] === '`') {
+        const fence = /^`+/.exec(line.slice(index))?.[0] || '`';
+        const close = line.indexOf(fence, index + fence.length);
+        if (close >= 0) index = close + fence.length - 1;
+        continue;
+      }
+      if (ignoreProtectedPipes && line[index] === '[') bracketDepth++;
+      else if (ignoreProtectedPipes && line[index] === ']' && bracketDepth) bracketDepth--;
+      else if (line[index] === '|' && (!ignoreProtectedPipes || bracketDepth === 0)) starts.push(index + 1);
     }
     if (starts.length < 2) return null;
     for (let index = 0; index < starts.length - 1; index++) {
@@ -2222,11 +2239,27 @@ function linkBlockBoundaries(text, sourceText = text) {
     const cells = splitTableCells(line);
     return Boolean(cells?.length) && cells.every(cell => /^\s*:?-{1,}:?\s*$/.test(cell));
   };
+  const tableStartLines = new Set();
+  for (let lineIndex = 0; lineIndex + 1 < lines.length; lineIndex++) {
+    const headerCells = splitTableCells(lines[lineIndex]);
+    const delimiterCells = splitTableCells(lines[lineIndex + 1]);
+    const semanticHeaderCells = delimiterCells?.length === 1
+      ? splitTableCells(lines[lineIndex], true)
+      : headerCells;
+    const validPair = Boolean(headerCells?.length && delimiterCells?.length) &&
+      delimiterCells.every(cell => /^\s*:?-{1,}:?\s*$/.test(cell)) &&
+      (headerCells.length === delimiterCells.length ||
+        semanticHeaderCells?.length === delimiterCells.length);
+    if (validPair) {
+      tableStartLines.add(lineIndex);
+      tableStartLines.add(lineIndex + 1);
+    }
+  }
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const raw = lines[lineIndex];
     const delimiterRow = isTableDelimiter(raw);
-    const tableRow = delimiterRow || isTableDelimiter(lines[lineIndex - 1] || '') ||
-      isTableDelimiter(lines[lineIndex + 1] || '') || (tableActive && raw.includes('|'));
+    if (tableStartLines.has(lineIndex)) tableActive = true;
+    const tableRow = tableActive && raw.includes('|');
     if (tableRow) {
       for (let pipe = 0; pipe < raw.length; pipe++) {
         if (raw[pipe] === '|' && !escapedAt(raw, pipe)) boundaries.push(offset + pipe);
@@ -2252,7 +2285,6 @@ function linkBlockBoundaries(text, sourceText = text) {
     const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
     const isBlank = /^[ \t]*$/.test(sourceRaw.slice(quote?.[0].length || 0));
     const isInterruption = listStartsBlock || atx || setext || thematic;
-    if (delimiterRow) tableActive = true;
     // removeCode() replaces block contents with spaces. Retain the original
     // opener as a boundary so brackets cannot span incompatible blocks.
     const sourceFence = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(sourceContent);
