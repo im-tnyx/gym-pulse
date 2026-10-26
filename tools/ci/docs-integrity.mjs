@@ -238,11 +238,100 @@ function uriAutolinkRanges(text) {
   return ranges;
 }
 
+function gfmTableInfo(rawMarkdown) {
+  // Table recognition must run against source before inline-code masking: GFM
+  // owns inline parsing per cell, and a header/delimiter pair cannot cross a
+  // quote or list container. Keep this deliberately line-bounded.
+  const lines = rawMarkdown.split('\n');
+  const contents = [], containers = [];
+  let listIndent = null, listOwner = 0, nextListOwner = 1;
+  let priorSingleLineBlock = false, priorBlank = true;
+  for (const raw of lines) {
+    const quote = /^(?: {0,3}>[ \t]?){1,4}/.exec(raw);
+    const quoteDepth = quote ? (quote[0].match(/>/g) || []).length : 0;
+    let content = raw.slice(quote?.[0].length || 0);
+    const stripped = listIndent !== null ? stripIndent(content, listIndent) : null;
+    const continuationIndent = stripped !== null ? listIndent : 0;
+    if (stripped) content = stripped.remaining;
+    const thematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
+    const list = !thematic ? /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content) : null;
+    const listStartsBlock = list && ((listIndent !== null && !continuationIndent) || priorBlank ||
+      priorSingleLineBlock || /^[-+*]$|^1[.)]$/.test(list[1]));
+    const leaf = listStartsBlock ? content.slice(list[0].length) : content;
+    const atx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(leaf);
+    const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
+    const isBlank = /^[ \t]*$/.test(content);
+    if (listStartsBlock) {
+      const marker = list[0].slice(0, list[0].length - (list[0].match(/[ \t]+$/)?.[0].length || 0));
+      const markerCol = visualColumn(marker);
+      const spaces = visualColumn(list[0].slice(marker.length), markerCol) - markerCol;
+      listIndent = continuationIndent + markerCol + (spaces >= 5 ? 1 : spaces);
+      listOwner = nextListOwner++;
+    } else if (!continuationIndent && !isBlank) {
+      listIndent = null;
+      listOwner = 0;
+    }
+    contents.push(leaf);
+    containers.push(`q${quoteDepth}:l${listOwner}`);
+    priorSingleLineBlock = atx || setext || thematic;
+    priorBlank = isBlank;
+  }
+  const splitCells = (line, semantic = false) => {
+    if (!line.includes('|')) return null;
+    const cells = [], starts = [0];
+    let bracketDepth = 0;
+    for (let index = 0; index < line.length; index++) {
+      if (escapedAt(line, index)) { index++; continue; }
+      if (semantic && line[index] === '[') bracketDepth++;
+      else if (semantic && line[index] === ']' && bracketDepth) bracketDepth--;
+      else if (line[index] === '|' && (!semantic || bracketDepth === 0)) starts.push(index + 1);
+    }
+    if (starts.length < 2) return null;
+    for (let index = 0; index < starts.length - 1; index++) cells.push(line.slice(starts[index], starts[index + 1] - 1));
+    cells.push(line.slice(starts.at(-1)));
+    if (!cells[0].trim()) cells.shift();
+    if (cells.length && !cells.at(-1).trim()) cells.pop();
+    return cells;
+  };
+  const delimiter = line => {
+    const cells = splitCells(line);
+    return Boolean(cells?.length) && cells.every(cell => /^\s*:?-{1,}:?\s*$/.test(cell));
+  };
+  const starts = new Map();
+  for (let index = 0; index + 1 < lines.length; index++) {
+    if (containers[index] !== containers[index + 1]) continue;
+    const header = splitCells(contents[index]);
+    const divider = splitCells(contents[index + 1]);
+    const semanticHeader = divider?.length === 1 ? splitCells(contents[index], true) : header;
+    if (header?.length && divider?.length && delimiter(contents[index + 1]) &&
+        (header.length === divider.length || semanticHeader?.length === divider.length)) {
+      starts.set(index, containers[index]);
+      starts.set(index + 1, containers[index]);
+    }
+  }
+  const pipesByLine = new Map();
+  let activeContainer = null;
+  for (let index = 0; index < lines.length; index++) {
+    if (starts.has(index)) activeContainer = starts.get(index);
+    if (activeContainer === containers[index] && contents[index].includes('|')) {
+      const pipes = [];
+      for (let pipe = 0; pipe < lines[index].length; pipe++) {
+        if (lines[index][pipe] === '|' && !escapedAt(lines[index], pipe)) pipes.push(pipe);
+      }
+      pipesByLine.set(index, pipes);
+    } else if (activeContainer !== null) {
+      activeContainer = null;
+    }
+  }
+  return { pipesByLine };
+}
+
 function removeCode(rawMarkdown, collectedIds = null) {
   const markdown = rawMarkdown.replace(/\r\n|\r/g, '\n');
   // Bounded, order-sensitive Markdown masking. Preserve newlines and offsets.
   // Multiline code spans and HTML comments cannot change fence ownership.
   const lines = markdown.split(/\r\n|\n|\r/);
+  const tablePipesByLine = gfmTableInfo(markdown).pipesByLine;
   // Front matter is metadata, not inline Markdown. An unmatched opener
   // remains ordinary text so it cannot hide live links.
   let frontMatterEnd = -1;
@@ -361,11 +450,12 @@ function removeCode(rawMarkdown, collectedIds = null) {
     return { continues, content };
   }
 
-  function closingTicks(text, from, count) {
+  function closingTicks(text, from, count, limit = text.length) {
     const runs = /`+/g;
     runs.lastIndex = from;
     let run, inspected = 0;
     while ((run = runs.exec(text))) {
+      if (run.index >= limit) return null;
       // Avoid quadratic work on hostile Markdown containing many tick runs.
       if (++inspected > 512) return null; // Conservatively keep ambiguous text visible.
       if (run[0].length === count) return run;
@@ -654,6 +744,8 @@ function removeCode(rawMarkdown, collectedIds = null) {
     }
 
     let visible = '', from = 0;
+    const tablePipes = tablePipesByLine.get(lineIndex) || [];
+    const cellEnd = start => tablePipes.find(pipe => pipe >= start) ?? line.length;
     let blockCommentOwnedLine = false;
     const inlineTagRanges = htmlTagRanges(line);
     const autolinkTagRanges = uriAutolinkRanges(line);
@@ -770,7 +862,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
         continue;
       }
       if (inlineTicks) {
-        const end = closingTicks(line, from, inlineTicks);
+        const end = closingTicks(line, from, inlineTicks, cellEnd(from));
         if (!end) { visible += ' '.repeat(line.length - from); break; }
         visible += ' '.repeat(end.index + inlineTicks - from);
         from = end.index + inlineTicks;
@@ -780,12 +872,13 @@ function removeCode(rawMarkdown, collectedIds = null) {
       const tick = unescapedTick(from);
       const opener = unescapedComment(from);
       if (tick && (opener < 0 || tick.index < opener)) {
-        const closer = closingTicks(line, tick.index + tick[0].length, tick[0].length);
+        const closer = closingTicks(line, tick.index + tick[0].length, tick[0].length,
+          cellEnd(tick.index + tick[0].length));
         if (closer) {
           visible += line.slice(from, tick.index) +
             ' '.repeat(closer.index + closer[0].length - tick.index);
           from = closer.index + closer[0].length;
-        } else if (!isAtxHeading && laterClosingTicks(lineIndex, tick[0].length, container,
+        } else if (!tablePipes.length && !isAtxHeading && laterClosingTicks(lineIndex, tick[0].length, container,
           lineInList ? activeListIndent : null)) {
           visible += line.slice(from, tick.index) + ' '.repeat(line.length - tick.index);
           inlineTicks = tick[0].length;
@@ -2218,97 +2311,14 @@ function parseReferenceLabelAt(text, bracketIndex) {
 function linkBlockBoundaries(text, sourceText = text) {
   const boundaries = [];
   let offset = 0, quoteDepth = 0, listIndent = null, priorSingleLineBlock = false, priorBlank = true;
-  let tableActive = false;
   let paragraphOpen = false;
   const sourceLines = (sourceText ?? text).split('\n');
   const lines = text.split('\n');
-  const tableContentLines = [];
-  let tableListIndent = null, tablePriorSingleLineBlock = false, tablePriorBlank = true;
-  for (const raw of lines) {
-    const quote = /^(?: {0,3}>[ \t]?){1,4}/.exec(raw);
-    let content = raw.slice(quote?.[0].length || 0);
-    const strippedCont = tableListIndent !== null ? stripIndent(content, tableListIndent) : null;
-    const continuationIndent = strippedCont !== null ? tableListIndent : 0;
-    if (strippedCont) content = strippedCont.remaining;
-    const thematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
-    const list = !thematic ? /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content) : null;
-    const listStartsBlock = list && ((tableListIndent !== null && !continuationIndent) || tablePriorBlank ||
-      tablePriorSingleLineBlock || /^[-+*]$|^1[.)]$/.test(list[1]));
-    const leaf = listStartsBlock ? content.slice(list[0].length) : content;
-    const atx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(leaf);
-    const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
-    const isBlank = /^[ \t]*$/.test(content);
-    tableContentLines.push(leaf);
-    tablePriorSingleLineBlock = atx || setext || thematic;
-    tablePriorBlank = isBlank;
-    if (listStartsBlock) {
-      const listMarker = list[0].slice(0, list[0].length - (list[0].match(/[ \t]+$/)?.[0].length || 0));
-      const markerCol = visualColumn(listMarker);
-      const ws = list[0].slice(listMarker.length);
-      const spacesCol = visualColumn(ws, markerCol) - markerCol;
-      tableListIndent = continuationIndent + markerCol + (spacesCol >= 5 ? 1 : spacesCol);
-    } else if (!continuationIndent && !isBlank) tableListIndent = null;
-  }
-  const splitTableCells = (line, ignoreProtectedPipes = false) => {
-    if (!line.includes('|')) return null;
-    const cells = [], starts = [0];
-    let bracketDepth = 0;
-    for (let index = 0; index < line.length; index++) {
-      if (escapedAt(line, index)) {
-        index++;
-        continue;
-      }
-      if (ignoreProtectedPipes && line[index] === '`') {
-        const fence = /^`+/.exec(line.slice(index))?.[0] || '`';
-        const close = line.indexOf(fence, index + fence.length);
-        if (close >= 0) index = close + fence.length - 1;
-        continue;
-      }
-      if (ignoreProtectedPipes && line[index] === '[') bracketDepth++;
-      else if (ignoreProtectedPipes && line[index] === ']' && bracketDepth) bracketDepth--;
-      else if (line[index] === '|' && (!ignoreProtectedPipes || bracketDepth === 0)) starts.push(index + 1);
-    }
-    if (starts.length < 2) return null;
-    for (let index = 0; index < starts.length - 1; index++) {
-      const end = starts[index + 1] - 1;
-      cells.push(line.slice(starts[index], end));
-    }
-    cells.push(line.slice(starts.at(-1)));
-    if (!cells[0].trim()) cells.shift();
-    if (cells.length && !cells.at(-1).trim()) cells.pop();
-    return cells;
-  };
-  const isTableDelimiter = line => {
-    const cells = splitTableCells(line);
-    return Boolean(cells?.length) && cells.every(cell => /^\s*:?-{1,}:?\s*$/.test(cell));
-  };
-  const tableStartLines = new Set();
-  for (let lineIndex = 0; lineIndex + 1 < lines.length; lineIndex++) {
-    const headerCells = splitTableCells(tableContentLines[lineIndex]);
-    const delimiterCells = splitTableCells(tableContentLines[lineIndex + 1]);
-    const semanticHeaderCells = delimiterCells?.length === 1
-      ? splitTableCells(tableContentLines[lineIndex], true)
-      : headerCells;
-    const validPair = Boolean(headerCells?.length && delimiterCells?.length) &&
-      delimiterCells.every(cell => /^\s*:?-{1,}:?\s*$/.test(cell)) &&
-      (headerCells.length === delimiterCells.length ||
-        semanticHeaderCells?.length === delimiterCells.length);
-    if (validPair) {
-      tableStartLines.add(lineIndex);
-      tableStartLines.add(lineIndex + 1);
-    }
-  }
+  const tablePipesByLine = gfmTableInfo(sourceText ?? text).pipesByLine;
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const raw = lines[lineIndex];
-    const tableContent = tableContentLines[lineIndex];
-    const delimiterRow = isTableDelimiter(tableContent);
-    if (tableStartLines.has(lineIndex)) tableActive = true;
-    const tableRow = tableActive && tableContent.includes('|');
-    if (tableRow) {
-      for (let pipe = 0; pipe < raw.length; pipe++) {
-        if (raw[pipe] === '|' && !escapedAt(raw, pipe)) boundaries.push(offset + pipe);
-      }
-    }
+    const tablePipes = tablePipesByLine.get(lineIndex);
+    if (tablePipes) for (const pipe of tablePipes) boundaries.push(offset + pipe);
     const sourceRaw = sourceLines[lineIndex] ?? raw;
     const quote = /^(?: {0,3}>[ \t]?){1,4}/.exec(raw);
     const depth = quote ? (quote[0].match(/>/g) || []).length : 0;
@@ -2353,7 +2363,6 @@ function linkBlockBoundaries(text, sourceText = text) {
       const padding = spacesCol >= 5 ? 1 : spacesCol;
       listIndent = continuationIndent + markerCol + padding;
     } else if (!continuationIndent && !isBlank) listIndent = null;
-    if (tableActive && (isBlank || (!delimiterRow && !tableContent.includes('|')) || isInterruption)) tableActive = false;
     offset += raw.length + 1;
   }
   return boundaries;
@@ -2562,15 +2571,16 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
   const isIndentedCode = (() => {
     if (!/^(?: {4,}|\t)/.test(rawPrior)) return false;
     if (start <= 0) return true;
-    const prevEnd = text.lastIndexOf('\n', start - 1);
-    if (prevEnd < 0) return true;
-    const prevStart = text.lastIndexOf('\n', prevEnd - 1) + 1;
-    const prevRaw = rawText.slice(prevStart, prevEnd).replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
-    if (/^[ \t]*$/.test(prevRaw)) return true;
-    if (/^(?: {4,}|\t)/.test(prevRaw)) return true;
-    if (/^ {0,3}(?:`{3,}|~{3,})/.test(prevRaw)) return true;
-    if (/^ {0,3}#{1,6}(?:[ \t]+|[ \t]*$)/.test(prevRaw)) return true;
-    if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(prevRaw)) return true;
+    let probeEnd = start - 1, inspected = 0;
+    while (probeEnd >= 0 && inspected++ < 64) {
+      const probeStart = text.lastIndexOf('\n', probeEnd - 1) + 1;
+      const probeRaw = rawText.slice(probeStart, probeEnd).replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
+      if (/^(?: {4,}|\t)/.test(probeRaw)) { probeEnd = probeStart - 1; continue; }
+      if (/^[ \t]*$/.test(probeRaw)) return true;
+      if (/^ {0,3}(?:`{3,}|~{3,}|#{1,6}(?:[ \t]+|[ \t]*$)|(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$)/.test(probeRaw)) return true;
+      // An open paragraph owns every indented continuation up to this point.
+      return false;
+    }
     return false;
   })();
   if (isIndentedCode) return true;
