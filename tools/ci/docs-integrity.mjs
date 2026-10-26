@@ -1015,16 +1015,45 @@ function headingSlug(heading, definedRefs = new Set()) {
   });
   if (uncertain) return null;
   const formatSlugPart = (value, preserveUnderscore) => {
+    const escapedUnderscore = '\x05';
     let formatted = value
+      .replace(/\\_/g, escapedUnderscore)
       .replace(/\\([!-/:-@\[-`{-~ ])/g, '$1')
       .replace(/\t/g, ' ')
       .replace(/[\x60*~]/g, '');
     if (!preserveUnderscore) {
-      formatted = formatted
-        .replace(/(^|[^\p{L}\p{N}_])_+(?=\S)/gu, '$1')
-        .replace(/_+(?=$|[^\p{L}\p{N}_])/gu, '');
+      const chars = [...formatted];
+      const removed = new Set();
+      const delimiters = [];
+      const isWhitespace = char => !char || /\s/u.test(char);
+      const isPunctuation = char => Boolean(char) && /[\p{P}\p{S}]/u.test(char);
+      for (let index = 0; index < chars.length;) {
+        if (chars[index] !== '_') {
+          index++;
+          continue;
+        }
+        const start = index;
+        while (index < chars.length && chars[index] === '_') index++;
+        const end = index;
+        const before = chars[start - 1];
+        const after = chars[end];
+        const leftFlanking = !isWhitespace(after) && (!isPunctuation(after) || isWhitespace(before) || isPunctuation(before));
+        const rightFlanking = !isWhitespace(before) && (!isPunctuation(before) || isWhitespace(after) || isPunctuation(after));
+        const canOpen = leftFlanking && (!rightFlanking || isPunctuation(before));
+        const canClose = rightFlanking && (!leftFlanking || isPunctuation(after));
+        if (canClose) {
+          const opener = delimiters.findLast(item => item.length === end - start);
+          if (opener) {
+            for (let mark = opener.start; mark < opener.end; mark++) removed.add(mark);
+            for (let mark = start; mark < end; mark++) removed.add(mark);
+            delimiters.splice(delimiters.indexOf(opener), 1);
+          }
+        }
+        if (canOpen && !removed.has(start)) delimiters.push({ start, end, length: end - start });
+      }
+      formatted = chars.filter((_char, index) => !removed.has(index)).join('');
     }
-    return formatted.replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, '');
+    return formatted.replace(/[^\p{L}\p{M}\p{N}_\- \x05]/gu, '').replaceAll(escapedUnderscore, '_');
   };
   const expanded = rendered.replace(/\x01(\d+)\x02/g, (_match, index) => `\x03${Number(index)}\x04`);
   const formatted = expanded.split(/(\x03\d+\x04)/).map(part => {
@@ -2149,7 +2178,26 @@ function linkBlockBoundaries(text, sourceText = text) {
   let paragraphOpen = false;
   const sourceLines = (sourceText ?? text).split('\n');
   const lines = text.split('\n');
-  const isTableDelimiter = line => line.includes('|') && /^\s*\|?\s*:?-{1,}:?\s*(?:\|\s*:?-{1,}:?\s*)+\|?\s*$/.test(line);
+  const splitTableCells = line => {
+    if (!line.includes('|')) return null;
+    const cells = [], starts = [0];
+    for (let index = 0; index < line.length; index++) {
+      if (line[index] === '|' && !escapedAt(line, index)) starts.push(index + 1);
+    }
+    if (starts.length < 2) return null;
+    for (let index = 0; index < starts.length - 1; index++) {
+      const end = starts[index + 1] - 1;
+      cells.push(line.slice(starts[index], end));
+    }
+    cells.push(line.slice(starts.at(-1)));
+    if (!cells[0].trim()) cells.shift();
+    if (cells.length && !cells.at(-1).trim()) cells.pop();
+    return cells;
+  };
+  const isTableDelimiter = line => {
+    const cells = splitTableCells(line);
+    return Boolean(cells?.length) && cells.every(cell => /^\s*:?-{1,}:?\s*$/.test(cell));
+  };
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const raw = lines[lineIndex];
     const delimiterRow = isTableDelimiter(raw);
@@ -2518,13 +2566,11 @@ function htmlTagRanges(text) {
       continue;
     }
     if (start[0].startsWith('<!')) {
-      if (/^[\s/]/.test(text[begin + start[0].length] || '')) {
-        if (nextDeclCloser !== -1) {
-          if (nextDeclCloser < begin + 2) nextDeclCloser = text.indexOf('>', begin + 2);
-          if (nextDeclCloser >= 0) {
-            if (!hasInterveningBlockBoundary(blockBoundaries, begin, nextDeclCloser)) {
-              ranges.push({ start: begin, end: nextDeclCloser + 1 });
-            }
+      if (nextDeclCloser !== -1) {
+        if (nextDeclCloser < begin + 2) nextDeclCloser = text.indexOf('>', begin + 2);
+        if (nextDeclCloser >= 0) {
+          if (!hasInterveningBlockBoundary(blockBoundaries, begin, nextDeclCloser)) {
+            ranges.push({ start: begin, end: nextDeclCloser + 1 });
           }
         }
       }

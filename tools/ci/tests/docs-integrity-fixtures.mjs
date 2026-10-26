@@ -225,6 +225,14 @@ const fixtures = [
       'text <![CDATA[ [old](Target.md) ]]\>\n', true],
     ['review: inline declaration masks contained link',
       'text <!DECL [old](Target.md)>\n', true],
+    ['review: hyphenated declaration masks contained link',
+      'text <!foo-bar [old](Target.md)>\n', true],
+    ['review: escaped declaration opener leaves link active',
+      'text \\<!foo-bar [old](Target.md)>\n', false],
+    ['review: unterminated declaration leaves link active',
+      'text <!foo-bar [old](Target.md)\n', false],
+    ['review: link outside declaration stays active',
+      'text <!foo-bar note>\n[old](Target.md)\n', false],
     ['review: self-closing script tag is inline HTML leaving following link active',
       '<script/> [old](Target.md)\n', false],
     ['review: block comment closing line masks contained link',
@@ -657,8 +665,15 @@ const fixtures = [
       '[old](Target.md#foo__bar)\n', false, '# foo__bar\n'],
     ['heading slug preserves triple intraword underscores',
       '[old](Target.md#foo___bar)\n', false, '# foo___bar\n'],
+    ['heading slug preserves unmatched boundary underscores',
+      '[old](Target.md#_foo) [old2](Target.md#foo_) [old3](Target.md#__foo) [old4](Target.md#foo__)\n', false,
+      '# _foo\n# foo_\n# __foo\n# foo__\n'],
+    ['heading slug preserves escaped boundary underscores',
+      '[old](Target.md#_foo_) [old2](Target.md#_foo_)\n', false, '# \\_foo\\_\n'],
     ['heading slug removes genuine emphasis delimiters',
       '[old](Target.md#foo-bar)\n', false, '# foo _bar_\n'],
+    ['heading slug removes matched double-emphasis delimiters',
+      '[old](Target.md#foo)\n', false, '# __foo__\n'],
     ['heading slug preserves repeated code-span spaces',
       '[old](Target.md#a--b)\n', false, '# `a  b`\n'],
     ['table cell boundaries reset link parsing',
@@ -667,6 +682,10 @@ const fixtures = [
       '| [x | z](Consumer.md "title [old](Target.md)") |\n| - | - |\n', false],
     ['table delimiter accepts two hyphens',
       '| [x | z](Consumer.md "title [old](Target.md)") |\n| -- | -- |\n', false],
+    ['single-column table delimiter resets link parsing',
+      '| [x | z](Consumer.md "title [old](Target.md)") |\n| --- |\n', false],
+    ['ordinary prose pipe is not a single-column table',
+      'prefix | prose\n[old](Target.md)\n', false],
     ['table cell boundaries persist through body rows',
       '| a | b |\n| --- | --- |\n| [x | z](Consumer.md "title [old](Target.md)") |\n', false],
     ['heading code span preserves boundary underscores',
@@ -815,6 +834,12 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'genuine emphasis heading anchor preserved', md: null, extra: 'deleted-heading-emphasis-underscore',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'genuine double-emphasis heading anchor preserved', md: null, extra: 'deleted-heading-double-emphasis',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'unmatched boundary underscore heading anchor preserved', md: null, extra: 'deleted-heading-boundary-underscore',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'escaped boundary underscore heading anchor preserved', md: null, extra: 'deleted-heading-escaped-underscore',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'missing repeated underscore anchor remains a valid deletion', md: null, extra: 'deleted-heading-double-underscore-missing',
     pass: true, markdownCount: 0 },
   { name: 'code-span repeated spaces heading anchor preserved', md: null, extra: 'deleted-heading-code-spaces',
@@ -822,6 +847,8 @@ const fixtures = [
   { name: 'one-hyphen table delimiter preserves cell link', md: null, extra: 'deleted-table-one-hyphen',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'two-hyphen table delimiter preserves cell link', md: null, extra: 'deleted-table-two-hyphen',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'single-column table delimiter preserves cell link', md: null, extra: 'deleted-table-single-column',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'fullwidth reference label not equivalent to ASCII', md: null, extra: 'deleted-distinct-fullwidth-ref',
     pass: true, markdownCount: 0 },
@@ -1193,6 +1220,9 @@ function executeFixture(test) {
       'deleted-raw-script': '# Consumer\n<script>\n[old](Target.md)\n</script>\n',
       'deleted-raw-then-link': '# Consumer\n<pre>\n[old](Target.md)\n</pre>\n[old](Target.md)\n',
       'deleted-heading-entity': '# Consumer\n[old](Target.md#ab)\n',
+      'deleted-heading-boundary-underscore': '# Consumer\n[old](Target.md#_foo)\n[old2](Target.md#foo_)\n[old3](Target.md#__foo)\n[old4](Target.md#foo__)\n',
+      'deleted-heading-escaped-underscore': '# Consumer\n[old](Target.md#_foo_)\n',
+      'deleted-heading-double-emphasis': '# Consumer\n[old](Target.md#foo)\n',
       'deleted-adjacent-shortcut': '# Consumer\nliteral][old]\n\n[old]: Target.md\n',
       'deleted-heading-copy-valid': '# Consumer\n[old](Target.md#a-b)\n',
       'deleted-heading-copy-invalid': '# Consumer\n[old](Target.md#does-not-exist)\n',
@@ -1200,6 +1230,7 @@ function executeFixture(test) {
       'deleted-colon-shortcut': '# Consumer\nSee [old]: retained text.\n\n[old]: Target.md\n',
       'deleted-cr-raw-block': '# Consumer\r<pre>\r[old](Target.md)\r</pre>\r[old](Target.md)\r',
       'deleted-heading-inline-code': '# Consumer\n[old](Target.md#hello-there)\n',
+      'deleted-table-single-column': '# Consumer\n| [x | z](Consumer.md "title [old](Target.md)") |\n| --- |\n',
       'deleted-ref-escaped-label': '# Consumer\n[a\\]b]\n\n[a\\]b]: Target.md\n',
       'deleted-escaped-close-paren': '# Consumer\n[old](Target\\).md)\n',
       'deleted-surviving-alias': '# Consumer\n[old](Alias.md)\n',
@@ -1582,6 +1613,15 @@ function executeFixture(test) {
     if (test.extra === 'deleted-heading-emphasis-underscore') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# foo _bar_\n');
     }
+    if (test.extra === 'deleted-heading-boundary-underscore') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# _foo\n# foo_\n# __foo\n# foo__\n');
+    }
+    if (test.extra === 'deleted-heading-escaped-underscore') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# \\_foo\\_\n');
+    }
+    if (test.extra === 'deleted-heading-double-emphasis') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# __foo__\n');
+    }
     if (test.extra === 'deleted-heading-double-underscore-missing') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# foo__bar\n');
     }
@@ -1649,8 +1689,9 @@ function executeFixture(test) {
       'deleted-fullwidth-anchor', 'deleted-distinct-fullwidth-ref',
       'deleted-heading-double-underscore', 'deleted-heading-triple-underscore',
       'deleted-heading-code-underscore', 'deleted-heading-emphasis-underscore',
+      'deleted-heading-boundary-underscore', 'deleted-heading-escaped-underscore', 'deleted-heading-double-emphasis',
       'deleted-heading-double-underscore-missing', 'deleted-heading-code-spaces',
-      'deleted-table-one-hyphen', 'deleted-table-two-hyphen',
+      'deleted-table-one-hyphen', 'deleted-table-two-hyphen', 'deleted-table-single-column',
       'deleted-unrelated-eacute', 'deleted-unrelated-unknown-entity',
       'deleted-root-absolute', 'deleted-root-unrelated', 'deleted-root-normalized',
       'deleted-angle-leading', 'deleted-entity-alias-unrelated',
