@@ -280,7 +280,7 @@ function gfmTableInfo(rawMarkdown) {
     if (!line.includes('|')) return null;
     const cells = [], starts = [0];
     for (let index = 0; index < line.length; index++) {
-      if (escapedAt(line, index)) { index++; continue; }
+      if (escapedAt(line, index)) continue;
       if (line[index] === '|') starts.push(index + 1);
     }
     if (starts.length < 2) return null;
@@ -1051,8 +1051,13 @@ function protectHeadingCode(heading, spans, rawSpans = []) {
           nextMatch = null;
           continue;
         }
-        visible += heading.slice(cursor, match.index);
+        const preComment = heading.slice(cursor, match.index);
+        visible += preComment;
         cursor = commentEnd;
+        if (preComment.endsWith(' ') && heading.slice(cursor).startsWith(' ')) {
+          while (cursor < heading.length && heading[cursor] === ' ') cursor++;
+          visible = visible.replace(/ +$/, ' ');
+        }
         nextMatch = null;
         htmlStarts.lastIndex = Math.max(htmlStarts.lastIndex, cursor);
       } else {
@@ -1094,7 +1099,8 @@ function headingSlug(heading, definedRefs = new Set()) {
       return definedRefs.has(resolveHeadingLabel(label));
     },
   };
-  const scannedLinks = scanBracketLinks(withoutTags, [], false, headingRefs);
+  const autolinkRanges = uriAutolinkRanges(withoutTags);
+  const scannedLinks = scanBracketLinks(withoutTags, autolinkRanges, false, headingRefs, null, null, autolinkRanges);
   const linkSyntax = [
     ...scannedLinks.inlines,
     ...scannedLinks.fullRefs.filter(link => headingRefs.has(link.label)),
@@ -1190,8 +1196,10 @@ function headingSlug(heading, definedRefs = new Set()) {
   const formatted = formattedParts.map(({ chars, removed, escapedUnderscore }) =>
     chars.filter((_char, index) => !removed.has(index)).join('')
       .replace(/[^\p{L}\p{M}\p{N}_\- \x05]/gu, '').replaceAll(escapedUnderscore, '_')).join('');
+  const hasConsecutiveSpaces = expanded.split(/(\x03\d+\x04)/)
+    .some(part => !/^\x03\d+\x04$/.test(part) && part.includes('  '));
   const preserveConsecutiveSpaces = punctuationExposedSpace || spans.some(span => span.includes('  ')) ||
-    (heading.includes('  ') && !/[`]|<!--|<\/?[A-Za-z]/.test(heading));
+    hasConsecutiveSpaces;
   return formatted.toLowerCase().replace(/\t/g, ' ').trim()
     .replace(preserveConsecutiveSpaces ? / /g : / +/g, '-');
 }
@@ -2366,7 +2374,7 @@ function linkBlockBoundaries(text, sourceText = text) {
 // One forward pass. Images do not deactivate an enclosing link, so a badge
 // wrapped in a link reports both destinations. A nested link keeps the inner
 // destination and leaves the outer brackets inactive.
-function scanBracketLinks(rawText, masks = [], collectShortcuts = false, definedRefs = null, originalText = null, sourceText = null) {
+function scanBracketLinks(rawText, masks = [], collectShortcuts = false, definedRefs = null, originalText = null, sourceText = null, autolinks = []) {
   const inlines = [], fullRefs = [], unresolvedFullRefs = [], shortcuts = [];
   const stack = [];
   const boundaries = linkBlockBoundaries(rawText, sourceText);
@@ -2376,6 +2384,9 @@ function scanBracketLinks(rawText, masks = [], collectShortcuts = false, defined
     while (nextBoundary < boundaries.length && boundaries[nextBoundary] <= i) {
       stack.length = 0;
       nextBoundary++;
+    }
+    if (inRanges(autolinks, i)) {
+      for (const item of stack) if (!item.image) item.active = false;
     }
     if (inRanges(masks, i)) continue;
     if (text[i] === '\\') {
@@ -2869,7 +2880,7 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
     .sort((a, b) => a.start - b.start || a.end - b.end);
   let maskEnd = 0;
   for (const range of masks) { maskEnd = Math.max(maskEnd, range.end); range.end = maskEnd; }
-  const structures = scanBracketLinks(text, masks, Boolean(deletedTargets), new Set(refs.keys()), rawDefinitionText, rawFileText);
+  const structures = scanBracketLinks(text, masks, Boolean(deletedTargets), new Set(refs.keys()), rawDefinitionText, rawFileText, autolinkRanges);
   const inlineOpeners = new Set(), inlineRanges = [];
   for (const match of structures.inlines) {
     if (budget && --budget.links < 0) throw new Error('Inbound link budget exceeded');
