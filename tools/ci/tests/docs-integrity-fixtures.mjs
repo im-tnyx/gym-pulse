@@ -653,8 +653,20 @@ const fixtures = [
       '[old](Target.md#hello--world)\n', false, '# Hello  World\n'],
     ['heading slug preserves intraword underscore',
       '[old](Target.md#foo_bar)\n', false, '# foo_bar\n'],
+    ['heading slug preserves repeated intraword underscores',
+      '[old](Target.md#foo__bar)\n', false, '# foo__bar\n'],
+    ['heading slug preserves triple intraword underscores',
+      '[old](Target.md#foo___bar)\n', false, '# foo___bar\n'],
+    ['heading slug removes genuine emphasis delimiters',
+      '[old](Target.md#foo-bar)\n', false, '# foo _bar_\n'],
+    ['heading slug preserves repeated code-span spaces',
+      '[old](Target.md#a--b)\n', false, '# `a  b`\n'],
     ['table cell boundaries reset link parsing',
       '| [x | z](Consumer.md "title [old](Target.md)") |\n| --- | --- |\n', false],
+    ['table delimiter accepts one hyphen',
+      '| [x | z](Consumer.md "title [old](Target.md)") |\n| - | - |\n', false],
+    ['table delimiter accepts two hyphens',
+      '| [x | z](Consumer.md "title [old](Target.md)") |\n| -- | -- |\n', false],
     ['table cell boundaries persist through body rows',
       '| a | b |\n| --- | --- |\n| [x | z](Consumer.md "title [old](Target.md)") |\n', false],
     ['heading code span preserves boundary underscores',
@@ -789,9 +801,27 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'malformed first reference definition must not shadow valid second', md: null, extra: 'deleted-malformed-first-def',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'malformed definition without blank remains paragraph', md: null, extra: 'deleted-malformed-first-def-no-blank',
+    pass: true, markdownCount: 0 },
   { name: 'valid quoted reference title remains first definition', md: null, extra: 'deleted-valid-ref-title',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'fullwidth heading anchor preserved without compatibility normalization', md: null, extra: 'deleted-fullwidth-anchor',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'double intraword underscore heading anchor preserved', md: null, extra: 'deleted-heading-double-underscore',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'triple intraword underscore heading anchor preserved', md: null, extra: 'deleted-heading-triple-underscore',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'code-span underscore heading anchor preserved', md: null, extra: 'deleted-heading-code-underscore',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'genuine emphasis heading anchor preserved', md: null, extra: 'deleted-heading-emphasis-underscore',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'missing repeated underscore anchor remains a valid deletion', md: null, extra: 'deleted-heading-double-underscore-missing',
+    pass: true, markdownCount: 0 },
+  { name: 'code-span repeated spaces heading anchor preserved', md: null, extra: 'deleted-heading-code-spaces',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'one-hyphen table delimiter preserves cell link', md: null, extra: 'deleted-table-one-hyphen',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'two-hyphen table delimiter preserves cell link', md: null, extra: 'deleted-table-two-hyphen',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'fullwidth reference label not equivalent to ASCII', md: null, extra: 'deleted-distinct-fullwidth-ref',
     pass: true, markdownCount: 0 },
@@ -1189,9 +1219,18 @@ function executeFixture(test) {
       'deleted-paren-title': '# Consumer\n[old](Target.md (a title))\n',
       'deleted-casefold-cyrillic': '# Consumer\n[в]\n\n[ᲀ]: Target.md\n',
       'deleted-casefold-cherokee': '# Consumer\n[ꭰ]\n\n[Ꭰ]: Target.md\n',
-      'deleted-malformed-first-def': '# Consumer\n[x]\n\n[x]: ../README.md garbage\n[x]: Target.md\n',
+      'deleted-malformed-first-def': '# Consumer\n[x]\n\n[x]: ../README.md garbage\n\n[x]: Target.md\n',
+      'deleted-malformed-first-def-no-blank': '# Consumer\n[x]\n\n[x]: ../README.md garbage\n[x]: Target.md\n',
       'deleted-valid-ref-title': '# Consumer\n[x]\n\n[x]: Target.md "valid title"\n',
       'deleted-fullwidth-anchor': '# Consumer\n[old](Target.md#%EF%BD%81)\n',
+      'deleted-heading-double-underscore': '# Consumer\n[old](Target.md#foo__bar)\n',
+      'deleted-heading-triple-underscore': '# Consumer\n[old](Target.md#foo___bar)\n',
+      'deleted-heading-code-underscore': '# Consumer\n[old](Target.md#foo__bar)\n',
+      'deleted-heading-emphasis-underscore': '# Consumer\n[old](Target.md#foo-bar)\n',
+      'deleted-heading-double-underscore-missing': '# Consumer\n[old](Target.md#foobar)\n',
+      'deleted-heading-code-spaces': '# Consumer\n[old](Target.md#a--b)\n',
+      'deleted-table-one-hyphen': '# Consumer\n| [x | z](Consumer.md "title [old](Target.md)") |\n| - | - |\n',
+      'deleted-table-two-hyphen': '# Consumer\n| [x | z](Consumer.md "title [old](Target.md)") |\n| -- | -- |\n',
       'deleted-distinct-fullwidth-ref': '# Consumer\n[Ａ]\n\n[A]: Target.md\n',
       'deleted-unrelated-eacute': '# Consumer\n[u](caf&eacute;.md)\n',
       'deleted-unrelated-unknown-entity': '# Consumer\n[u](caf&notSupportedHere;.md)\n',
@@ -1531,6 +1570,24 @@ function executeFixture(test) {
     if (test.extra === 'deleted-heading-inline-code') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# Hello `There`\n');
     }
+    if (test.extra === 'deleted-heading-double-underscore') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# foo__bar\n');
+    }
+    if (test.extra === 'deleted-heading-triple-underscore') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# foo___bar\n');
+    }
+    if (test.extra === 'deleted-heading-code-underscore') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# `foo__bar`\n');
+    }
+    if (test.extra === 'deleted-heading-emphasis-underscore') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# foo _bar_\n');
+    }
+    if (test.extra === 'deleted-heading-double-underscore-missing') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# foo__bar\n');
+    }
+    if (test.extra === 'deleted-heading-code-spaces') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# `a  b`\n');
+    }
     if (test.extra === 'deleted-unquoted-id') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '<a id=kept></a>\n');
     }
@@ -1588,8 +1645,12 @@ function executeFixture(test) {
       'deleted-distinct-escaped-label',
       'deleted-leading-space', 'deleted-leading-tab', 'deleted-paren-title',
       'deleted-casefold-cyrillic', 'deleted-casefold-cherokee',
-      'deleted-malformed-first-def', 'deleted-valid-ref-title',
+      'deleted-malformed-first-def', 'deleted-malformed-first-def-no-blank', 'deleted-valid-ref-title',
       'deleted-fullwidth-anchor', 'deleted-distinct-fullwidth-ref',
+      'deleted-heading-double-underscore', 'deleted-heading-triple-underscore',
+      'deleted-heading-code-underscore', 'deleted-heading-emphasis-underscore',
+      'deleted-heading-double-underscore-missing', 'deleted-heading-code-spaces',
+      'deleted-table-one-hyphen', 'deleted-table-two-hyphen',
       'deleted-unrelated-eacute', 'deleted-unrelated-unknown-entity',
       'deleted-root-absolute', 'deleted-root-unrelated', 'deleted-root-normalized',
       'deleted-angle-leading', 'deleted-entity-alias-unrelated',

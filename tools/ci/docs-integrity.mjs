@@ -1021,8 +1021,8 @@ function headingSlug(heading, definedRefs = new Set()) {
       .replace(/[\x60*~]/g, '');
     if (!preserveUnderscore) {
       formatted = formatted
-        .replace(/(^|[^\p{L}\p{N}])_+(?=\S)/gu, '$1')
-        .replace(/_+(?=$|[^\p{L}\p{N}])/gu, '');
+        .replace(/(^|[^\p{L}\p{N}_])_+(?=\S)/gu, '$1')
+        .replace(/_+(?=$|[^\p{L}\p{N}_])/gu, '');
     }
     return formatted.replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, '');
   };
@@ -1031,7 +1031,8 @@ function headingSlug(heading, definedRefs = new Set()) {
     const marker = /^\x03(\d+)\x04$/.exec(part);
     return marker ? formatSlugPart(spans[Number(marker[1])] || '', true) : formatSlugPart(part, false);
   }).join('');
-  const preserveConsecutiveSpaces = heading.includes('  ') && !/[`]|<!--|<\/?[A-Za-z]/.test(heading);
+  const preserveConsecutiveSpaces = spans.some(span => span.includes('  ')) ||
+    (heading.includes('  ') && !/[`]|<!--|<\/?[A-Za-z]/.test(heading));
   return formatted.toLowerCase().replace(/\t/g, ' ').trim()
     .replace(preserveConsecutiveSpaces ? / /g : / +/g, '-');
 }
@@ -2148,7 +2149,7 @@ function linkBlockBoundaries(text, sourceText = text) {
   let paragraphOpen = false;
   const sourceLines = (sourceText ?? text).split('\n');
   const lines = text.split('\n');
-  const isTableDelimiter = line => line.includes('|') && /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+  const isTableDelimiter = line => line.includes('|') && /^\s*\|?\s*:?-{1,}:?\s*(?:\|\s*:?-{1,}:?\s*)+\|?\s*$/.test(line);
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const raw = lines[lineIndex];
     const delimiterRow = isTableDelimiter(raw);
