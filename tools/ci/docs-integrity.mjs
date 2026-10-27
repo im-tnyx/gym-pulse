@@ -301,29 +301,51 @@ function gfmTableInfo(rawMarkdown) {
     const divider = splitCells(contents[index + 1]);
     if (header?.length && divider?.length && delimiter(contents[index + 1]) &&
         header.length === divider.length) {
-      starts.set(index, containers[index]);
-      starts.set(index + 1, containers[index]);
+      starts.set(index, { container: containers[index], cols: header.length, isHeader: true });
+      starts.set(index + 1, { container: containers[index], cols: header.length, isDivider: true });
     }
   }
   const pipesByLine = new Map();
-  let activeContainer = null;
+  const excessRangesByLine = new Map();
+  let activeTable = null;
   for (let index = 0; index < lines.length; index++) {
     if (starts.has(index)) {
-      activeContainer = starts.get(index);
-    } else if (activeContainer !== null) {
-      if (containers[index] !== activeContainer || /^[ \t]*$/.test(contents[index]) || isBlockInterruption(contents[index])) {
-        activeContainer = null;
+      activeTable = starts.get(index);
+    } else if (activeTable !== null) {
+      if (containers[index] !== activeTable.container || /^[ \t]*$/.test(contents[index]) || isBlockInterruption(contents[index])) {
+        activeTable = null;
       }
     }
-    if (activeContainer === containers[index] && contents[index].includes('|')) {
+    if (activeTable && activeTable.container === containers[index] && contents[index].includes('|')) {
+      const rawLine = lines[index];
       const pipes = [];
-      for (let pipe = 0; pipe < lines[index].length; pipe++) {
-        if (lines[index][pipe] === '|' && !escapedAt(lines[index], pipe)) pipes.push(pipe);
+      for (let pipe = 0; pipe < rawLine.length; pipe++) {
+        if (rawLine[pipe] === '|' && !escapedAt(rawLine, pipe)) pipes.push(pipe);
       }
       pipesByLine.set(index, pipes);
+      if (pipes.length > 0) {
+        const codeSpans = codeSpanRanges(rawLine, 0, rawLine.length).filter(cs => {
+          const slice = rawLine.slice(cs.start, cs.end);
+          return !slice.includes('[') && !slice.includes(']');
+        });
+        const colPipes = pipes.filter(p => !inRanges(codeSpans, p));
+        const firstPipe = colPipes[0];
+        const hasLeadingPipe = firstPipe !== undefined && /^[ \t]*$/.test(rawLine.slice(0, firstPipe));
+        const hasTrailingPipe = colPipes.length > 0 && /^[ \t]*$/.test(rawLine.slice(colPipes.at(-1) + 1));
+        let cellCount = colPipes.length - 1;
+        if (!hasLeadingPipe) cellCount++;
+        if (!hasTrailingPipe) cellCount++;
+        const cols = activeTable.cols;
+        if (cols >= 2 && cellCount > cols && !starts.get(index)?.isHeader && !starts.get(index)?.isDivider) {
+          const cutoff = hasLeadingPipe ? colPipes[cols] : colPipes[cols - 1];
+          if (cutoff !== undefined) {
+            excessRangesByLine.set(index, { start: cutoff, end: rawLine.length });
+          }
+        }
+      }
     }
   }
-  return { pipesByLine };
+  return { pipesByLine, excessRangesByLine };
 }
 
 function removeCode(rawMarkdown, collectedIds = null) {
@@ -331,7 +353,58 @@ function removeCode(rawMarkdown, collectedIds = null) {
   // Bounded, order-sensitive Markdown masking. Preserve newlines and offsets.
   // Multiline code spans and HTML comments cannot change fence ownership.
   const lines = markdown.split(/\r\n|\n|\r/);
-  const tablePipesByLine = gfmTableInfo(markdown).pipesByLine;
+  const { pipesByLine: tablePipesByLine, excessRangesByLine } = gfmTableInfo(markdown);
+  const fencedBlockRanges = [];
+  {
+    let fence = null;
+    let htmlCloser = null;
+    let offset = 0;
+    for (const rawLine of lines) {
+      const lineStart = offset;
+      offset += rawLine.length + 1;
+      const stripped = /^(?: {0,3}>[ \t]?){0,4}/.exec(rawLine);
+      const content = rawLine.slice(stripped ? stripped[0].length : 0);
+      if (fence) {
+        const closer = content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+        if (closer && closer[1][0] === fence.marker &&
+            closer[1].length >= fence.count && /^[ \t]*$/.test(closer[2])) {
+          fencedBlockRanges.push({ start: fence.start, end: offset });
+          fence = null;
+        }
+        continue;
+      }
+      if (htmlCloser) {
+        if (rawLine.includes(htmlCloser)) htmlCloser = null;
+        continue;
+      }
+      if (/^ {0,3}<!--/.test(content)) {
+        if (!content.includes('-->')) htmlCloser = '-->';
+        continue;
+      }
+      if (/^ {0,3}<\?/.test(content)) {
+        if (!content.includes('?>')) htmlCloser = '?>';
+        continue;
+      }
+      if (/^ {0,3}<![A-Z]/.test(content)) {
+        if (!content.includes('>')) htmlCloser = '>';
+        continue;
+      }
+      if (/^ {0,3}<!\[CDATA\[/.test(content)) {
+        if (!content.includes(']]>')) htmlCloser = ']]>';
+        continue;
+      }
+      const rawTag = /^ {0,3}<(script|pre|style|textarea)(?=[ \t>]|$)/i.exec(content);
+      if (rawTag) {
+        const closeRegex = new RegExp('</' + rawTag[1] + '>', 'i');
+        if (!closeRegex.test(content)) htmlCloser = '</' + rawTag[1] + '>';
+        continue;
+      }
+      const opener = content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      if (opener && (opener[1][0] === '~' || !opener[2].includes('`'))) {
+        fence = { marker: opener[1][0], count: opener[1].length, start: lineStart };
+      }
+    }
+  }
   // Front matter is metadata, not inline Markdown. An unmatched opener
   // remains ordinary text so it cannot hide live links.
   let frontMatterEnd = -1;
@@ -357,6 +430,10 @@ function removeCode(rawMarkdown, collectedIds = null) {
   while (searchTail < markdown.length) {
     const bracket = markdown.indexOf('](', searchTail);
     if (bracket < 0) break;
+    if (inRanges(fencedBlockRanges, bracket)) {
+      searchTail = bracket + 2;
+      continue;
+    }
     if (!escapedAt(markdown, bracket) && hasMatchingLinkOpener(markdown, bracket)) {
       const tail = parseInlineTail(markdown, bracket + 1);
       if (tail) {
@@ -512,6 +589,10 @@ function removeCode(rawMarkdown, collectedIds = null) {
   return lines.map((line, lineIndex) => {
     const currentLineOffset = lineStartOffset;
     lineStartOffset += line.length + 1;
+    const excessRange = excessRangesByLine?.get(lineIndex);
+    if (excessRange) {
+      line = line.slice(0, excessRange.start) + ' '.repeat(line.length - excessRange.start);
+    }
     let lineIsRefDef = inRanges(multilineDefRanges, currentLineOffset);
     if (frontMatterEnd >= 0 && lineIndex <= frontMatterEnd) return ' '.repeat(line.length);
     // A list item's continuation indentation is a container prefix, not
@@ -838,6 +919,11 @@ function removeCode(rawMarkdown, collectedIds = null) {
     }
     let cachedCloser = -1, cachedCloserFrom = 0;
     function hasSameLineCommentCloser(startAt) {
+      if (tablePipes.length) {
+        const limit = cellEnd(startAt);
+        const at = line.indexOf('-->', startAt);
+        return at >= 0 && at + 3 <= limit;
+      }
       if (cachedCloser >= startAt) return true;
       if (cachedCloser < -1 && cachedCloserFrom <= startAt) return false;
       const at = line.indexOf('-->', startAt);
@@ -892,8 +978,10 @@ function removeCode(rawMarkdown, collectedIds = null) {
         const blockStart = /^ {0,3}<!--/.test(openerShape.content);
         const hasSameLineCloser = hasSameLineCommentCloser(opener + 4);
         // Unclosed inline opener is literal text; unclosed block opener masks.
-        if (!blockStart && !hasSameLineCloser && !laterCommentCloserInline(lineIndex, openerShape,
-          lineInList ? activeListIndent : null)) {
+        const canCloseLater = !tablePipes.length && laterCommentCloserInline(lineIndex, openerShape,
+          lineInList ? activeListIndent : null);
+        // Unclosed inline opener is literal text; unclosed block opener masks.
+        if (!blockStart && !hasSameLineCloser && !canCloseLater) {
           visible += line.slice(from, opener + 4);
           from = opener + 4;
           continue;
@@ -2414,6 +2502,11 @@ function scanBracketLinks(rawText, masks = [], collectShortcuts = false, defined
     if (text[i + 1] === '(') {
       const parsed = parseInlineTail(text, i + 1);
       if (parsed && parsed.end <= (boundaries[nextBoundary] ?? text.length)) {
+        if (image) {
+          for (let k = inlines.length - 1; k >= 0 && inlines[k].opener > opener.index; k--) inlines.pop();
+          for (let k = fullRefs.length - 1; k >= 0 && fullRefs[k].opener > opener.index; k--) fullRefs.pop();
+          for (let k = shortcuts.length - 1; k >= 0 && shortcuts[k].opener > opener.index; k--) shortcuts.pop();
+        }
         inlines.push({ index, opener: opener.index, labelEnd: i, raw: parsed.raw, end: parsed.end });
         if (!image) for (const item of stack) if (!item.image) item.active = false;
         i = parsed.end - 1;
@@ -2430,6 +2523,11 @@ function scanBracketLinks(rawText, masks = [], collectShortcuts = false, defined
         const label = ref.label.length ? refLabel : textLabel;
         const match = { index, opener: opener.index, label, end: ref.end, suffixStart: i + 1 };
         if (definedRefs?.has(referenceLabel(label))) {
+          if (image) {
+            for (let k = inlines.length - 1; k >= 0 && inlines[k].opener > opener.index; k--) inlines.pop();
+            for (let k = fullRefs.length - 1; k >= 0 && fullRefs[k].opener > opener.index; k--) fullRefs.pop();
+            for (let k = shortcuts.length - 1; k >= 0 && shortcuts[k].opener > opener.index; k--) shortcuts.pop();
+          }
           fullRefs.push(match);
           if (!image) {
             for (const item of stack) if (!item.image) item.active = false;
@@ -2446,6 +2544,11 @@ function scanBracketLinks(rawText, masks = [], collectShortcuts = false, defined
         const label = (originalText ?? text).slice(opener.index + 1, i);
         if (collectShortcuts) {
           if (shortcuts.length >= 10000) failParserBound();
+          if (image) {
+            for (let k = inlines.length - 1; k >= 0 && inlines[k].opener > opener.index; k--) inlines.pop();
+            for (let k = fullRefs.length - 1; k >= 0 && fullRefs[k].opener > opener.index; k--) fullRefs.pop();
+            for (let k = shortcuts.length - 1; k >= 0 && shortcuts[k].opener > opener.index; k--) shortcuts.pop();
+          }
           shortcuts.push({ index, opener: opener.index, label, end: i + 1 });
         }
         if (!image && definedRefs?.has(referenceLabel(label))) {
