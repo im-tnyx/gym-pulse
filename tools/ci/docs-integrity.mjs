@@ -78,7 +78,7 @@ function isBlockInterruption(raw) {
   // HTML block openers, ATX headings, block quotes, list items, thematic breaks,
   // setext underlines and code fences.
   const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<(?:script|pre|style|textarea)(?=[ \t>]|$)|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)|<\/(?:script|pre|style|textarea)(?=[ \t/>]|$))/i;
-  return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|1[.)])[ \t]+|(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$|=+[ \t]*$|`{3,}|~{3,})/.test(raw);
+  return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|1[.)])[ \t]+|(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$|=+[ \t]*$|-+[ \t]*$|`{3,}|~{3,})/.test(raw);
 }
 
 function htmlBlockBoundaryOffsets(text) {
@@ -324,11 +324,7 @@ function gfmTableInfo(rawMarkdown) {
       }
       pipesByLine.set(index, pipes);
       if (pipes.length > 0) {
-        const codeSpans = codeSpanRanges(rawLine, 0, rawLine.length).filter(cs => {
-          const slice = rawLine.slice(cs.start, cs.end);
-          return !slice.includes('[') && !slice.includes(']');
-        });
-        const colPipes = pipes.filter(p => !inRanges(codeSpans, p));
+        const colPipes = pipes;
         const firstPipe = colPipes[0];
         const hasLeadingPipe = firstPipe !== undefined && /^[ \t]*$/.test(rawLine.slice(0, firstPipe));
         const hasTrailingPipe = colPipes.length > 0 && /^[ \t]*$/.test(rawLine.slice(colPipes.at(-1) + 1));
@@ -336,7 +332,7 @@ function gfmTableInfo(rawMarkdown) {
         if (!hasLeadingPipe) cellCount++;
         if (!hasTrailingPipe) cellCount++;
         const cols = activeTable.cols;
-        if (cols >= 2 && cellCount > cols && !starts.get(index)?.isHeader && !starts.get(index)?.isDivider) {
+        if (cols >= 1 && cellCount > cols && !starts.get(index)?.isHeader && !starts.get(index)?.isDivider) {
           const cutoff = hasLeadingPipe ? colPipes[cols] : colPipes[cols - 1];
           if (cutoff !== undefined) {
             excessRangesByLine.set(index, { start: cutoff, end: rawLine.length });
@@ -354,11 +350,13 @@ function removeCode(rawMarkdown, collectedIds = null) {
   // Multiline code spans and HTML comments cannot change fence ownership.
   const lines = markdown.split(/\r\n|\n|\r/);
   const { pipesByLine: tablePipesByLine, excessRangesByLine } = gfmTableInfo(markdown);
-  const fencedBlockRanges = [];
+  const literalCodeRanges = [];
   {
     let fence = null;
     let htmlCloser = null;
+    let htmlStart = 0;
     let offset = 0;
+    let prepassParagraphOpen = false;
     for (const rawLine of lines) {
       const lineStart = offset;
       offset += rawLine.length + 1;
@@ -368,43 +366,79 @@ function removeCode(rawMarkdown, collectedIds = null) {
         const closer = content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
         if (closer && closer[1][0] === fence.marker &&
             closer[1].length >= fence.count && /^[ \t]*$/.test(closer[2])) {
-          fencedBlockRanges.push({ start: fence.start, end: offset });
+          literalCodeRanges.push({ start: fence.start, end: offset });
           fence = null;
         }
         continue;
       }
       if (htmlCloser) {
-        if (rawLine.includes(htmlCloser)) htmlCloser = null;
+        if (rawLine.includes(htmlCloser)) {
+          literalCodeRanges.push({ start: htmlStart, end: offset });
+          htmlCloser = null;
+        }
         continue;
       }
+      const isBlank = /^[ \t]*$/.test(rawLine);
+      if (isBlank) { prepassParagraphOpen = false; }
+      else if (!prepassParagraphOpen) {
+        const lineIndent = visualColumn((content.match(/^[ \t]*/) || [''])[0]);
+        if (lineIndent >= 4) {
+          literalCodeRanges.push({ start: lineStart, end: offset });
+          continue;
+        }
+      }
       if (/^ {0,3}<!--/.test(content)) {
-        if (!content.includes('-->')) htmlCloser = '-->';
+        if (!content.includes('-->')) { htmlCloser = '-->'; htmlStart = lineStart; }
+        else { literalCodeRanges.push({ start: lineStart, end: offset }); }
+        prepassParagraphOpen = false;
         continue;
       }
       if (/^ {0,3}<\?/.test(content)) {
-        if (!content.includes('?>')) htmlCloser = '?>';
+        if (!content.includes('?>')) { htmlCloser = '?>'; htmlStart = lineStart; }
+        else { literalCodeRanges.push({ start: lineStart, end: offset }); }
+        prepassParagraphOpen = false;
         continue;
       }
       if (/^ {0,3}<![A-Z]/.test(content)) {
-        if (!content.includes('>')) htmlCloser = '>';
+        if (!content.includes('>')) { htmlCloser = '>'; htmlStart = lineStart; }
+        else { literalCodeRanges.push({ start: lineStart, end: offset }); }
+        prepassParagraphOpen = false;
         continue;
       }
       if (/^ {0,3}<!\[CDATA\[/.test(content)) {
-        if (!content.includes(']]>')) htmlCloser = ']]>';
+        if (!content.includes(']]>')) { htmlCloser = ']]>'; htmlStart = lineStart; }
+        else { literalCodeRanges.push({ start: lineStart, end: offset }); }
+        prepassParagraphOpen = false;
         continue;
       }
       const rawTag = /^ {0,3}<(script|pre|style|textarea)(?=[ \t>]|$)/i.exec(content);
       if (rawTag) {
         const closeRegex = new RegExp('</' + rawTag[1] + '>', 'i');
-        if (!closeRegex.test(content)) htmlCloser = '</' + rawTag[1] + '>';
+        if (!closeRegex.test(content)) { htmlCloser = '</' + rawTag[1] + '>'; htmlStart = lineStart; }
+        else { literalCodeRanges.push({ start: lineStart, end: offset }); }
+        prepassParagraphOpen = false;
         continue;
       }
       const opener = content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
       if (opener && (opener[1][0] === '~' || !opener[2].includes('`'))) {
         fence = { marker: opener[1][0], count: opener[1].length, start: lineStart };
+        prepassParagraphOpen = false;
+      } else if (!isBlank && !isBlockInterruption(content)) {
+        prepassParagraphOpen = true;
+      } else {
+        prepassParagraphOpen = false;
       }
     }
+    if (fence) {
+      literalCodeRanges.push({ start: fence.start, end: markdown.length });
+    }
+    if (htmlCloser) {
+      literalCodeRanges.push({ start: htmlStart, end: markdown.length });
+    }
   }
+  const codeSpans = codeSpanRanges(markdown, 0, markdown.length);
+  literalCodeRanges.push(...codeSpans);
+  literalCodeRanges.sort((a, b) => a.start - b.start || a.end - b.end);
   // Front matter is metadata, not inline Markdown. An unmatched opener
   // remains ordinary text so it cannot hide live links.
   let frontMatterEnd = -1;
@@ -430,12 +464,12 @@ function removeCode(rawMarkdown, collectedIds = null) {
   while (searchTail < markdown.length) {
     const bracket = markdown.indexOf('](', searchTail);
     if (bracket < 0) break;
-    if (inRanges(fencedBlockRanges, bracket)) {
+    if (inRanges(literalCodeRanges, bracket)) {
       searchTail = bracket + 2;
       continue;
     }
     if (!escapedAt(markdown, bracket) && hasMatchingLinkOpener(markdown, bracket)) {
-      const tail = parseInlineTail(markdown, bracket + 1);
+      const tail = parseInlineTail(markdown, bracket + 1, false);
       if (tail) {
         multilineProtectedRanges.push({ start: bracket + 1, end: tail.end });
         searchTail = tail.end;
@@ -817,7 +851,8 @@ function removeCode(rawMarkdown, collectedIds = null) {
       const lineCol = visualColumn((line.match(/^[ \t]*/) || [''])[0]);
       if (lineCol >= 4 && !paragraphOpen && !lineIsRefDef &&
           (listIndent === null || lineCol < listIndent || lineCol >= listIndent + 4)) return ' '.repeat(line.length);
-      const contentCol = visualColumn((container.content.match(/^[ \t]*/) || [''])[0]);
+      const wsMatch = (container.content.match(/^[ \t]*/) || [''])[0];
+      const contentCol = visualColumn(wsMatch, container.consumedCol) - container.consumedCol;
       if (contentCol >= 4 && !paragraphOpen &&
           (container.quoteDepth > 0 || container.listIndent > 0)) {
         return ' '.repeat(line.length);
@@ -836,7 +871,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
       const bracket = line.indexOf('](', tailSearch);
       if (bracket < 0) break;
       if (!escapedAt(line, bracket) && hasMatchingLinkOpener(line, bracket)) {
-        const tail = parseInlineTail(line, bracket + 1);
+        const tail = parseInlineTail(line, bracket + 1, false);
         if (tail) {
           protectedRanges.push({ start: bracket + 1, end: tail.end });
           tailSearch = tail.end;
@@ -1299,7 +1334,7 @@ function headingSlug(heading, definedRefs = new Set()) {
 function markdownContainer(raw, paragraphOpen = false) {
   // Keep the opening container shape so HTML blocks stop masking when their
   // blockquote/list ends. Deep nesting exceeds this pilot's parser bound.
-  let content = raw, quoteDepth = 0, listIndent = 0;
+  let content = raw, quoteDepth = 0, listIndent = 0, consumedCol = 0;
   const containers = [];
   for (let hop = 0; hop < 4; hop++) {
     const before = content;
@@ -1307,24 +1342,26 @@ function markdownContainer(raw, paragraphOpen = false) {
     if (quote) {
       quoteDepth++;
       containers.push({ kind: 'quote' });
+      consumedCol = visualColumn(quote[0], consumedCol);
       content = content.slice(quote[0].length);
     }
     if (/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content)) break;
     const list = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])([ \t]+|[ \t]*$)/.exec(content);
     if (list) {
       const markerStr = list[0].slice(0, list[0].length - list[2].length);
-      const markerCol = visualColumn(markerStr);
+      const markerCol = visualColumn(markerStr, consumedCol) - consumedCol;
       const wsStr = list[2];
-      const afterWsCol = visualColumn(wsStr, markerCol);
+      const afterWsCol = visualColumn(wsStr, consumedCol + markerCol) - consumedCol;
       const spacesCol = afterWsCol - markerCol;
       const padding = spacesCol === 0 || spacesCol >= 5 ? 1 : spacesCol;
-      const consumedWs = stripIndent(wsStr, padding, markerCol);
+      const consumedWs = stripIndent(wsStr, padding, consumedCol + markerCol);
       const rest = (consumedWs?.remaining || '') + content.slice(list[0].length);
       const isEmptyItem = /^[ \t]*$/.test(rest);
       const canInterrupt = !paragraphOpen || ((!list[1] || list[1] === '1') && !isEmptyItem);
       if (canInterrupt) {
         const consumedIndent = markerCol + padding;
         listIndent += consumedIndent;
+        consumedCol += consumedIndent;
         containers.push({ kind: 'list', indent: consumedIndent });
         content = (consumedWs?.remaining || '') + content.slice(list[0].length);
       }
@@ -1336,7 +1373,7 @@ function markdownContainer(raw, paragraphOpen = false) {
     ? /^ {0,3}(?:>|(?:[-+*]|1[.)])[ \t]+[^ \t\r\n])/.test(content)
     : /^ {0,3}(?:>|(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|[ \t]*$))/.test(content));
   if (unconsumedContainer) failParserBound();
-  return { content, quoteDepth, listIndent, containers };
+  return { content, quoteDepth, listIndent, containers, consumedCol };
 }
 function headingContainerContent(raw, paragraphOpen = false) {
   return markdownContainer(raw, paragraphOpen).content;
@@ -1933,13 +1970,16 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
       });
     } catch { return true; }
   }
+  if (/%(?:2e|2f|5c)/i.test(value)) return true;
   let decoded;
   try {
-    decoded = value.replace(/\\([!-/:-@\[-`{-~ ])/g, '$1');
+    decoded = value.replace(/\\([!-/:-@\[-{-~ ])/g, '');
     decoded = decoded.replace(/&([A-Za-z][A-Za-z0-9]+);/g, (entity, token) =>
       Object.hasOwn(NAMED_DESTINATION_ENTITIES, token)
         ? NAMED_DESTINATION_ENTITIES[token] : '\x01');
     decoded = decodeLinkEntities(decoded);
+    decoded = decodeURIComponent(decoded);
+    if (decoded.includes('\0') || decoded.includes('\\')) return true;
   } catch { return true; }
   // Unknown expansions must not enable arbitrary relative path traversal.
   // If an unknown entity occupies an entire path component or can reshape
@@ -2218,8 +2258,11 @@ function destinationWindow(text, start) {
   return Math.min(text.length, start + LINK_DEST_LIMIT);
 }
 
-function separatorExceeded(index, limit, text) {
-  if (index >= limit && limit < text.length) failParserBound();
+function separatorExceeded(index, limit, text, allowFailBound = true) {
+  if (index >= limit && limit < text.length) {
+    if (!allowFailBound) return;
+    failParserBound();
+  }
 }
 
 // Spaces, tabs, and at most one line ending. A blank line rejects the link.
@@ -2266,7 +2309,7 @@ function readAngleDestination(text, index, limit) {
   return null;
 }
 
-function readBareDestination(text, index, limit) {
+function readBareDestination(text, index, limit, allowFailBound = true) {
   const start = index;
   let depth = 0;
   while (index < limit) {
@@ -2283,7 +2326,10 @@ function readBareDestination(text, index, limit) {
     }
     if (ch === ' ' || ch === '\t' || ch === '\n' || ch < ' ' || ch === '\x7f') break;
     if (ch === '(') {
-      if (++depth > MAX_DEST_DEPTH) failParserBound();
+      if (++depth > MAX_DEST_DEPTH) {
+        if (!allowFailBound) return null;
+        failParserBound();
+      }
     } else if (ch === ')') {
       if (depth === 0) break;
       depth--;
@@ -2332,18 +2378,18 @@ function readLinkTitle(text, index, limit) {
   return null;
 }
 
-function readDestinationAt(text, index, limit) {
+function readDestinationAt(text, index, limit, allowFailBound = true) {
   if (index >= limit) {
-    separatorExceeded(index, limit, text);
+    separatorExceeded(index, limit, text, allowFailBound);
     return null;
   }
   if (text[index] === '<') return readAngleDestination(text, index, limit);
-  return readBareDestination(text, index, limit);
+  return readBareDestination(text, index, limit, allowFailBound);
 }
 
 // Inline link tail begins at the '(' immediately after link text.
 // Returns null for malformed syntax so an incomplete opener can stay a shortcut.
-function parseInlineTail(text, parenIndex) {
+function parseInlineTail(text, parenIndex, allowFailBound = true) {
   const start = parenIndex + 1;
   const limit = destinationWindow(text, start);
   const lead = skipLinkSeparator(text, start, limit);
@@ -2359,7 +2405,7 @@ function parseInlineTail(text, parenIndex) {
       }
     }
   }
-  const dest = readDestinationAt(text, index, limit);
+  const dest = readDestinationAt(text, index, limit, allowFailBound);
   if (!dest) return null;
   const raw = dest.raw;
   index = dest.end;
@@ -2374,7 +2420,7 @@ function parseInlineTail(text, parenIndex) {
     index = afterTitle.index;
   }
   if (text[index] !== ')') {
-    separatorExceeded(index, limit, text);
+    separatorExceeded(index, limit, text, allowFailBound);
     return null;
   }
   return { raw, end: index + 1 };
