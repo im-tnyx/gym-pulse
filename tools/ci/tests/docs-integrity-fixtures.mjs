@@ -802,6 +802,12 @@ const fixtures = [
       '[<user@example.invalid>](Target.md)\n', true],
     ['escaped table pipe before cell delimiter preserves table boundaries',
       '| a\\|| b |\n| --- | --- |\n| ` | [old](Target.md) ` |\n', false],
+    ['table state preserved across pipe-free body row',
+      '| a | b |\n| --- | --- |\nplain\n| ` | [old](Target.md) ` |\n', false],
+    ['reference definition with code span in label detects deleted target',
+      '[`a`]: Target.md\n\n[text][`a`]\n', false],
+    ['shortcut reference definition with code span in label detects deleted target',
+      '[`a`]: Target.md\n\n[`a`]\n', false],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName, checkerTimeout]) => ({
     name, consumer, pass, baseTarget, deletedName, checkerTimeout, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',

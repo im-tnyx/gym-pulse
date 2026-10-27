@@ -308,15 +308,19 @@ function gfmTableInfo(rawMarkdown) {
   const pipesByLine = new Map();
   let activeContainer = null;
   for (let index = 0; index < lines.length; index++) {
-    if (starts.has(index)) activeContainer = starts.get(index);
+    if (starts.has(index)) {
+      activeContainer = starts.get(index);
+    } else if (activeContainer !== null) {
+      if (containers[index] !== activeContainer || /^[ \t]*$/.test(contents[index]) || isBlockInterruption(contents[index])) {
+        activeContainer = null;
+      }
+    }
     if (activeContainer === containers[index] && contents[index].includes('|')) {
       const pipes = [];
       for (let pipe = 0; pipe < lines[index].length; pipe++) {
         if (lines[index][pipe] === '|' && !escapedAt(lines[index], pipe)) pipes.push(pipe);
       }
       pipesByLine.set(index, pipes);
-    } else if (activeContainer !== null) {
-      activeContainer = null;
     }
   }
   return { pipesByLine };
@@ -2288,7 +2292,7 @@ function parseInlineTail(text, parenIndex) {
   return { raw, end: index + 1 };
 }
 
-function parseReferenceLabelAt(text, bracketIndex) {
+function parseReferenceLabelAt(text, bracketIndex, rawText = text) {
   if (text[bracketIndex] !== '[') return null;
   const start = bracketIndex + 1;
   let index = start;
@@ -2303,8 +2307,9 @@ function parseReferenceLabelAt(text, bracketIndex) {
     if (text[index] === ']') {
       const label = text.slice(start, index);
       if (label.length > LINK_LABEL_LIMIT) failParserBound();
-      if (label.length && !/[^ \t\r\n]/.test(label)) return null;
-      return { label, end: index + 1 };
+      const rawLabel = rawText ? rawText.slice(start, index) : label;
+      if (rawLabel.length && !/[^ \t\r\n]/.test(rawLabel)) return null;
+      return { label: rawLabel, end: index + 1 };
     }
     index++;
     if (index - start > LINK_LABEL_LIMIT) failParserBound();
@@ -2417,7 +2422,7 @@ function scanBracketLinks(rawText, masks = [], collectShortcuts = false, defined
     }
     let hasFullRefFollower = false;
     if (text[i + 1] === '[') {
-      const ref = parseReferenceLabelAt(text, i + 1);
+      const ref = parseReferenceLabelAt(text, i + 1, originalText ?? text);
       if (ref && ref.end <= (boundaries[nextBoundary] ?? text.length)) {
         hasFullRefFollower = true;
         const textLabel = (originalText ?? text).slice(opener.index + 1, i);
@@ -2436,7 +2441,7 @@ function scanBracketLinks(rawText, masks = [], collectShortcuts = false, defined
       }
     }
     if (!hasFullRefFollower) {
-      const shortcut = parseReferenceLabelAt(text, opener.index);
+      const shortcut = parseReferenceLabelAt(text, opener.index, originalText ?? text);
       if (shortcut?.end === i + 1) {
         const label = (originalText ?? text).slice(opener.index + 1, i);
         if (collectShortcuts) {
@@ -2462,7 +2467,7 @@ function parseReferenceDefinition(text, bracketIndex, lastClose, rawText = text)
   const start = bracketIndex + 1;
   // A bare unmatched opener is prose, including long escaped stress input.
   if (lastClose < start) return null;
-  const parsedLabel = parseReferenceLabelAt(text, bracketIndex);
+  const parsedLabel = parseReferenceLabelAt(text, bracketIndex, rawText);
   if (!parsedLabel || !parsedLabel.label || text[parsedLabel.end] !== ':') return null;
   const label = rawText ? rawText.slice(start, parsedLabel.end - 1) : parsedLabel.label;
   let index = parsedLabel.end + 1;
