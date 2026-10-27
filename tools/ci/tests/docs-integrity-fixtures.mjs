@@ -842,6 +842,20 @@ const fixtures = [
       '[old](Target.md) `\n--\n`\n', false],
     ['dash setext underline interrupts multiline comment mask',
       '[old](Target.md) <!--\n-\n-->\n', false],
+    ['wildcard destination with escaped letter fails closed on deleted target',
+      '[old](\\Target&Aacute;.md)', false, null, 'Unparseable inbound destination; fail closed', 'TargetÁ.md'],
+    ['wildcard destination with escaped pipe detects deleted target',
+      '[old](Target\\|&Aacute;.md)', false, null, 'Unparseable inbound destination; fail closed', 'Target|Á.md'],
+    ['wildcard destination with escaped brace detects deleted target',
+      '[old](Target\\}&Aacute;.md)', false, null, 'Unparseable inbound destination; fail closed', 'Target}Á.md'],
+    ['wildcard destination with escaped backtick detects deleted target',
+      '[old](Target\\`&Aacute;.md)', false, null, 'Unparseable inbound destination; fail closed', 'Target`Á.md'],
+    ['large unmatched backtick run count stays bounded and detects live link',
+      Array.from({ length: 3000 }, (_, i) => '`'.repeat((i % 40) + 1)).join(' a ') + '\n[old](Target.md)\n',
+      false, null, undefined, undefined, 2000],
+    ['large blank-separated backtick count stays bounded and detects live link',
+      Array.from({ length: 3000 }, () => '` test').join('\n\n') + '\n\n[old](Target.md)\n',
+      false, null, undefined, undefined, 2000],
   ].map(([name, consumer, pass, baseTarget, signal, deletedName, checkerTimeout]) => ({
     name, consumer, pass, baseTarget, deletedName, checkerTimeout, md: null, extra: 'review-regression',
     signal: pass ? undefined : signal || 'invalid local link',
@@ -1324,6 +1338,9 @@ function executeFixture(test) {
     };
     if (Object.hasOwn(windowsUnsupported, test.extra)) {
       return { skip: windowsUnsupported[test.extra] };
+    }
+    if (test.deletedName && /[<>:"|?*]/.test(test.deletedName)) {
+      return { skip: `Windows cannot create a filename containing ${test.deletedName.match(/[<>:"|?*]/)[0]}` };
     }
   }
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'gympulse-docs-fixture-'));

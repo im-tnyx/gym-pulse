@@ -111,12 +111,38 @@ function hasInterveningBlockBoundary(boundaries, begin, end) {
 
 const LINK_LABEL_LIMIT = 512;
 const INLINE_CODE_CONTEXT_LIMIT = 8192;
+const MAX_CODE_SPAN_WORK = 32768;
 
 function codeSpanRanges(text, from, to) {
   const ranges = [];
   const slice = text.slice(from, to);
   const runs = [...slice.matchAll(/`+/g)];
+  if (runs.length < 2) return ranges;
+
+  const blankLineRegex = /\r?\n[ \t]*\r?\n/g;
+  const blankOffsets = [];
+  let bm;
+  while ((bm = blankLineRegex.exec(slice)) !== null) {
+    blankOffsets.push(bm.index);
+  }
+
+  const runsByLen = new Map();
+  for (let idx = 0; idx < runs.length; idx++) {
+    const len = runs[idx][0].length;
+    let list = runsByLen.get(len);
+    if (!list) {
+      list = [];
+      runsByLen.set(len, list);
+    }
+    list.push(idx);
+  }
+
+  const nextPtrByLen = new Map();
+  let blankPtr = 0;
+  let work = 0;
+
   for (let i = 0; i < runs.length; i++) {
+    if (++work > MAX_CODE_SPAN_WORK) break;
     let opener = runs[i];
     if (escapedAt(text, from + opener.index)) {
       if (opener[0].length > 1) {
@@ -126,22 +152,33 @@ function codeSpanRanges(text, from, to) {
       }
     }
     const len = opener[0].length;
-    let closer = null;
-    for (let j = i + 1; j < runs.length; j++) {
-      if (runs[j][0].length === len) {
-        const between = text.slice(from + opener.index, from + runs[j].index);
-        if (!/\n[ \t]*\n/.test(between)) {
-          closer = runs[j];
-          i = j;
-          break;
-        }
-      }
+    const list = runsByLen.get(len);
+    if (!list) continue;
+
+    while (blankPtr < blankOffsets.length && blankOffsets[blankPtr] < opener.index) {
+      blankPtr++;
     }
-    if (closer) {
+    const maxCloserOffset = blankPtr < blankOffsets.length ? blankOffsets[blankPtr] : slice.length;
+
+    let ptr = nextPtrByLen.get(len) || 0;
+    while (ptr < list.length && list[ptr] <= i) {
+      ptr++;
+    }
+    if (ptr >= list.length) {
+      nextPtrByLen.set(len, ptr);
+      continue;
+    }
+    const candidateIdx = list[ptr];
+    const candidate = runs[candidateIdx];
+    if (candidate.index < maxCloserOffset) {
       ranges.push({
         start: from + opener.index,
-        end: from + closer.index + len,
+        end: from + candidate.index + len,
       });
+      i = candidateIdx;
+      nextPtrByLen.set(len, ptr + 1);
+    } else {
+      nextPtrByLen.set(len, ptr);
     }
   }
   return ranges;
@@ -1973,7 +2010,7 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
   if (/%(?:2e|2f|5c)/i.test(value)) return true;
   let decoded;
   try {
-    decoded = value.replace(/\\([!-/:-@\[-{-~ ])/g, '');
+    decoded = value.replace(/\\([!-/:-@\[-`{-~ ])/g, '$1');
     decoded = decoded.replace(/&([A-Za-z][A-Za-z0-9]+);/g, (entity, token) =>
       Object.hasOwn(NAMED_DESTINATION_ENTITIES, token)
         ? NAMED_DESTINATION_ENTITIES[token] : '\x01');
