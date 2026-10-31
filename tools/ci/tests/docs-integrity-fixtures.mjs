@@ -838,6 +838,22 @@ const fixtures = [
       '[old](Target\\&amp;.md)', true, null, null, 'Target&.md'],
     ['mixed escaped ampersand and percent encoding retain literal path',
       '[old](Target\\&amp;%2Emd)', false, null, null, 'Target&amp;.md'],
+    ['malformed numeric entity does not block unrelated deletion',
+      '[bad](broken&#0;.md)', true, null, null, 'unrelated.md'],
+    ['malformed numeric entity still matches plausible deleted target',
+      '[bad](broken&#0;.md)', false, null, 'Unparseable inbound destination; fail closed', 'broken�.md'],
+    ['malformed numeric entity with unrelated prefix does not match deletion',
+      '[bad](broken&#xD800;.md)', true, null, null, 'other.md'],
+    ['unsupported named entity still matches plausible deleted target',
+      '[bad](broken&notSupportedHere;.md)', false, null, 'Unparseable inbound destination; fail closed', 'broken-name.md'],
+    ['invalid percent-encoded Unicode does not block unrelated deletion',
+      '[bad](broken&#0;%ED%A0%80.md)', true, null, null, 'other.md'],
+    ['invalid percent-encoded Unicode retains plausible deleted target match',
+      '[bad](broken&#0;%ED%A0%80.md)', false, null, 'Unparseable inbound destination; fail closed', 'broken�.md'],
+    ['mixed escape and unsupported entity retain literal filename prefix',
+      '[bad](broken\\-&notSupportedHere;.md)', false, null, 'Unparseable inbound destination; fail closed', 'broken-name.md'],
+    ['malformed entity with encoded traversal remains fail closed',
+      '[bad](%2e%2e%2fbroken&#0;.md)', false, null, 'Unparseable inbound destination; fail closed', 'unrelated.md'],
     ['unescaped valid named entity still expands in wildcard path',
       '[old](Target&amp;.md)', false, null, null, 'Target&.md'],
     ['unsupported named entity remains a bounded wildcard',
@@ -2062,7 +2078,24 @@ function executeFixture(test) {
 }
 
 let failed = 0, skipped = 0;
-for (const test of fixtures) {
+const args = process.argv.slice(2);
+const partitionArg = args.find(arg => arg.startsWith('--partition='));
+const fixtureFilter = args.find(arg => !arg.startsWith('--partition='));
+let selectedFixtures = fixtures.map((test, index) => ({ test, index }));
+if (partitionArg) {
+  const match = /^--partition=(\d+)\/(\d+)$/.exec(partitionArg);
+  if (!match || Number(match[2]) < 1 || Number(match[1]) >= Number(match[2])) {
+    throw new Error('Invalid partition; expected --partition=<zero-based-index>/<count>');
+  }
+  const part = Number(match[1]), count = Number(match[2]);
+  selectedFixtures = selectedFixtures.filter(({ index }) => index % count === part);
+}
+selectedFixtures = selectedFixtures.map(({ test }) => test);
+if (fixtureFilter) selectedFixtures = selectedFixtures.filter(test => test.name.includes(fixtureFilter));
+if (fixtureFilter && !selectedFixtures.length) {
+  throw new Error('No fixture names matched filter: ' + fixtureFilter);
+}
+for (const test of selectedFixtures) {
   try {
     const result = executeFixture(test);
     if (result.skip) {
@@ -2076,5 +2109,5 @@ for (const test of fixtures) {
     console.error(`FAIL fixture: ${test.name}: ${error.message}`);
   }
 }
-console.log(`Offline fixtures: ${fixtures.length - failed - skipped}/${fixtures.length} executed successfully; ${skipped} SKIP; ${failed} FAIL; GitHub Actions negative runs: NOT RUN`);
+console.log(`Offline fixtures: ${selectedFixtures.length - failed - skipped}/${selectedFixtures.length} executed successfully; ${skipped} SKIP; ${failed} FAIL; GitHub Actions negative runs: NOT RUN`);
 if (failed) process.exitCode = 1;

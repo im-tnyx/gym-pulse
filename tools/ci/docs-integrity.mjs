@@ -1985,7 +1985,7 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
     if (!namesDeleted) return false;
     return true; // Target IS in deleted, but unparseable query/fragment makes validation fail-closed.
   }
-  const hasUnknown = /&(?:[A-Za-z][A-Za-z0-9]+);/.test(value);
+  const hasUnknown = /&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/.test(value);
   if (!hasUnknown) {
     // An unknown entity may occur only in a query/fragment that was removed
     // from the filename candidate above. Preserve spaces in angle-wrapped
@@ -2005,7 +2005,10 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
         if (!withinRoot(candidate)) return false;
         return deleted.has(path.relative(root, candidate).split(path.sep).join('/'));
       });
-    } catch { return true; }
+    } catch {
+      // Decoding can fail for one token while the surrounding filename is
+      // still useful. Continue below with that literal context preserved.
+    }
   }
   if (/%(?:2e|2f|5c)/i.test(value)) return true;
   let decoded;
@@ -2015,13 +2018,18 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
     // sequence so a later stage cannot reinterpret it.
     const literalAmp = '\x02';
     if (value.includes(literalAmp)) return true;
+    if (value.includes('\x01')) return true;
     decoded = value.replace(/\\([!-/:-@\[-`{-~ ])/g,
       (_escape, punctuation) => punctuation === '&' ? literalAmp : punctuation);
-    decoded = decoded.replace(/&([A-Za-z][A-Za-z0-9]+);/g, (entity, token) =>
-      Object.hasOwn(NAMED_DESTINATION_ENTITIES, token)
-        ? NAMED_DESTINATION_ENTITIES[token] : '\x01');
-    decoded = decodeLinkEntities(decoded);
-    decoded = decodeURIComponent(decoded);
+    decoded = decoded.replace(/&(?:#(?:[xX][0-9a-fA-F]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);/g,
+      entity => {
+        try { return decodeLinkEntities(entity); }
+        catch { return '\x01'; }
+      });
+    decoded = decoded.replace(/(?:%[0-9a-fA-F]{2})+/g, sequence => {
+      try { return decodeURIComponent(sequence); }
+      catch { return '\x01'; }
+    });
     decoded = decoded.replaceAll(literalAmp, '&');
     if (decoded.includes('\0') || decoded.includes('\\')) return true;
   } catch { return true; }
