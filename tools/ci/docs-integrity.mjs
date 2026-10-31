@@ -2010,12 +2010,19 @@ function couldUnparsedDestinationNameDeleted(source, raw, deleted) {
   if (/%(?:2e|2f|5c)/i.test(value)) return true;
   let decoded;
   try {
-    decoded = value.replace(/\\([!-/:-@\[-`{-~ ])/g, '$1');
+    // An escaped ampersand is literal Markdown punctuation, not the start of
+    // an HTML entity. Protect it while decoding the remaining escape/entity
+    // sequence so a later stage cannot reinterpret it.
+    const literalAmp = '\x02';
+    if (value.includes(literalAmp)) return true;
+    decoded = value.replace(/\\([!-/:-@\[-`{-~ ])/g,
+      (_escape, punctuation) => punctuation === '&' ? literalAmp : punctuation);
     decoded = decoded.replace(/&([A-Za-z][A-Za-z0-9]+);/g, (entity, token) =>
       Object.hasOwn(NAMED_DESTINATION_ENTITIES, token)
         ? NAMED_DESTINATION_ENTITIES[token] : '\x01');
     decoded = decodeLinkEntities(decoded);
     decoded = decodeURIComponent(decoded);
+    decoded = decoded.replaceAll(literalAmp, '&');
     if (decoded.includes('\0') || decoded.includes('\\')) return true;
   } catch { return true; }
   // Unknown expansions must not enable arbitrary relative path traversal.
