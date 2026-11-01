@@ -363,8 +363,11 @@ function gfmTableInfo(rawMarkdown) {
       if (pipes.length > 0) {
         const colPipes = pipes;
         const firstPipe = colPipes[0];
-        const hasLeadingPipe = firstPipe !== undefined && /^[ \t]*$/.test(rawLine.slice(0, firstPipe));
-        const hasTrailingPipe = colPipes.length > 0 && /^[ \t]*$/.test(rawLine.slice(colPipes.at(-1) + 1));
+        const tableLine = contents[index];
+        const tableFirstPipe = tableLine.indexOf('|');
+        const tableLastPipe = tableLine.lastIndexOf('|');
+        const hasLeadingPipe = firstPipe !== undefined && /^[ \t]*$/.test(tableLine.slice(0, tableFirstPipe));
+        const hasTrailingPipe = colPipes.length > 0 && /^[ \t]*$/.test(tableLine.slice(tableLastPipe + 1));
         let cellCount = colPipes.length - 1;
         if (!hasLeadingPipe) cellCount++;
         if (!hasTrailingPipe) cellCount++;
@@ -782,13 +785,13 @@ function removeCode(rawMarkdown, collectedIds = null) {
             rawBlock.pendingTag = null;
           }
           if (!rawBlock.endOnBlank && !rawBlock.terminator &&
-              /<\/(?:script|pre|style|textarea)\s*>/i.test(blockLine)) rawBlock = null;
+              /<\/(?:script|pre|style|textarea)>/i.test(blockLine)) rawBlock = null;
           paragraphOpen = false;
           return keptLine;
         }
         if (rawBlock.terminator && blockLine.includes(rawBlock.terminator)) rawBlock = null;
         else if (!rawBlock.endOnBlank && !rawBlock.terminator &&
-            /<\/(?:script|pre|style|textarea)\s*>/i.test(blockLine)) rawBlock = null;
+            /<\/(?:script|pre|style|textarea)>/i.test(blockLine)) rawBlock = null;
         paragraphOpen = false;
         return idTagsOnly(line);
       }
@@ -820,7 +823,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
       const type1 = container.content.match(/^ {0,3}<(script|pre|style|textarea)(?=[ \t>]|$)/i);
       if (type1) {
         const tag = type1[1].toLowerCase();
-        if (!/<\/(?:script|pre|style|textarea)\s*>/i.test(container.content.slice(type1[0].length))) {
+        if (!/<\/(?:script|pre|style|textarea)>/i.test(container.content.slice(type1[0].length))) {
           rawBlock = { tag, endOnBlank: false, quoteDepth: container.quoteDepth,
             listIndent: container.listIndent, containers: container.containers,
             outerListIndent: lineInList ? activeListIndent : null };
@@ -2756,7 +2759,7 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
   // opener is in range, so a reference definition cannot hide a live link.
   const rawPriorLine = rawText.slice(start, end);
   const rawPriorOffset = start + rawPriorLine.length - rawPrior.length;
-  const hasCloserToken = isPriorMasked && /-->|\?>|]]>|<\/(?:script|pre|style|textarea)\s*>/i.test(rawPrior);
+  const hasCloserToken = isPriorMasked && /-->|\?>|]]>|<\/(?:script|pre|style|textarea)>/i.test(rawPrior);
   const priorCodeRanges = hasCloserToken ? codeSpanContextBefore(rawText, start, end) : [];
   if (priorCodeRanges === null) return false;
   const rawPriorHasUnmaskedToken = (token) => {
@@ -2774,7 +2777,7 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
     return false;
   };
   const isHtmlBlockCloser = isPriorMasked && (
-    rawPriorHasUnmaskedMatch(/<\/(?:script|pre|style|textarea)\s*>/gi) ||
+    rawPriorHasUnmaskedMatch(/<\/(?:script|pre|style|textarea)>/gi) ||
     rawPriorHasUnmaskedToken('-->') ||
     rawPriorHasUnmaskedToken('?>') ||
     rawPriorHasUnmaskedToken(']]>') ||
