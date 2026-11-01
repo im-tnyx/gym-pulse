@@ -77,8 +77,14 @@ function isBlockInterruption(raw) {
   // Inline constructs cannot cross a block boundary. Recognize the CommonMark
   // HTML block openers, ATX headings, block quotes, list items, thematic breaks,
   // setext underlines and code fences.
-  const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<(?:script|pre|style|textarea)(?=[ \t>]|$)|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$)|<\/(?:script|pre|style|textarea)(?=[ \t/>]|$))/i;
+  const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<(?:script|pre|style|textarea)(?=[ \t>]|$)|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t]|\/?>|$)|<\/(?:script|pre|style|textarea)(?=[ \t/>]|$))/i;
   return htmlBlock.test(raw) || /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|1[.)])[ \t]+|(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$|=+[ \t]*$|-+[ \t]*$|`{3,}|~{3,})/.test(raw);
+}
+
+function isTableBlockStart(raw) {
+  // GFM tables end at a block start; unlike paragraph interruption, an
+  // ordered list after a table may begin at any valid list number.
+  return isBlockInterruption(raw) || /^ {0,3}\d{1,9}[.)](?:[ \t]+|$)/.test(raw);
 }
 
 function htmlBlockBoundaryOffsets(text) {
@@ -282,7 +288,7 @@ function gfmTableInfo(rawMarkdown) {
   // owns inline parsing per cell, and a header/delimiter pair cannot cross a
   // quote or list container. Keep this deliberately line-bounded.
   const lines = rawMarkdown.split('\n');
-  const contents = [], containers = [];
+  const contents = [], containers = [], contentStarts = [];
   let listIndent = null, listOwner = 0, nextListOwner = 1;
   let priorSingleLineBlock = false, priorBlank = true;
   let tableFence = null, tableComment = false;
@@ -290,15 +296,20 @@ function gfmTableInfo(rawMarkdown) {
   for (const raw of lines) {
     const quote = /^(?: {0,3}>[ \t]?){1,4}/.exec(raw);
     const quoteDepth = quote ? (quote[0].match(/>/g) || []).length : 0;
-    let content = raw.slice(quote?.[0].length || 0);
+    let contentStart = quote?.[0].length || 0;
+    let content = raw.slice(contentStart);
     const stripped = listIndent !== null ? stripIndent(content, listIndent) : null;
     const continuationIndent = stripped !== null ? listIndent : 0;
-    if (stripped) content = stripped.remaining;
+    if (stripped) {
+      contentStart += stripped.consumedChars;
+      content = stripped.remaining;
+    }
     const thematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
     const list = !thematic ? /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content) : null;
     const listStartsBlock = list && ((listIndent !== null && !continuationIndent) || priorBlank ||
       priorSingleLineBlock || /^[-+*]$|^1[.)]$/.test(list[1]));
     const leaf = listStartsBlock ? content.slice(list[0].length) : content;
+    if (listStartsBlock) contentStart += list[0].length;
     const atx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(leaf);
     const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
     const isBlank = /^[ \t]*$/.test(content);
@@ -336,6 +347,7 @@ function gfmTableInfo(rawMarkdown) {
       listOwner = 0;
     }
     contents.push(leaf);
+    contentStarts.push(contentStart);
     containers.push(`q${quoteDepth}:l${listOwner}`);
     priorSingleLineBlock = atx || setext || thematic;
     priorBlank = isBlank;
@@ -382,33 +394,33 @@ function gfmTableInfo(rawMarkdown) {
     if (starts.has(index)) {
       activeTable = starts.get(index);
     } else if (activeTable !== null) {
-      if (containers[index] !== activeTable.container || /^[ \t]*$/.test(contents[index]) || isBlockInterruption(contents[index])) {
+      if (containers[index] !== activeTable.container || /^[ \t]*$/.test(contents[index]) || isTableBlockStart(contents[index])) {
         activeTable = null;
       }
     }
     if (activeTable && activeTable.container === containers[index] && contents[index].includes('|')) {
       const rawLine = lines[index];
-      const pipes = [];
-      for (let pipe = 0; pipe < rawLine.length; pipe++) {
-        if (rawLine[pipe] === '|' && !escapedAt(rawLine, pipe)) pipes.push(pipe);
+      const tableLine = contents[index];
+      const relativePipes = [];
+      for (let pipe = 0; pipe < tableLine.length; pipe++) {
+        if (tableLine[pipe] === '|' && !escapedAt(tableLine, pipe)) relativePipes.push(pipe);
       }
+      const pipes = relativePipes.map(pipe => contentStarts[index] + pipe);
       pipesByLine.set(index, pipes);
       if (pipes.length > 0) {
-        const colPipes = pipes;
+        const colPipes = relativePipes;
         const firstPipe = colPipes[0];
-        const tableLine = contents[index];
-        const tableFirstPipe = tableLine.indexOf('|');
-        const tableLastPipe = tableLine.lastIndexOf('|');
-        const hasLeadingPipe = firstPipe !== undefined && /^[ \t]*$/.test(tableLine.slice(0, tableFirstPipe));
+        const tableLastPipe = colPipes.at(-1);
+        const hasLeadingPipe = firstPipe !== undefined && /^[ \t]*$/.test(tableLine.slice(0, firstPipe));
         const hasTrailingPipe = colPipes.length > 0 && /^[ \t]*$/.test(tableLine.slice(tableLastPipe + 1));
         let cellCount = colPipes.length - 1;
         if (!hasLeadingPipe) cellCount++;
         if (!hasTrailingPipe) cellCount++;
         const cols = activeTable.cols;
         if (cols >= 1 && cellCount > cols && !starts.get(index)?.isHeader && !starts.get(index)?.isDivider) {
-          const cutoff = hasLeadingPipe ? colPipes[cols] : colPipes[cols - 1];
-          if (cutoff !== undefined) {
-            excessRangesByLine.set(index, { start: cutoff, end: rawLine.length });
+          const relativeCutoff = hasLeadingPipe ? colPipes[cols] : colPipes[cols - 1];
+          if (relativeCutoff !== undefined) {
+            excessRangesByLine.set(index, { start: contentStarts[index] + relativeCutoff, end: rawLine.length });
           }
         }
       }
@@ -865,7 +877,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
         paragraphOpen = false;
         return idTagsOnly(line);
       }
-      const type6 = container.content.match(/^ {0,3}(?:<\/?(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)|<\/(script|pre|style|textarea))(?=[ \t/>]|$)/i);
+      const type6 = container.content.match(/^ {0,3}(?:<\/?(address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)|<\/(script|pre|style|textarea))(?=[ \t]|\/?>|$)/i);
       if (type6) {
         const tag = (type6[1] || type6[2]).toLowerCase();
         rawBlock = { tag, endOnBlank: true, quoteDepth: container.quoteDepth,
@@ -2873,7 +2885,7 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
     const headingStart = text.lastIndexOf('\n', headingEnd - 1) + 1;
     const heading = text.slice(headingStart, headingEnd)
       .replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
-    const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t/>]|$))/i;
+    const htmlBlock = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|nav|noframes|ol|optgroup|option|p|param|pre|script|search|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|title|tr|track|ul)(?=[ \t]|\/?>|$))/i;
     return Boolean(heading) && !/^[ \t]*$/.test(heading) &&
       !htmlBlock.test(heading) &&
       !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])[ \t]+|`{3,}|~{3,})/.test(heading) &&
