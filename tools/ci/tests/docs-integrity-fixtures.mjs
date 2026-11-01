@@ -946,8 +946,18 @@ const fixtures = [
     pass: true, markdownCount: 0 },
   { name: 'spaced raw HTML pre closing tag does not end the block', md: null, extra: 'deleted-raw-pre-spaced-close',
     pass: true, markdownCount: 0 },
+  { name: 'opening-line spaced pre terminator does not expose pseudo-link', md: null, extra: 'deleted-raw-pre-opening-spaced-close',
+    pass: true, markdownCount: 0 },
+  { name: 'pending-tag spaced pre terminator does not expose pseudo-link', md: null, extra: 'deleted-raw-pre-pending-spaced-close',
+    pass: true, markdownCount: 0 },
   { name: 'raw HTML script block pseudo-link ignored', md: null, extra: 'deleted-raw-script',
     pass: true, markdownCount: 0 },
+  { name: 'case-insensitive pre closing tag exposes following link', md: null, extra: 'deleted-raw-pre-case-then-link',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'script closing tag exposes following link', md: null, extra: 'deleted-raw-script-then-link',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'style closing tag exposes following link', md: null, extra: 'deleted-raw-style-then-link',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'link after raw HTML pre block is scanned', md: null, extra: 'deleted-raw-then-link',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'entity in base heading preserves deletion anchor validity', md: null, extra: 'deleted-heading-entity',
@@ -1020,6 +1030,12 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'fullwidth heading anchor preserved without compatibility normalization', md: null, extra: 'deleted-fullwidth-anchor',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'empty ATX heading participates in duplicate slug accounting', md: null, extra: 'deleted-empty-heading-suffix',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'punctuation-only headings allocate duplicate empty slugs', md: null, extra: 'deleted-punctuation-empty-heading-suffix',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'whitespace-only ATX headings allocate duplicate empty slugs', md: null, extra: 'deleted-whitespace-empty-heading-suffix',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'double intraword underscore heading anchor preserved', md: null, extra: 'deleted-heading-double-underscore',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'triple intraword underscore heading anchor preserved', md: null, extra: 'deleted-heading-triple-underscore',
@@ -1043,6 +1059,8 @@ const fixtures = [
   { name: 'two-hyphen table delimiter preserves cell link', md: null, extra: 'deleted-table-two-hyphen',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'blockquote table preserves final column link', md: null, extra: 'deleted-blockquote-table',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'nested blockquote table preserves final column link', md: null, extra: 'deleted-nested-blockquote-table',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'mismatched single-column table delimiter does not break prose link', md: null, extra: 'deleted-table-single-column',
     pass: true, markdownCount: 0 },
@@ -1201,7 +1219,21 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'URI autolink content is not a local Markdown link', md: null, extra: 'deleted-uri-autolink',
     pass: true, markdownCount: 0 },
+  { name: 'ASCII control does not allow URI autolink to hide deleted link', md: null, extra: 'deleted-uri-ascii-control',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'ASCII space does not allow URI autolink to hide deleted link', md: null, extra: 'deleted-uri-ascii-space',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'ASCII tab does not allow URI autolink to hide deleted link', md: null, extra: 'deleted-uri-ascii-tab',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'ASCII newline does not allow URI autolink to hide deleted link', md: null, extra: 'deleted-uri-ascii-newline',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'NBSP remains permitted inside URI autolink', md: null, extra: 'deleted-uri-nbsp',
+    pass: true, markdownCount: 0 },
   { name: 'real Markdown link after URI autolink remains active', md: null, extra: 'deleted-uri-autolink-then-link',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'indented code table lookalike cannot hide following deleted link', md: null, extra: 'deleted-code-table-lookalike',
+    pass: false, signal: 'invalid local link', markdownCount: 0 },
+  { name: 'HTML comment table lookalike cannot hide following deleted link', md: null, extra: 'deleted-comment-table-lookalike',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'angle-wrapped link cannot have a garbage suffix', md: null, extra: 'deleted-angle-suffix',
     pass: true, markdownCount: 0 },
@@ -1417,7 +1449,12 @@ function executeFixture(test) {
       'deleted-multiline-code-then-link': '# Consumer\n`start\nnot-link`\n[old](Target.md)\n',
       'deleted-raw-pre': '# Consumer\n<pre>\n[old](Target.md)\n</pre>\n',
       'deleted-raw-pre-spaced-close': '# Consumer\n<pre>\n</pre >\n[old](Target.md)\n</pre>\n',
+      'deleted-raw-pre-opening-spaced-close': '# Consumer\n<pre></pre >\n[old](Target.md)\n</pre>\n',
+      'deleted-raw-pre-pending-spaced-close': '# Consumer\n<pre\n>\n</pre >\n[old](Target.md)\n</pre>\n',
       'deleted-raw-script': '# Consumer\n<script>\n[old](Target.md)\n</script>\n',
+      'deleted-raw-pre-case-then-link': '# Consumer\n<PRE>\n[hidden](Target.md)\n</pRe>\n[old](Target.md)\n',
+      'deleted-raw-script-then-link': '# Consumer\n<script>\n[hidden](Target.md)\n</script>\n[old](Target.md)\n',
+      'deleted-raw-style-then-link': '# Consumer\n<style>\n[hidden](Target.md)\n</style>\n[old](Target.md)\n',
       'deleted-raw-then-link': '# Consumer\n<pre>\n[old](Target.md)\n</pre>\n[old](Target.md)\n',
       'deleted-heading-entity': '# Consumer\n[old](Target.md#ab)\n',
       'deleted-heading-boundary-underscore': '# Consumer\n[old](Target.md#_foo)\n[old2](Target.md#foo_)\n[old3](Target.md#__foo)\n[old4](Target.md#foo__)\n',
@@ -1454,6 +1491,9 @@ function executeFixture(test) {
       'deleted-malformed-first-def-no-blank': '# Consumer\n[x]\n\n[x]: ../README.md garbage\n[x]: Target.md\n',
       'deleted-valid-ref-title': '# Consumer\n[x]\n\n[x]: Target.md "valid title"\n',
       'deleted-fullwidth-anchor': '# Consumer\n[old](Target.md#%EF%BD%81)\n',
+      'deleted-empty-heading-suffix': '# Consumer\n[old](Target.md#-1)\n',
+      'deleted-punctuation-empty-heading-suffix': '# Consumer\n[old](Target.md#-1)\n',
+      'deleted-whitespace-empty-heading-suffix': '# Consumer\n[old](Target.md#-1)\n',
       'deleted-heading-double-underscore': '# Consumer\n[old](Target.md#foo__bar)\n',
       'deleted-heading-triple-underscore': '# Consumer\n[old](Target.md#foo___bar)\n',
       'deleted-heading-code-underscore': '# Consumer\n[old](Target.md#foo__bar)\n',
@@ -1463,6 +1503,7 @@ function executeFixture(test) {
       'deleted-table-one-hyphen': '# Consumer\n| [x | z](Consumer.md "title [old](Target.md)") |\n| - | - |\n',
       'deleted-table-two-hyphen': '# Consumer\n| [x | z](Consumer.md "title [old](Target.md)") |\n| -- | -- |\n',
       'deleted-blockquote-table': '# Consumer\n> | A | B |\n> | - | - |\n> | one | [old](Target.md) |\n',
+      'deleted-nested-blockquote-table': '# Consumer\n> > | A | B |\n> > | - | - |\n> > | one | [old](Target.md) |\n',
       'deleted-distinct-fullwidth-ref': '# Consumer\n[Ａ]\n\n[A]: Target.md\n',
       'deleted-unrelated-eacute': '# Consumer\n[u](caf&eacute;.md)\n',
       'deleted-unrelated-unknown-entity': '# Consumer\n[u](caf&notSupportedHere;.md)\n',
@@ -1565,6 +1606,13 @@ function executeFixture(test) {
       'deleted-div-close-no-blank': '# Consumer\n<div>\n[hidden](Target.md)\n</div>\n[still-hidden](Target.md)\n',
       'deleted-uri-autolink': '# Consumer\n<https://example.invalid/[old](Target.md)>\n',
       'deleted-uri-autolink-then-link': '# Consumer\n<https://example.invalid/[old](Target.md)>\n[old](Target.md)\n',
+      'deleted-uri-ascii-control': '# Consumer\n<https://example.invalid/\u0001[old](Target.md)>\n',
+      'deleted-uri-ascii-space': '# Consumer\n<https://example.invalid/ [old](Target.md)>\n',
+      'deleted-uri-ascii-tab': '# Consumer\n<https://example.invalid/\t[old](Target.md)>\n',
+      'deleted-uri-ascii-newline': '# Consumer\n<https://example.invalid/\n[old](Target.md)>\n',
+      'deleted-uri-nbsp': '# Consumer\n<https://example.invalid/\u00a0[old](Target.md)>\n',
+      'deleted-code-table-lookalike': '# Consumer\n    Header | Other\n    --- | ---\nkeep | text | [old](Target.md)\n',
+      'deleted-comment-table-lookalike': '# Consumer\n<!--\nHeader | Other\n--- | ---\n-->\nkeep | text | [old](Target.md)\n',
       'deleted-angle-suffix': '# Consumer\n[old](<Target.md>garbage)\n',
       'deleted-ref-unbalanced': '# Consumer\n[x]\n\n[x]: Target).md\n',
       'deleted-yaml-link': '---\ntitle: "[old](Target.md)"\n---\n# Consumer\n',
@@ -1829,6 +1877,15 @@ function executeFixture(test) {
     if (test.extra === 'deleted-heading-code-spaces') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# `a  b`\n');
     }
+    if (test.extra === 'deleted-empty-heading-suffix') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '#\n# !!!\n');
+    }
+    if (test.extra === 'deleted-punctuation-empty-heading-suffix') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '# !!!\n# ???\n');
+    }
+    if (test.extra === 'deleted-whitespace-empty-heading-suffix') {
+      fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '#\n# \t\n');
+    }
     if (test.extra === 'deleted-unquoted-id') {
       fs.writeFileSync(path.join(root, 'docs', 'Target.md'), '<a id=kept></a>\n');
     }
@@ -1862,7 +1919,9 @@ function executeFixture(test) {
     const deletions = ['deleted-inbound', 'deleted-reference', 'deleted-encoded',
       'deleted-numeric-entity', 'deleted-named-entity', 'deleted-unknown-entity', 'deleted-escaped-label',
       'deleted-list-continuation', 'deleted-multiline-code', 'deleted-multiline-code-then-link',
-      'deleted-raw-pre', 'deleted-raw-pre-spaced-close', 'deleted-raw-script', 'deleted-raw-then-link',
+      'deleted-raw-pre', 'deleted-raw-pre-spaced-close', 'deleted-raw-pre-opening-spaced-close',
+      'deleted-raw-pre-pending-spaced-close', 'deleted-raw-script',
+      'deleted-raw-pre-case-then-link', 'deleted-raw-script-then-link', 'deleted-raw-style-then-link', 'deleted-raw-then-link',
       'deleted-unused', 'deleted-unrelated', 'deleted-fenced',
       'deleted-bad-anchor', 'deleted-duplicate-ref',
       'deleted-invalid-fence', 'deleted-comment-inline', 'deleted-comment-block',
@@ -1888,11 +1947,14 @@ function executeFixture(test) {
       'deleted-casefold-cyrillic', 'deleted-casefold-cherokee',
       'deleted-malformed-first-def', 'deleted-malformed-first-def-no-blank', 'deleted-valid-ref-title',
       'deleted-fullwidth-anchor', 'deleted-distinct-fullwidth-ref',
+      'deleted-empty-heading-suffix', 'deleted-punctuation-empty-heading-suffix',
+      'deleted-whitespace-empty-heading-suffix',
       'deleted-heading-double-underscore', 'deleted-heading-triple-underscore',
       'deleted-heading-code-underscore', 'deleted-heading-emphasis-underscore',
       'deleted-heading-boundary-underscore', 'deleted-heading-escaped-underscore', 'deleted-heading-double-emphasis',
       'deleted-heading-double-underscore-missing', 'deleted-heading-code-spaces',
-      'deleted-table-one-hyphen', 'deleted-table-two-hyphen', 'deleted-table-single-column', 'deleted-blockquote-table',
+      'deleted-table-one-hyphen', 'deleted-table-two-hyphen', 'deleted-table-single-column',
+      'deleted-blockquote-table', 'deleted-nested-blockquote-table',
       'deleted-unrelated-eacute', 'deleted-unrelated-unknown-entity',
       'deleted-root-absolute', 'deleted-root-unrelated', 'deleted-root-normalized',
       'deleted-angle-leading', 'deleted-entity-alias-unrelated',
@@ -1920,6 +1982,9 @@ function executeFixture(test) {
       'deleted-heading-global-suffix', 'deleted-blockquote-heading',
       'deleted-list-heading', 'deleted-escaped-html-tag',
       'deleted-uri-autolink', 'deleted-uri-autolink-then-link',
+      'deleted-uri-ascii-control', 'deleted-uri-ascii-space', 'deleted-uri-ascii-tab',
+      'deleted-uri-ascii-newline', 'deleted-uri-nbsp',
+      'deleted-code-table-lookalike', 'deleted-comment-table-lookalike',
       'deleted-angle-suffix', 'deleted-yaml-link', 'deleted-yaml-then-link',
       'deleted-gfm-footnote',
       'deleted-ref-multiline', 'deleted-ref-list', 'deleted-ref-list-multiline',
@@ -2060,7 +2125,12 @@ function executeFixture(test) {
       git(root, 'add', '-A');
       git(root, 'commit', '-q', '-m', 'unrelated third parent');
       git(root, 'checkout', '-q', 'main');
-      git(root, 'merge', '-q', '--no-ff', '-m', 'synthetic three-parent merge', 'pr', 'third');
+      // Construct the synthetic three-parent commit directly. Git's octopus
+      // strategy rejects --no-ff on some versions, before the checker runs.
+      const tree = git(root, 'write-tree');
+      const merge = git(root, 'commit-tree', tree, '-p', 'HEAD', '-p', 'pr', '-p', 'third',
+        '-m', 'synthetic three-parent merge');
+      git(root, 'update-ref', 'HEAD', merge);
     } else {
       git(root, 'merge', '-q', '--no-ff', '-m', 'synthetic PR merge', 'pr');
     }

@@ -266,7 +266,9 @@ function hasMatchingLinkOpener(text, bracket) {
 }
 function uriAutolinkRanges(text) {
   const ranges = [];
-  const autolink = /<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*|[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)>/g;
+  // CommonMark excludes ASCII controls, space, and angle brackets from URI
+  // autolinks; Unicode whitespace such as NBSP remains permitted.
+  const autolink = /<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\x00-\x20\x7f]*|[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)>/g;
   for (const match of text.matchAll(autolink)) {
     if (!escapedAt(text, match.index)) {
       ranges.push({ start: match.index, end: match.index + match[0].length });
@@ -283,6 +285,8 @@ function gfmTableInfo(rawMarkdown) {
   const contents = [], containers = [];
   let listIndent = null, listOwner = 0, nextListOwner = 1;
   let priorSingleLineBlock = false, priorBlank = true;
+  let tableFence = null, tableComment = false;
+  const tableEligible = [];
   for (const raw of lines) {
     const quote = /^(?: {0,3}>[ \t]?){1,4}/.exec(raw);
     const quoteDepth = quote ? (quote[0].match(/>/g) || []).length : 0;
@@ -298,6 +302,29 @@ function gfmTableInfo(rawMarkdown) {
     const atx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(leaf);
     const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
     const isBlank = /^[ \t]*$/.test(content);
+    let eligible = true;
+    if (tableFence) {
+      eligible = false;
+      const close = leaf.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      if (close && close[1][0] === tableFence.marker && close[1].length >= tableFence.count && /^[ \t]*$/.test(close[2])) {
+        tableFence = null;
+      }
+    } else if (tableComment) {
+      eligible = false;
+      if (leaf.includes('-->')) tableComment = false;
+    } else {
+      const fence = leaf.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      if (fence && (fence[1][0] !== '`' || !fence[2].includes('`'))) {
+        eligible = false;
+        tableFence = { marker: fence[1][0], count: fence[1].length };
+      } else if (/^ {0,3}<!--/.test(leaf)) {
+        eligible = false;
+        if (!leaf.slice(leaf.indexOf('<!--') + 4).includes('-->')) tableComment = true;
+      } else if (/^(?: {4,}|\t)/.test(leaf)) {
+        eligible = false;
+      }
+    }
+    tableEligible.push(eligible);
     if (listStartsBlock) {
       const marker = list[0].slice(0, list[0].length - (list[0].match(/[ \t]+$/)?.[0].length || 0));
       const markerCol = visualColumn(marker);
@@ -333,6 +360,7 @@ function gfmTableInfo(rawMarkdown) {
   };
   const starts = new Map();
   for (let index = 0; index + 1 < lines.length; index++) {
+    if (!tableEligible[index] || !tableEligible[index + 1]) continue;
     if (containers[index] !== containers[index + 1]) continue;
     const header = splitCells(contents[index]);
     const divider = splitCells(contents[index + 1]);
@@ -347,6 +375,10 @@ function gfmTableInfo(rawMarkdown) {
   const excessRangesByLine = new Map();
   let activeTable = null;
   for (let index = 0; index < lines.length; index++) {
+    if (!tableEligible[index]) {
+      activeTable = null;
+      continue;
+    }
     if (starts.has(index)) {
       activeTable = starts.get(index);
     } else if (activeTable !== null) {
@@ -1560,11 +1592,11 @@ function headingsIn(text, original = text, collectedIds = null) {
       listIndent = null;
     }
     const atx = container.content
-      .match(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/);
+      .match(/^ {0,3}#{1,6}(?:[ \t]+(.*?))?(?:[ \t]+#+[ \t]*)?$/);
     if (atx) {
       const source = markdownContainer(origContainerLine).content
-        .match(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/);
-      addSlug(source ? source[1] : atx[1]);
+        .match(/^ {0,3}#{1,6}(?:[ \t]+(.*?))?(?:[ \t]+#+[ \t]*)?$/);
+      addSlug(source ? (source[1] ?? '') : (atx[1] ?? ''));
     } else if (i > 0 && /^ {0,3}(?:=+|-+)[ \t]*$/.test(container.content)) {
       const previous = lines[i - 1];
       const prevParagraphOpen = i >= 2 && !/^[ \t]*$/.test(lines[i - 2]) &&
