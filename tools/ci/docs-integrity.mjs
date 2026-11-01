@@ -336,8 +336,9 @@ function gfmTableInfo(rawMarkdown) {
     if (containers[index] !== containers[index + 1]) continue;
     const header = splitCells(contents[index]);
     const divider = splitCells(contents[index + 1]);
+    const headerIsAtx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(contents[index]);
     if (header?.length && divider?.length && delimiter(contents[index + 1]) &&
-        header.length === divider.length) {
+        header.length === divider.length && !headerIsAtx) {
       starts.set(index, { container: containers[index], cols: header.length, isHeader: true });
       starts.set(index + 1, { container: containers[index], cols: header.length, isDivider: true });
     }
@@ -2497,6 +2498,10 @@ function parseReferenceLabelAt(text, bracketIndex, rawText = text) {
       const label = text.slice(start, index);
       if (label.length > LINK_LABEL_LIMIT) failParserBound();
       const rawLabel = rawText ? rawText.slice(start, index) : label;
+      for (let rawIndex = start; rawIndex < index; rawIndex++) {
+        if ((rawText[rawIndex] === '[' || rawText[rawIndex] === ']') &&
+            !escapedAt(rawText, rawIndex)) return null;
+      }
       if (rawLabel.length && !/[^ \t\r\n]/.test(rawLabel)) return null;
       return { label: rawLabel, end: index + 1 };
     }
