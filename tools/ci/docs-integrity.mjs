@@ -313,7 +313,27 @@ function gfmTableInfo(rawMarkdown) {
     const atx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(leaf);
     const setext = /^ {0,3}(?:=+|-+)[ \t]*$/.test(leaf);
     const isBlank = /^[ \t]*$/.test(content);
+    if (listStartsBlock) {
+      const marker = list[0].slice(0, list[0].length - (list[0].match(/[ \t]+$/)?.[0].length || 0));
+      const markerCol = visualColumn(marker);
+      const spaces = visualColumn(list[0].slice(marker.length), markerCol) - markerCol;
+      listIndent = continuationIndent + markerCol + (spaces >= 5 ? 1 : spaces);
+      listOwner = nextListOwner++;
+    } else if (!continuationIndent && !isBlank) {
+      listIndent = null;
+      listOwner = 0;
+    }
     let eligible = true;
+    if (tableFence) {
+      if (quoteDepth < tableFence.quoteDepth || (tableFence.listOwner !== 0 && listOwner !== tableFence.listOwner && !isBlank)) {
+        tableFence = null;
+      }
+    }
+    if (tableComment) {
+      if (quoteDepth < tableComment.quoteDepth || (tableComment.listOwner !== 0 && listOwner !== tableComment.listOwner && !isBlank)) {
+        tableComment = null;
+      }
+    }
     if (tableFence) {
       eligible = false;
       const close = leaf.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
@@ -327,25 +347,15 @@ function gfmTableInfo(rawMarkdown) {
       const fence = leaf.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
       if (fence && (fence[1][0] !== '`' || !fence[2].includes('`'))) {
         eligible = false;
-        tableFence = { marker: fence[1][0], count: fence[1].length };
+        tableFence = { marker: fence[1][0], count: fence[1].length, quoteDepth, listOwner };
       } else if (/^ {0,3}<!--/.test(leaf)) {
         eligible = false;
-        if (!leaf.slice(leaf.indexOf('<!--') + 4).includes('-->')) tableComment = true;
+        if (!leaf.slice(leaf.indexOf('<!--') + 4).includes('-->')) tableComment = { quoteDepth, listOwner };
       } else if (/^(?: {4,}|\t)/.test(leaf)) {
         eligible = false;
       }
     }
     tableEligible.push(eligible);
-    if (listStartsBlock) {
-      const marker = list[0].slice(0, list[0].length - (list[0].match(/[ \t]+$/)?.[0].length || 0));
-      const markerCol = visualColumn(marker);
-      const spaces = visualColumn(list[0].slice(marker.length), markerCol) - markerCol;
-      listIndent = continuationIndent + markerCol + (spaces >= 5 ? 1 : spaces);
-      listOwner = nextListOwner++;
-    } else if (!continuationIndent && !isBlank) {
-      listIndent = null;
-      listOwner = 0;
-    }
     contents.push(leaf);
     contentStarts.push(contentStart);
     containers.push(`q${quoteDepth}:l${listOwner}`);
@@ -370,19 +380,6 @@ function gfmTableInfo(rawMarkdown) {
     const cells = splitCells(line);
     return Boolean(cells?.length) && cells.every(cell => /^\s*:?-{1,}:?\s*$/.test(cell));
   };
-  const starts = new Map();
-  for (let index = 0; index + 1 < lines.length; index++) {
-    if (!tableEligible[index] || !tableEligible[index + 1]) continue;
-    if (containers[index] !== containers[index + 1]) continue;
-    const header = splitCells(contents[index]);
-    const divider = splitCells(contents[index + 1]);
-    const headerIsAtx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(contents[index]);
-    if (header?.length && divider?.length && delimiter(contents[index + 1]) &&
-        header.length === divider.length && !headerIsAtx) {
-      starts.set(index, { container: containers[index], cols: header.length, isHeader: true });
-      starts.set(index + 1, { container: containers[index], cols: header.length, isDivider: true });
-    }
-  }
   const pipesByLine = new Map();
   const excessRangesByLine = new Map();
   let activeTable = null;
@@ -391,11 +388,25 @@ function gfmTableInfo(rawMarkdown) {
       activeTable = null;
       continue;
     }
-    if (starts.has(index)) {
-      activeTable = starts.get(index);
-    } else if (activeTable !== null) {
-      if (containers[index] !== activeTable.container || /^[ \t]*$/.test(contents[index]) || isTableBlockStart(contents[index])) {
+    if (activeTable !== null) {
+      if (containers[index] !== activeTable.container ||
+          /^[ \t]*$/.test(contents[index]) ||
+          isTableBlockStart(contents[index])) {
         activeTable = null;
+      }
+    }
+    if (activeTable === null && index + 1 < lines.length && tableEligible[index + 1] && containers[index] === containers[index + 1]) {
+      const header = splitCells(contents[index]);
+      const divider = splitCells(contents[index + 1]);
+      const headerIsAtx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(contents[index]);
+      if (header?.length && divider?.length && delimiter(contents[index + 1]) &&
+          header.length === divider.length && !headerIsAtx) {
+        activeTable = {
+          container: containers[index],
+          cols: header.length,
+          headerIndex: index,
+          dividerIndex: index + 1,
+        };
       }
     }
     if (activeTable && activeTable.container === containers[index] && contents[index].includes('|')) {
@@ -417,7 +428,7 @@ function gfmTableInfo(rawMarkdown) {
         if (!hasLeadingPipe) cellCount++;
         if (!hasTrailingPipe) cellCount++;
         const cols = activeTable.cols;
-        if (cols >= 1 && cellCount > cols && !starts.get(index)?.isHeader && !starts.get(index)?.isDivider) {
+        if (cols >= 1 && cellCount > cols && index !== activeTable.headerIndex && index !== activeTable.dividerIndex) {
           const relativeCutoff = hasLeadingPipe ? colPipes[cols] : colPipes[cols - 1];
           if (relativeCutoff !== undefined) {
             excessRangesByLine.set(index, { start: contentStarts[index] + relativeCutoff, end: rawLine.length });
@@ -439,31 +450,62 @@ function removeCode(rawMarkdown, collectedIds = null) {
   {
     let fence = null;
     let htmlCloser = null;
-    let htmlStart = 0;
+    let htmlStart = 0, htmlQuoteDepth = 0;
     let offset = 0;
     let prepassParagraphOpen = false;
+    let prepassListIndent = null;
     for (const rawLine of lines) {
       const lineStart = offset;
       offset += rawLine.length + 1;
       const stripped = /^(?: {0,3}>[ \t]?){0,4}/.exec(rawLine);
-      const content = rawLine.slice(stripped ? stripped[0].length : 0);
+      const quoteDepth = stripped ? (stripped[0].match(/>/g) || []).length : 0;
+      let content = rawLine.slice(stripped ? stripped[0].length : 0);
+      const isBlank = /^[ \t]*$/.test(rawLine);
+      const strippedCont = prepassListIndent !== null ? stripIndent(content, prepassListIndent) : null;
+      const continuationIndent = strippedCont !== null ? prepassListIndent : 0;
+      if (strippedCont) content = strippedCont.remaining;
+      const thematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
+      const list = !thematic ? /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(?=[^ \t])/.exec(content) : null;
+      const listStartsBlock = list && ((prepassListIndent !== null && !continuationIndent) ||
+        !prepassParagraphOpen || /^[-+*]$|^1[.)]$/.test(list[1]));
+      if (listStartsBlock) {
+        const marker = list[0].slice(0, list[0].length - (list[0].match(/[ \t]+$/)?.[0].length || 0));
+        const markerCol = visualColumn(marker);
+        const spaces = visualColumn(list[0].slice(marker.length), markerCol) - markerCol;
+        prepassListIndent = continuationIndent + markerCol + (spaces >= 5 ? 1 : spaces);
+      } else if (!continuationIndent && !isBlank) {
+        prepassListIndent = null;
+      }
       if (fence) {
-        const closer = content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
-        if (closer && closer[1][0] === fence.marker &&
-            closer[1].length >= fence.count && /^[ \t]*$/.test(closer[2])) {
-          literalCodeRanges.push({ start: fence.start, end: offset });
+        const containerEnded = (fence.quoteDepth > 0 && quoteDepth < fence.quoteDepth) ||
+          (fence.listIndent !== null && !continuationIndent && !isBlank);
+        if (containerEnded) {
+          literalCodeRanges.push({ start: fence.start, end: lineStart });
           fence = null;
+        } else {
+          const closer = content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+          if (closer && closer[1][0] === fence.marker &&
+              closer[1].length >= fence.count && /^[ \t]*$/.test(closer[2])) {
+            literalCodeRanges.push({ start: fence.start, end: offset });
+            fence = null;
+          }
+          continue;
         }
-        continue;
       }
       if (htmlCloser) {
-        if (rawLine.includes(htmlCloser)) {
-          literalCodeRanges.push({ start: htmlStart, end: offset });
+        const containerEnded = (htmlQuoteDepth > 0 && quoteDepth < htmlQuoteDepth) ||
+          (prepassListIndent !== null && !continuationIndent && !isBlank);
+        if (containerEnded) {
+          literalCodeRanges.push({ start: htmlStart, end: lineStart });
           htmlCloser = null;
+        } else {
+          if (rawLine.includes(htmlCloser)) {
+            literalCodeRanges.push({ start: htmlStart, end: offset });
+            htmlCloser = null;
+          }
+          continue;
         }
-        continue;
       }
-      const isBlank = /^[ \t]*$/.test(rawLine);
       if (isBlank) { prepassParagraphOpen = false; }
       else if (!prepassParagraphOpen) {
         const lineIndent = visualColumn((content.match(/^[ \t]*/) || [''])[0]);
@@ -473,7 +515,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
         }
       }
       if (/^ {0,3}<!--/.test(content)) {
-        if (!content.includes('-->')) { htmlCloser = '-->'; htmlStart = lineStart; }
+        if (!content.includes('-->')) { htmlCloser = '-->'; htmlStart = lineStart; htmlQuoteDepth = quoteDepth; }
         else { literalCodeRanges.push({ start: lineStart, end: offset }); }
         prepassParagraphOpen = false;
         continue;
@@ -506,7 +548,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
       }
       const opener = content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
       if (opener && (opener[1][0] === '~' || !opener[2].includes('`'))) {
-        fence = { marker: opener[1][0], count: opener[1].length, start: lineStart };
+        fence = { marker: opener[1][0], count: opener[1].length, start: lineStart, quoteDepth, listIndent: prepassListIndent };
         prepassParagraphOpen = false;
       } else if (!isBlank && !isBlockInterruption(content)) {
         prepassParagraphOpen = true;
@@ -591,6 +633,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
     const prefix = defPrefix.exec(line.slice(continuation));
     const bracket = lineStart + continuation + (prefix ? prefix[0].length : 0);
     if (prefix && markdown[bracket] === '[' && !escapedAt(markdown, bracket) &&
+        !inRanges(literalCodeRanges, bracket) &&
         referenceDefinitionCanStart(markdown, lineStart, priorDef)) {
       let parsedDef = parseReferenceDefinition(prepassDefText, bracket, prepassLastDefClose, prepassDefText);
       if (parsedDef && !validDefinitionContinuation(markdown, lineStart, parsedDef.end, defScanListIndent)) {
@@ -2840,7 +2883,11 @@ function referenceDefinitionCanStart(text, offset, last, rawText = text) {
     while (probeEnd >= 0 && inspected++ < 64) {
       const probeStart = text.lastIndexOf('\n', probeEnd - 1) + 1;
       const probeRaw = rawText.slice(probeStart, probeEnd).replace(/^(?: {0,3}>[ \t]?){1,4}/, '');
-      if (/^(?: {4,}|\t)/.test(probeRaw)) { probeEnd = probeStart - 1; continue; }
+      if (/^(?: {4,}|\t)/.test(probeRaw)) {
+        if (probeStart <= 0) return true;
+        probeEnd = probeStart - 1;
+        continue;
+      }
       if (/^[ \t]*$/.test(probeRaw)) return true;
       if (/^ {0,3}(?:`{3,}|~{3,}|#{1,6}(?:[ \t]+|[ \t]*$)|(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$)/.test(probeRaw)) return true;
       // An open paragraph owns every indented continuation up to this point.
