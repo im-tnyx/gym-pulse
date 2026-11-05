@@ -73,27 +73,26 @@ Ensure the repository is not in an abnormal Git state:
 - Confirm you are not in a **detached HEAD** state (`git status` reports `HEAD detached at ...`). If detached, follow [Scenario B in Section 9](#scenario-b-detached-head-state) to preserve any detached commits before switching.
 - Confirm no active merge, rebase, cherry-pick, or revert operation is in progress (`git status` reports `rebase in progress` or similar). If an operation is in progress, do not proceed with synchronization.
 
-### Step 4: Inspect Fetched Upstream Changes
+### Step 4: Pin, Then Inspect Fetched Upstream Changes
 
-Before applying changes to `main`, inspect what `git fetch origin` retrieved from the remote, then pin the inspected tip so later integration cannot silently advance past that review:
+Before applying changes to `main`, **first pin** the fetched tip to an immutable SHA, then inspect **that SHA**. Do not inspect the mutable `origin/main` ref and capture it afterward: a concurrent `git fetch` in another worktree/process can advance `origin/main` between inspection and capture, causing Step 6 to integrate an unreviewed tip.
 
-```bash
-git log --oneline main..origin/main
-git diff --stat main..origin/main
-```
-
-Record the exact inspected tip:
+Pin the tip:
 
 - *POSIX / Git Bash:*
   ```bash
   INSPECTED_ORIGIN_MAIN=$(git rev-parse origin/main)
+  git log --oneline main.."$INSPECTED_ORIGIN_MAIN"
+  git diff --stat main.."$INSPECTED_ORIGIN_MAIN"
   ```
 - *Windows PowerShell:*
   ```powershell
   $INSPECTED_ORIGIN_MAIN = git rev-parse origin/main
+  git log --oneline main..$INSPECTED_ORIGIN_MAIN
+  git diff --stat main..$INSPECTED_ORIGIN_MAIN
   ```
 
-**Safety Invariant:** Review the incoming commit subjects and touched paths. If the fetched commits contain unexpected, unexplained, or unauthorized changes (e.g. unintended file modifications, unexpected branch merges, or diverged history), stop immediately and seek clarification from the repository owner before updating local `main`.
+**Safety Invariant:** Review the incoming commit subjects and touched paths against the pinned SHA only. If those commits contain unexpected, unexplained, or unauthorized changes (e.g. unintended file modifications, unexpected branch merges, or diverged history), stop immediately and seek clarification from the repository owner before updating local `main`.
 
 ### Step 5: Switch to Local `main` and Record Pre-Sync Baseline
 
@@ -132,23 +131,23 @@ Integrate **only** the commit tip inspected in Step 4. Do **not** run `git pull`
 #### Why `--ff-only` against the inspected tip is Mandatory:
 - **Linear & Predictable History:** Local `main` advances strictly as a linear fast-forward to the reviewed tip.
 - **Fails Closed on Divergence:** If local `main` contains unpushed local commits or has diverged from the inspected tip, `git merge --ff-only` aborts immediately instead of creating an unwanted merge commit.
-- **No Inspect/Integrate Race:** Capturing `$INSPECTED_ORIGIN_MAIN` after fetch, then merging that exact SHA, prevents a later network refresh from integrating unreviewed commits.
+- **No Inspect/Integrate Race:** Pinning `$INSPECTED_ORIGIN_MAIN` **before** inspection, inspecting that immutable SHA, then merging that same SHA prevents concurrent fetches from substituting an unreviewed tip.
 
 ---
 
 ## 4. Verify Local and Remote Commit SHAs
 
-Verify that local `main` reached the inspected tip and still matches the fetched remote-tracking tip:
+Verify that local `main` reached the pinned inspected tip:
 
 ```bash
 git rev-parse HEAD
 git rev-parse origin/main
 ```
 
-- *POSIX / Git Bash:* also confirm `test "$(git rev-parse HEAD)" = "$INSPECTED_ORIGIN_MAIN"`.
-- *Windows PowerShell:* also confirm `(git rev-parse HEAD) -eq $INSPECTED_ORIGIN_MAIN`.
+- *POSIX / Git Bash:* confirm `test "$(git rev-parse HEAD)" = "$INSPECTED_ORIGIN_MAIN"`.
+- *Windows PowerShell:* confirm `(git rev-parse HEAD) -eq $INSPECTED_ORIGIN_MAIN`.
 
-**Expected Result:** `HEAD`, `origin/main`, and `$INSPECTED_ORIGIN_MAIN` are the exact same 40-character hexadecimal commit SHA. If `HEAD` advanced past `$INSPECTED_ORIGIN_MAIN`, stop and treat the sync as invalid.
+**Expected Result:** `HEAD` equals `$INSPECTED_ORIGIN_MAIN`. If `HEAD` does not equal `$INSPECTED_ORIGIN_MAIN`, stop and treat the sync as invalid. A concurrent fetch may advance `origin/main` past the pinned tip; that is acceptable only when `HEAD` still equals `$INSPECTED_ORIGIN_MAIN`. Do not merge a newer `origin/main` without repeating Step 4 against a freshly pinned SHA.
 
 ---
 
