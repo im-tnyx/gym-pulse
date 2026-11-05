@@ -49,7 +49,17 @@ Or for a clean working tree on a task branch:
 
 When the working tree is confirmed clean (`git status -sb` shows no uncommitted changes):
 
-### Step 1: Fetch Remote References
+### Step 1: Verify Remote Configuration
+
+Before issuing network fetch commands, confirm that `origin` points to the authorized repository URL:
+
+```bash
+git remote -v
+```
+
+**Expected:** `origin` resolves to `https://github.com/im-tnyx/gym-pulse.git` (or the approved SSH remote `git@github.com:im-tnyx/gym-pulse.git`). If `origin` is unverified, missing, or points to an untrusted fork, stop and correct the remote configuration before proceeding.
+
+### Step 2: Fetch Remote References
 
 ```bash
 git fetch origin
@@ -57,13 +67,13 @@ git fetch origin
 
 This retrieves the latest remote commit objects and updates `origin/*` references without modifying your local working tree or current branch HEAD.
 
-### Step 2: Verify Branch & Upstream State Before Switching
+### Step 3: Verify Branch & Upstream State Before Switching
 
 Ensure the repository is not in an abnormal Git state:
-- Confirm you are not in a **detached HEAD** state (`git status` reports `HEAD detached at ...`).
+- Confirm you are not in a **detached HEAD** state (`git status` reports `HEAD detached at ...`). If detached, follow [Scenario B in Section 9](#scenario-b-detached-head-state) to preserve any detached commits before switching.
 - Confirm no active merge, rebase, cherry-pick, or revert operation is in progress (`git status` reports `rebase in progress` or similar). If an operation is in progress, do not proceed with synchronization.
 
-### Step 3: Switch to Local `main`
+### Step 4: Switch to Local `main`
 
 ```bash
 git switch main
@@ -71,7 +81,7 @@ git switch main
 
 *(If using an older Git version where `git switch` is unavailable, fallback to `git checkout main`.)*
 
-### Step 4: Fast-Forward Only Update
+### Step 5: Fast-Forward Only Update
 
 ```bash
 git pull --ff-only origin main
@@ -175,10 +185,19 @@ Run only the validations relevant to the current repository state and task scope
   git diff --check
   ```
 - **Commit Attribution Guard Check:**
-  ```bash
-  & "G:\dev\git\bin\bash.exe" scripts/check_commit_attribution_test.sh
-  ```
-  *(Or `bash scripts/check_commit_attribution_test.sh` on POSIX environments.)*
+  - *POSIX / Git Bash:*
+    ```bash
+    bash scripts/check_commit_attribution_test.sh
+    bash scripts/check_commit_attribution.sh origin/main HEAD
+    ```
+  - *Windows PowerShell:*
+    ```powershell
+    # If bash is available on PATH:
+    bash scripts/check_commit_attribution_test.sh
+    # Alternatively, dynamically locate Git's bash binary from git.exe in PATH:
+    $gitBash = Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin\bash.exe'
+    & $gitBash scripts/check_commit_attribution_test.sh
+    ```
 - **Documentation Integrity Fixtures:**
   ```bash
   node tools/ci/tests/docs-integrity-fixtures.mjs
