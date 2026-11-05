@@ -96,7 +96,7 @@ Use this matrix during PR preparation, review, and merge handoff. Categories are
 | :--- | :--- | :--- | :--- | :--- |
 | **Canonical Architecture & Product Specs** | `docs/01-product/`, `docs/02-architecture/`, `docs/04-screen-specifications.md`, `docs/05`–`12`, `docs/14`–`15` | Verified, authorized change to product requirements, C4 architecture models, domain models, or operational specs. | PR affects developer workflow, tooling, internal navigation, or noncanonical notes only. | Changes to requirements or architecture must link to approved issue/ADR. |
 | **Canonical Decision Register** | `docs/00-overview/assumptions.md` | Formal transition of a canonical decision ID (`D-ARCH-xxx`, `D-SEC-xxx`, etc.) to `DECIDED`, `DEFERRED`, or `PROPOSED`. | PR implements within existing decided parameters or is a docs/tooling task with no governance status changes. | Requires explicit human owner decision evidence. Never promote `PROPOSED` to `DECIDED` without recorded owner approval. |
-| **Architectural Decision Records** | `docs/adr/README.md` & `docs/adr/ADR-xxxx-*.md` | Creation of a new ADR, revision of an existing ADR, or formal acceptance/supersession. | PR does not introduce, alter, or decide an architectural decision record. | Acceptance requires an authorized owner, explicit approval evidence, and synchronized register update. |
+| **Architectural Decision Records** | `docs/adr/README.md` & `docs/adr/ADR-xxxx-*.md` | Creation of a new ADR, revision of an existing ADR, or formal acceptance/supersession. | PR does not introduce, alter, or decide an architectural decision record. | Acceptance requires an authorized owner, explicit approval evidence, and synchronized register update. Never reuse numbers or reserve speculative ADR numbers. |
 | **Engineering Governance & Workflow Guides** | `docs/13-engineering/` | Development workflows, review procedures, documentation impact guidance, or testing policies. | PR does not alter engineering governance or contributor assessment guides. | Changes must be reviewable governance proposals and not bypass repo rulesets. |
 | **Design System & UI Proposals** | `docs/03-applications/` | Reviewed change to Phase 1 token roles, accessibility states, screen layouts, or operational density. | Unrelated backend, infrastructure, git workflow, or docs-integrity changes. | Remains `Draft / Proposed`; does not approve brand tokens or client frameworks without human review. |
 | **Root Pointer Documents** | `DESIGN.md`, root `README.md` | Discoverable link target moves or canonical design entry point structure changes. | Routine UI, styling, component, or design proposal changes that do not break the root pointer. | Must remain a thin entry point; never add brand tokens, palettes, or framework selections directly to `DESIGN.md`. |
@@ -121,18 +121,18 @@ Use this matrix during PR preparation, review, and merge handoff. Categories are
   - *Active Handoff (`.ai/current-state.md`):* `N/A` — Adding discoverable cross-links does not materially alter active task ownership, blockers, baseline SHA, or the immediate next bounded action (per materiality filter).
   - *Historical Archives (`.ai/archive/`):* `N/A` — Immutable historical audit record; no routine changes permitted.
 
-### Example 2: Proposed ADR PR (Hypothetical Scenario, No Acceptance Authorization)
-* **Scenario:** A contributor submits a draft ADR proposing an asynchronous job queue mechanism (hypothetical `ADR-0014: Background Task Queue Architecture`; note: `ADR-0012` and `ADR-0013` already exist in the repository as `Proposed`).
+### Example 2: Proposed ADR Revision or Creation PR (No Acceptance Authorization)
+* **Scenario:** A contributor submits a review-only revision to existing proposed architecture record `docs/adr/ADR-0015-background-jobs-scheduler.md` to refine worker concurrency tradeoffs, or drafts a new proposal using a symbolic placeholder (`ADR-XXXX`) until an unused number is allocated from live inventory (noting that `ADR-0001` through `ADR-0026` already exist in the repository backlog).
 * **Matrix Dispositions:**
-  - *Canonical Architecture & Product Specs:* `N/A` — Proposed ADR is candidate architecture; canonical architecture remains unchanged until accepted.
-  - *Canonical Decision Register (`assumptions.md`):* `Follow-up Required` — Proposing a draft ADR does not automatically authorize editing the canonical decision register or altering decision statuses. Adding a corresponding `PROPOSED` entry in `assumptions.md` requires separate governance authorization by the designated decision owner. Status remains unapproved until explicit owner decision evidence is recorded.
-  - *Architectural Decision Records (`docs/adr/`):* `Update` — Add `ADR-0014` with header `Status: Proposed`; add candidate entry to `docs/adr/README.md`.
-  - *Engineering Governance & Workflow Guides (`docs/13-engineering/`):* `N/A` — Engineering workflow governance is unaffected.
-  - *Design System & UI Proposals (`docs/03-applications/`):* `N/A` — Background queue architecture is unrelated to UI specifications.
-  - *Root Pointer Documents (`DESIGN.md`, `README.md`):* `N/A` — Root pointers remain intact.
-  - *Contributor & Agent Workflow Guidance:* `N/A` — Contributor workflow guides are unaffected.
-  - *Active Handoff (`.ai/current-state.md`):* `N/A` — Drafting an ADR within an assigned task does not alter overall task ownership, baseline SHA, or next bounded action until a formal review or transfer milestone is reached (per materiality filter).
-  - *Historical Archives (`.ai/archive/`):* `N/A` — Immutable.
+  - *Canonical Architecture & Product Specs:* `N/A` — Proposed ADR content is candidate architecture; canonical structured architecture remains unchanged until an ADR is formally accepted.
+  - *Canonical Decision Register (`assumptions.md`):* `Follow-up Required` — Proposing or revising a draft ADR does not automatically authorize editing the canonical decision register or altering decision statuses. Adding or updating a corresponding `PROPOSED` entry in `assumptions.md` requires separate governance authorization by the designated decision owner. Decision status remains unapproved until explicit owner decision evidence is recorded.
+  - *Architectural Decision Records (`docs/adr/`):* `Update` — For revisions: update `docs/adr/ADR-0015-background-jobs-scheduler.md`, retaining header `Status: Proposed`. For new proposals: allocate the next strictly unused sequential number per `docs/adr/README.md` (never reusing or speculatively reserving numbers, and never reallocating existing drafted IDs `ADR-0001` through `ADR-0026`).
+  - *Engineering Governance & Workflow Guides (`docs/13-engineering/`):* `N/A` — Engineering workflow governance documents are unaffected.
+  - *Design System & UI Proposals (`docs/03-applications/`):* `N/A` — Background scheduler architecture is unrelated to UI specifications.
+  - *Root Pointer Documents (`DESIGN.md`, `README.md`):* `N/A` — Root entry points remain intact.
+  - *Contributor & Agent Workflow Guidance:* `N/A` — Contributor guidelines are unaffected.
+  - *Active Handoff (`.ai/current-state.md`):* `N/A` — Revising an ADR within an ongoing assigned task does not alter overall task ownership, baseline SHA, or next bounded action until a formal handoff or review milestone is reached (per materiality filter).
+  - *Historical Archives (`.ai/archive/`):* `N/A` — Immutable historical audit record; no routine changes permitted.
 
 ### Example 3: UI / Design System Draft Proposal PR
 * **Scenario:** A PR refines semantic token roles and high-density staff table layouts in `docs/03-applications/design-system.md`.
