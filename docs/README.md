@@ -172,6 +172,7 @@ ADR governance lives in `adr/README.md`.
 - Use Mermaid when diagrams improve clarity.
 - Avoid duplicating the same canonical rule across many files.
 - Update dependent documentation when a canonical rule changes.
+- Assess documentation impact and verify state freshness for every pull request and merge per the [documentation impact assessment policy](13-engineering/documentation-impact-assessment.md).
 - Do not introduce legacy decision IDs into structured docs.
 
 ## Current Structured-Document Status
