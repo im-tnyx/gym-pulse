@@ -24,7 +24,7 @@ This guide establishes an evidence-based, disciplined procedure for evaluating w
    - **Factual Change:** A verified reality change (e.g., test suite results, tool command syntax, file rename, merged commit SHA). Documented directly with evidence.
    - **Proposed Decision:** A concrete technical or architectural proposal submitted for review. It must remain explicitly labeled `Proposed` or `Draft`. It has no implementation authority.
    - **Accepted Decision:** An authorized human decision owner has formally approved the proposal and recorded explicit approval evidence. Only then may the canonical decision register (`docs/00-overview/assumptions.md`) be updated to `DECIDED` and the ADR to `Accepted`.
-   - **Unrelated / Scoped Implementation Change:** A bounded change that does not touch canonical business logic, system boundaries, security invariants, or design foundations (e.g., whitespace corrections, developer workflow documentation). Canonical documents must record `N/A`.
+   - **Unrelated / Scoped Implementation Change:** A bounded change that does not touch canonical business logic, system boundaries, security invariants, or design foundations (e.g., whitespace corrections, developer workflow documentation). The PR's documentation impact assessment records `N/A` with a concise rationale, and unaffected canonical files remain completely untouched.
 4. **Fail-Closed on Incomplete Evidence:** If evidence is missing, test runs did not complete, or ownership is unassigned, document the gap explicitly (`INCOMPLETE_EVIDENCE` or `UNRESOLVED_OWNERSHIP`). Never invent approval to clear a review checklist.
 
 ---
