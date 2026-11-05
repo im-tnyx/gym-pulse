@@ -67,13 +67,26 @@ git fetch origin
 
 This retrieves the latest remote commit objects and updates `origin/*` references without modifying your local working tree or current branch HEAD.
 
-### Step 3: Verify Branch & Upstream State Before Switching
+### Step 3: Verify Branch State Before Switching
 
 Ensure the repository is not in an abnormal Git state:
 - Confirm you are not in a **detached HEAD** state (`git status` reports `HEAD detached at ...`). If detached, follow [Scenario B in Section 9](#scenario-b-detached-head-state) to preserve any detached commits before switching.
 - Confirm no active merge, rebase, cherry-pick, or revert operation is in progress (`git status` reports `rebase in progress` or similar). If an operation is in progress, do not proceed with synchronization.
 
-### Step 4: Switch to Local `main`
+### Step 4: Inspect Fetched Upstream Changes
+
+Before applying changes to `main`, inspect what `git fetch origin` retrieved from the remote:
+
+```bash
+git log --oneline main..origin/main
+git diff --stat main..origin/main
+```
+
+**Safety Invariant:** Review the incoming commit subjects and touched paths. If the fetched commits contain unexpected, unexplained, or unauthorized changes (e.g. unintended file modifications, unexpected branch merges, or diverged history), stop immediately and seek clarification from the repository owner before updating local `main`.
+
+### Step 5: Switch to Local `main` and Record Pre-Sync Baseline
+
+Switch to local `main`:
 
 ```bash
 git switch main
@@ -81,7 +94,18 @@ git switch main
 
 *(If using an older Git version where `git switch` is unavailable, fallback to `git checkout main`.)*
 
-### Step 5: Fast-Forward Only Update
+Record the pre-sync commit SHA before pulling so that post-sync validations can check the exact incoming commit range:
+
+- *POSIX / Git Bash:*
+  ```bash
+  PRE_SYNC_SHA=$(git rev-parse HEAD)
+  ```
+- *Windows PowerShell:*
+  ```powershell
+  $PRE_SYNC_SHA = git rev-parse HEAD
+  ```
+
+### Step 6: Fast-Forward Only Update
 
 ```bash
 git pull --ff-only origin main
@@ -181,22 +205,36 @@ To start the next bounded task:
 Run only the validations relevant to the current repository state and task scope:
 
 - **Whitespace & Conflict Check:**
-  ```bash
-  git diff --check
-  ```
+  - *Incoming Synchronized Commits (validates commits pulled into `main`):*
+    If new commits were pulled (`$PRE_SYNC_SHA` does not match `HEAD`):
+    ```bash
+    git diff --check $PRE_SYNC_SHA..HEAD
+    ```
+  - *Working Tree (Uncommitted Modifications):*
+    ```bash
+    git diff --check
+    ```
+    *(Note: Plain `git diff --check` inspects uncommitted working-tree modifications only. In a clean worktree after sync, it returns 0. To validate newly pulled commits, check the commit range `$PRE_SYNC_SHA..HEAD`.)*
 - **Commit Attribution Guard Check:**
+  The attribution guard validates that commits in the specified range do not contain prohibited AI co-author trailers. To inspect the newly synchronized commits, pass the recorded pre-sync SHA as the base ref:
   - *POSIX / Git Bash:*
     ```bash
     bash scripts/check_commit_attribution_test.sh
-    bash scripts/check_commit_attribution.sh origin/main HEAD
+    # If new commits were pulled ($PRE_SYNC_SHA != HEAD):
+    bash scripts/check_commit_attribution.sh $PRE_SYNC_SHA HEAD
+    # If no new commits were pulled (HEAD already up to date):
+    bash scripts/check_commit_attribution.sh HEAD~1 HEAD
     ```
   - *Windows PowerShell:*
     ```powershell
     # If bash is available on PATH:
     bash scripts/check_commit_attribution_test.sh
+    bash scripts/check_commit_attribution.sh $PRE_SYNC_SHA HEAD
+
     # Alternatively, dynamically locate Git's bash binary from git.exe in PATH:
     $gitBash = Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin\bash.exe'
     & $gitBash scripts/check_commit_attribution_test.sh
+    & $gitBash scripts/check_commit_attribution.sh $PRE_SYNC_SHA HEAD
     ```
 - **Documentation Integrity Fixtures:**
   ```bash
