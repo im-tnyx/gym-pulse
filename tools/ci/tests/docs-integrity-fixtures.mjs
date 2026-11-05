@@ -916,6 +916,8 @@ const fixtures = [
       '~~~\n[example]: a(b(c(d(e)))).md\n~~~\n', true],
     ['review: HTML comment fake reference definition with deeply nested parentheses does not exceed parser bound',
       '<!--\n[example]: a(b(c(d(e)))).md\n-->\n', true],
+    ['review: repeated processing-instruction candidates remain within scan budget',
+      'x <?\n'.repeat(8000) + '\n?>\n', true, undefined, undefined, undefined, 4000],
     ['review: real reference definition after closed fence with deep parens detects deleted target',
       '~~~\n[example]: a(b(c(d(e)))).md\n~~~\n[real]: Target.md\n\n[real]\n', false],
     ['review: real reference definition adjacent to HTML comment detects deleted target',
@@ -1110,6 +1112,9 @@ const fixtures = [
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'pipe-free table rows do not combine bracket fragments', md: null, extra: 'deleted-table-cross-row-brackets',
     pass: true, markdownCount: 0 },
+  { name: 'invalid reference label with code-shaped bracket keeps inline link live', md: null,
+    extra: 'deleted-invalid-reference-label-inline-link', pass: false,
+    signal: 'invalid local link', markdownCount: 0 },
   { name: 'quoted pipe-free table rows preserve row boundaries', md: null, extra: 'deleted-quoted-table-pipe-free-rows',
     pass: false, signal: 'invalid local link', markdownCount: 0 },
   { name: 'list table rows preserve escaped and ordinary pipes', md: null, extra: 'deleted-list-table-pipes',
@@ -1583,6 +1588,7 @@ function executeFixture(test) {
       'deleted-nested-blockquote-table': '# Consumer\n> > | A | B |\n> > | - | - |\n> > | one | [old](Target.md) |\n',
       'deleted-table-pipe-free-rows': '# Consumer\n| Header |\n| --- |\n`\n[old](Target.md)\n`\n',
       'deleted-table-cross-row-brackets': '# Consumer\n| Header |\n| --- |\n[old\n](Target.md)\n',
+      'deleted-invalid-reference-label-inline-link': '[`[`]: Consumer.md "title [old](Target.md)"\n',
       'deleted-quoted-table-pipe-free-rows': '# Consumer\n> | Header |\n> | --- |\n> `\n> [old](Target.md)\n> `\n',
       'deleted-list-table-pipes': '# Consumer\n- | A | B |\n  | - | - |\n  | one | [old](Target.md) |\n',
       'deleted-quoted-list-ref': '# Consumer\n> 10. item\n>\n>     [ref]: Target.md\n>\n> [ref]\n',
@@ -2051,6 +2057,7 @@ function executeFixture(test) {
       'deleted-table-one-hyphen', 'deleted-table-two-hyphen', 'deleted-table-single-column',
       'deleted-blockquote-table', 'deleted-nested-blockquote-table',
       'deleted-table-pipe-free-rows', 'deleted-table-cross-row-brackets', 'deleted-quoted-list-ref',
+      'deleted-invalid-reference-label-inline-link',
       'deleted-quoted-table-pipe-free-rows', 'deleted-list-table-pipes', 'deleted-nested-quoted-bullet-ref',
       'deleted-invalid-quoted-list-ref', 'deleted-quoted-list-adjacent-paragraph',
       'deleted-html-multiline-comment-attribute', 'deleted-html-multiline-single-attribute',
@@ -2256,8 +2263,8 @@ function executeFixture(test) {
     }
     return { checked: true };
   } finally {
-    fs.rmSync(root, { recursive: true, force: true });
-    fs.rmSync(outside, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 8, retryDelay: 100 });
+    fs.rmSync(outside, { recursive: true, force: true, maxRetries: 8, retryDelay: 100 });
   }
 }
 
