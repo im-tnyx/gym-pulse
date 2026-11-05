@@ -115,11 +115,37 @@ function hasInterveningBlockBoundary(boundaries, begin, end) {
   return false;
 }
 
+function hasUnownedHtmlTagBoundary(text, boundaries, begin, end) {
+  let low = 0, high = boundaries.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (boundaries[mid] <= begin) low = mid + 1;
+    else high = mid;
+  }
+  let cursor = begin, quote = null;
+  for (let index = low; index < boundaries.length && boundaries[index] <= end; index++) {
+    const boundary = boundaries[index];
+    while (cursor < boundary) {
+      const ch = text[cursor++];
+      if (quote) {
+        if (ch === quote) quote = null;
+      } else if (ch === '"' || ch === "'") {
+        quote = ch;
+      }
+    }
+    const lineEndAt = text.indexOf('\n', boundary);
+    const lineEnd = lineEndAt < 0 ? text.length : lineEndAt;
+    const line = text.slice(boundary, lineEnd);
+    if (!(quote && /^ {0,3}<!--[\s\S]*$/.test(line))) return true;
+  }
+  return false;
+}
+
 const LINK_LABEL_LIMIT = 512;
 const INLINE_CODE_CONTEXT_LIMIT = 8192;
 const MAX_CODE_SPAN_WORK = 32768;
 
-function codeSpanRanges(text, from, to) {
+function codeSpanRanges(text, from, to, sharedBudget = null) {
   const ranges = [];
   const slice = text.slice(from, to);
   const runs = [...slice.matchAll(/`+/g)];
@@ -148,7 +174,8 @@ function codeSpanRanges(text, from, to) {
   let work = 0;
 
   for (let i = 0; i < runs.length; i++) {
-    if (++work > MAX_CODE_SPAN_WORK) break;
+    if (++work > MAX_CODE_SPAN_WORK ||
+        (sharedBudget && ++sharedBudget.work > MAX_CODE_SPAN_WORK)) break;
     let opener = runs[i];
     if (escapedAt(text, from + opener.index)) {
       if (opener[0].length > 1) {
@@ -381,6 +408,7 @@ function gfmTableInfo(rawMarkdown) {
     return Boolean(cells?.length) && cells.every(cell => /^\s*:?-{1,}:?\s*$/.test(cell));
   };
   const pipesByLine = new Map();
+  const rowsByLine = new Map();
   const excessRangesByLine = new Map();
   let activeTable = null;
   for (let index = 0; index < lines.length; index++) {
@@ -409,7 +437,7 @@ function gfmTableInfo(rawMarkdown) {
         };
       }
     }
-    if (activeTable && activeTable.container === containers[index] && contents[index].includes('|')) {
+    if (activeTable && activeTable.container === containers[index]) {
       const rawLine = lines[index];
       const tableLine = contents[index];
       const relativePipes = [];
@@ -418,6 +446,16 @@ function gfmTableInfo(rawMarkdown) {
       }
       const pipes = relativePipes.map(pipe => contentStarts[index] + pipe);
       pipesByLine.set(index, pipes);
+      const cells = [];
+      let cellStart = 0;
+      for (const pipe of relativePipes) {
+        cells.push({ start: contentStarts[index] + cellStart, end: contentStarts[index] + pipe });
+        cellStart = pipe + 1;
+      }
+      cells.push({ start: contentStarts[index] + cellStart, end: rawLine.length });
+      if (relativePipes.length && /^[ \t]*$/.test(tableLine.slice(0, relativePipes[0]))) cells.shift();
+      if (relativePipes.length && /^[ \t]*$/.test(tableLine.slice(relativePipes.at(-1) + 1))) cells.pop();
+      rowsByLine.set(index, { start: contentStarts[index], end: rawLine.length, cells });
       if (pipes.length > 0) {
         const colPipes = relativePipes;
         const firstPipe = colPipes[0];
@@ -437,7 +475,28 @@ function gfmTableInfo(rawMarkdown) {
       }
     }
   }
-  return { pipesByLine, excessRangesByLine };
+  return { pipesByLine, rowsByLine, excessRangesByLine };
+}
+
+function codeSpansWithTableCells(text, tableRowsByLine) {
+  if (!tableRowsByLine.size) return codeSpanRanges(text, 0, text.length);
+  const lines = text.split('\n');
+  const ranges = [];
+  const sharedBudget = { work: 0 };
+  let offset = 0, outsideStart = 0;
+  const add = (from, to) => { if (to > from) ranges.push(...codeSpanRanges(text, from, to, sharedBudget)); };
+  for (let i = 0; i < lines.length; i++) {
+    const row = tableRowsByLine.get(i);
+    const end = offset + lines[i].length;
+    if (row) {
+      add(outsideStart, offset);
+      for (const cell of row.cells) add(offset + cell.start, offset + cell.end);
+      outsideStart = end + 1;
+    }
+    offset = end + 1;
+  }
+  add(outsideStart, text.length);
+  return ranges;
 }
 
 function removeCode(rawMarkdown, collectedIds = null) {
@@ -445,7 +504,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
   // Bounded, order-sensitive Markdown masking. Preserve newlines and offsets.
   // Multiline code spans and HTML comments cannot change fence ownership.
   const lines = markdown.split(/\r\n|\n|\r/);
-  const { pipesByLine: tablePipesByLine, excessRangesByLine } = gfmTableInfo(markdown);
+  const { pipesByLine: tablePipesByLine, rowsByLine: tableRowsByLine, excessRangesByLine } = gfmTableInfo(markdown);
   const literalCodeRanges = [];
   {
     let fence = null;
@@ -563,7 +622,9 @@ function removeCode(rawMarkdown, collectedIds = null) {
       literalCodeRanges.push({ start: htmlStart, end: markdown.length });
     }
   }
-  const codeSpans = codeSpanRanges(markdown, 0, markdown.length);
+  const htmlAttributeRanges = htmlTagRanges(markdown);
+  const codeSpans = codeSpansWithTableCells(markdown, tableRowsByLine)
+    .filter(range => !inRanges(htmlAttributeRanges, range.start));
   literalCodeRanges.push(...codeSpans);
   literalCodeRanges.sort((a, b) => a.start - b.start || a.end - b.end);
   // Front matter is metadata, not inline Markdown. An unmatched opener
@@ -585,7 +646,8 @@ function removeCode(rawMarkdown, collectedIds = null) {
   for (let i = lines.length - 1; i >= 0; i--) {
     laterCommentCloser[i] = lines[i].includes('-->') || laterCommentCloser[i + 1];
   }
-  const multilineProtectedRanges = [];
+  const multilineProtectedRanges = htmlAttributeRanges.filter(range =>
+    markdown.slice(range.start, range.end).includes('\n'));
   const multilineDefRanges = [];
   let searchTail = 0;
   while (searchTail < markdown.length) {
@@ -989,6 +1051,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
 
     let visible = '', from = 0;
     const tablePipes = tablePipesByLine.get(lineIndex) || [];
+    const isTableRow = tableRowsByLine.has(lineIndex);
     const cellEnd = start => tablePipes.find(pipe => pipe >= start) ?? line.length;
     let blockCommentOwnedLine = false;
     const inlineTagRanges = htmlTagRanges(line);
@@ -1127,7 +1190,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
           visible += line.slice(from, tick.index) +
             ' '.repeat(closer.index + closer[0].length - tick.index);
           from = closer.index + closer[0].length;
-        } else if (!tablePipes.length && !isAtxHeading && laterClosingTicks(lineIndex, tick[0].length, container,
+        } else if (!isTableRow && !isAtxHeading && laterClosingTicks(lineIndex, tick[0].length, container,
           lineInList ? activeListIndent : null)) {
           visible += line.slice(from, tick.index) + ' '.repeat(line.length - tick.index);
           inlineTicks = tick[0].length;
@@ -1141,7 +1204,7 @@ function removeCode(rawMarkdown, collectedIds = null) {
         const blockStart = /^ {0,3}<!--/.test(openerShape.content);
         const hasSameLineCloser = hasSameLineCommentCloser(opener + 4);
         // Unclosed inline opener is literal text; unclosed block opener masks.
-        const canCloseLater = !tablePipes.length && laterCommentCloserInline(lineIndex, openerShape,
+        const canCloseLater = !isTableRow && laterCommentCloserInline(lineIndex, openerShape,
           lineInList ? activeListIndent : null);
         // Unclosed inline opener is literal text; unclosed block opener masks.
         if (!blockStart && !hasSameLineCloser && !canCloseLater) {
@@ -2604,10 +2667,13 @@ function linkBlockBoundaries(text, sourceText = text) {
   let paragraphOpen = false;
   const sourceLines = (sourceText ?? text).split('\n');
   const lines = text.split('\n');
-  const tablePipesByLine = gfmTableInfo(sourceText ?? text).pipesByLine;
+  const tableInfo = gfmTableInfo(sourceText ?? text);
+  const tablePipesByLine = tableInfo.pipesByLine;
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const raw = lines[lineIndex];
     const tablePipes = tablePipesByLine.get(lineIndex);
+    const tableRow = tableInfo.rowsByLine.get(lineIndex);
+    if (tableRow) boundaries.push(offset + tableRow.start, offset + tableRow.end);
     if (tablePipes) for (const pipe of tablePipes) boundaries.push(offset + pipe);
     const sourceRaw = sourceLines[lineIndex] ?? raw;
     const quote = /^(?: {0,3}>[ \t]?){1,4}/.exec(raw);
@@ -2655,7 +2721,7 @@ function linkBlockBoundaries(text, sourceText = text) {
     } else if (!continuationIndent && !isBlank) listIndent = null;
     offset += raw.length + 1;
   }
-  return boundaries;
+  return boundaries.sort((a, b) => a - b);
 }
 // One forward pass. Images do not deactivate an enclosing link, so a badge
 // wrapped in a link reports both destinations. A nested link keeps the inner
@@ -3000,7 +3066,11 @@ function htmlTagRanges(text) {
     }
     if (!/[\s/>]/.test(text[begin + start[0].length] || '')) continue;
     const end = parseHtmlTagEnd(text, begin, start[0].length, tick);
-    if (end > begin && !hasInterveningBlockBoundary(blockBoundaries, begin, end)) ranges.push({ start: begin, end });
+    // A quoted attribute owns a comment-shaped line, while real block starts
+    // such as ATX headings still terminate inline tag parsing.
+    if (end > begin && !hasUnownedHtmlTagBoundary(text, blockBoundaries, begin, end)) {
+      ranges.push({ start: begin, end });
+    }
   }
   return ranges;
 }
@@ -3080,7 +3150,7 @@ function parseHtmlTagEnd(text, begin, nameLength, tick) {
         if (text[index] === '\n') {
           const nextNl = text.indexOf('\n', index + 1);
           const line = text.slice(index + 1, nextNl === -1 ? text.length : nextNl);
-          if (/^[ \t]*\r?$/.test(line) || isBlockInterruption(line)) return -1;
+          if (/^[ \t]*\r?$/.test(line)) return -1;
         }
         tick(); index++;
       }
@@ -3128,13 +3198,19 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
   // Paragraph and first-definition rules still apply. A blank line or a
   // suffix after the title means this line is not a definition.
   const definitionPrefix = /^((?: {0,3}>[ \t]?){0,4} {0,3}(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)?)/;
-  let scanAt = 0, listContinuationIndent = null;
+  let scanAt = 0, listContinuationIndent = null, listContinuationQuoteDepth = 0;
   while (scanAt < text.length) {
     const lineBreak = text.indexOf('\n', scanAt);
     const lineLimit = lineBreak < 0 ? text.length : lineBreak;
     const line = text.slice(scanAt, lineLimit);
-    const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(line);
-    const list = !isThematic ? /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+|[ \t]*$)/.exec(line) : null;
+    const quote = /^(?: {0,3}>[ \t]?){0,4}/.exec(line)?.[0] || '';
+    const quoteDepth = (quote.match(/>/g) || []).length;
+    const content = line.slice(quote.length);
+    if (listContinuationIndent !== null && quoteDepth !== listContinuationQuoteDepth) {
+      listContinuationIndent = null;
+    }
+    const isThematic = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/.test(content);
+    const list = !isThematic ? /^ {0,3}(?:[-+*]|\d{1,9}[.)])([ \t]+|[ \t]*$)/.exec(content) : null;
     if (list) {
       const markerStr = list[0].slice(0, list[0].length - list[1].length);
       const markerCol = visualColumn(markerStr);
@@ -3143,13 +3219,14 @@ function validateMarkdown(filename, deletedTargets = null, budget = null) {
       const spacesCol = afterWsCol - markerCol;
       const padding = spacesCol === 0 || spacesCol >= 5 ? 1 : spacesCol;
       listContinuationIndent = markerCol + padding;
+      listContinuationQuoteDepth = quoteDepth;
     }
-    else if (!/^[ \t]*$/.test(line) && listContinuationIndent !== null &&
-        !stripIndent(line, listContinuationIndent)) listContinuationIndent = null;
-    const strippedCont = !list && listContinuationIndent !== null ? stripIndent(line, listContinuationIndent) : null;
+    else if (!/^[ \t]*$/.test(content) && listContinuationIndent !== null &&
+        !stripIndent(content, listContinuationIndent)) listContinuationIndent = null;
+    const strippedCont = !list && listContinuationIndent !== null ? stripIndent(content, listContinuationIndent) : null;
     const continuation = strippedCont ? strippedCont.consumedChars : 0;
-    const prefix = definitionPrefix.exec(line.slice(continuation));
-    const bracket = scanAt + continuation + (prefix ? prefix[0].length : 0);
+    const prefix = definitionPrefix.exec(content.slice(continuation));
+    const bracket = scanAt + quote.length + continuation + (prefix ? prefix[0].length : 0);
     if (prefix && /^ {0,3}>/.test(text.slice(bracket, lineLimit))) failParserBound();
     let advanced = false;
     if (prefix && text[bracket] === '[' && !escapedAt(text, bracket) &&
