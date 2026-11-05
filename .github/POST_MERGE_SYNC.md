@@ -75,12 +75,23 @@ Ensure the repository is not in an abnormal Git state:
 
 ### Step 4: Inspect Fetched Upstream Changes
 
-Before applying changes to `main`, inspect what `git fetch origin` retrieved from the remote:
+Before applying changes to `main`, inspect what `git fetch origin` retrieved from the remote, then pin the inspected tip so later integration cannot silently advance past that review:
 
 ```bash
 git log --oneline main..origin/main
 git diff --stat main..origin/main
 ```
+
+Record the exact inspected tip:
+
+- *POSIX / Git Bash:*
+  ```bash
+  INSPECTED_ORIGIN_MAIN=$(git rev-parse origin/main)
+  ```
+- *Windows PowerShell:*
+  ```powershell
+  $INSPECTED_ORIGIN_MAIN = git rev-parse origin/main
+  ```
 
 **Safety Invariant:** Review the incoming commit subjects and touched paths. If the fetched commits contain unexpected, unexplained, or unauthorized changes (e.g. unintended file modifications, unexpected branch merges, or diverged history), stop immediately and seek clarification from the repository owner before updating local `main`.
 
@@ -94,7 +105,7 @@ git switch main
 
 *(If using an older Git version where `git switch` is unavailable, fallback to `git checkout main`.)*
 
-Record the pre-sync commit SHA before pulling so that post-sync validations can check the exact incoming commit range:
+Record the pre-sync commit SHA before integrating so that post-sync validations can check the exact incoming commit range:
 
 - *POSIX / Git Bash:*
   ```bash
@@ -105,28 +116,39 @@ Record the pre-sync commit SHA before pulling so that post-sync validations can 
   $PRE_SYNC_SHA = git rev-parse HEAD
   ```
 
-### Step 6: Fast-Forward Only Update
+### Step 6: Fast-Forward Only Update of the Inspected Tip
 
-```bash
-git pull --ff-only origin main
-```
+Integrate **only** the commit tip inspected in Step 4. Do **not** run `git pull` here: a pull re-fetches and can silently integrate commits that were not part of the Step 4 review.
 
-#### Why `--ff-only` is Mandatory:
-- **Linear & Predictable History:** It ensures local `main` advances strictly as a linear fast-forward to match `origin/main`.
-- **Fails Closed on Divergence:** If local `main` contains unpushed local commits or has diverged from `origin/main`, `git pull --ff-only` aborts immediately with an error instead of creating an unwanted, recursive merge commit.
+- *POSIX / Git Bash:*
+  ```bash
+  git merge --ff-only "$INSPECTED_ORIGIN_MAIN"
+  ```
+- *Windows PowerShell:*
+  ```powershell
+  git merge --ff-only $INSPECTED_ORIGIN_MAIN
+  ```
+
+#### Why `--ff-only` against the inspected tip is Mandatory:
+- **Linear & Predictable History:** Local `main` advances strictly as a linear fast-forward to the reviewed tip.
+- **Fails Closed on Divergence:** If local `main` contains unpushed local commits or has diverged from the inspected tip, `git merge --ff-only` aborts immediately instead of creating an unwanted merge commit.
+- **No Inspect/Integrate Race:** Capturing `$INSPECTED_ORIGIN_MAIN` after fetch, then merging that exact SHA, prevents a later network refresh from integrating unreviewed commits.
 
 ---
 
 ## 4. Verify Local and Remote Commit SHAs
 
-Verify that local `main` and remote `origin/main` point to the exact same commit:
+Verify that local `main` reached the inspected tip and still matches the fetched remote-tracking tip:
 
 ```bash
 git rev-parse HEAD
 git rev-parse origin/main
 ```
 
-**Expected Result:** Both commands output the exact same 40-character hexadecimal commit SHA.
+- *POSIX / Git Bash:* also confirm `test "$(git rev-parse HEAD)" = "$INSPECTED_ORIGIN_MAIN"`.
+- *Windows PowerShell:* also confirm `(git rev-parse HEAD) -eq $INSPECTED_ORIGIN_MAIN`.
+
+**Expected Result:** `HEAD`, `origin/main`, and `$INSPECTED_ORIGIN_MAIN` are the exact same 40-character hexadecimal commit SHA. If `HEAD` advanced past `$INSPECTED_ORIGIN_MAIN`, stop and treat the sync as invalid.
 
 ---
 
@@ -206,7 +228,7 @@ Run only the validations relevant to the current repository state and task scope
 
 - **Whitespace & Conflict Check:**
   - *Incoming Synchronized Commits (validates commits pulled into `main`):*
-    If new commits were pulled (`$PRE_SYNC_SHA` does not match `HEAD`):
+    If new commits were integrated (`$PRE_SYNC_SHA` does not match `HEAD`):
     ```bash
     git diff --check $PRE_SYNC_SHA..HEAD
     ```
@@ -214,27 +236,36 @@ Run only the validations relevant to the current repository state and task scope
     ```bash
     git diff --check
     ```
-    *(Note: Plain `git diff --check` inspects uncommitted working-tree modifications only. In a clean worktree after sync, it returns 0. To validate newly pulled commits, check the commit range `$PRE_SYNC_SHA..HEAD`.)*
+    *(Note: Plain `git diff --check` inspects uncommitted working-tree modifications only. In a clean worktree after sync, it returns 0. To validate newly integrated commits, check the commit range `$PRE_SYNC_SHA..HEAD`.)*
 - **Commit Attribution Guard Check:**
-  The attribution guard validates that commits in the specified range do not contain prohibited AI co-author trailers. To inspect the newly synchronized commits, pass the recorded pre-sync SHA as the base ref:
+  The attribution guard validates that commits in the specified range do not contain prohibited AI co-author trailers. Run the real guard **only when incoming commits exist**. When `$PRE_SYNC_SHA` equals `HEAD`, record `N/A — no incoming commits` and do **not** invent a substitute range such as `HEAD~1 HEAD` (that audits an unrelated prior commit and fails in depth-1 checkouts where `HEAD~1` is missing). Keep the two branches mutually exclusive so both checks cannot run.
   - *POSIX / Git Bash:*
     ```bash
     bash scripts/check_commit_attribution_test.sh
-    # If new commits were pulled ($PRE_SYNC_SHA != HEAD):
-    bash scripts/check_commit_attribution.sh $PRE_SYNC_SHA HEAD
-    # If no new commits were pulled (HEAD already up to date):
-    bash scripts/check_commit_attribution.sh HEAD~1 HEAD
+    if [ "$PRE_SYNC_SHA" != "$(git rev-parse HEAD)" ]; then
+      bash scripts/check_commit_attribution.sh "$PRE_SYNC_SHA" HEAD
+    else
+      echo "N/A — no incoming commits"
+    fi
     ```
   - *Windows PowerShell:*
     ```powershell
     # If bash is available on PATH:
     bash scripts/check_commit_attribution_test.sh
-    bash scripts/check_commit_attribution.sh $PRE_SYNC_SHA HEAD
+    if ($PRE_SYNC_SHA -ne (git rev-parse HEAD)) {
+      bash scripts/check_commit_attribution.sh $PRE_SYNC_SHA HEAD
+    } else {
+      Write-Output 'N/A — no incoming commits'
+    }
 
     # Alternatively, dynamically locate Git's bash binary from git.exe in PATH:
     $gitBash = Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin\bash.exe'
     & $gitBash scripts/check_commit_attribution_test.sh
-    & $gitBash scripts/check_commit_attribution.sh $PRE_SYNC_SHA HEAD
+    if ($PRE_SYNC_SHA -ne (git rev-parse HEAD)) {
+      & $gitBash scripts/check_commit_attribution.sh $PRE_SYNC_SHA HEAD
+    } else {
+      Write-Output 'N/A — no incoming commits'
+    }
     ```
 - **Documentation Integrity Fixtures:**
   ```bash
