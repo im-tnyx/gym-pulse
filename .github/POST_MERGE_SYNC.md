@@ -206,8 +206,16 @@ If the synchronization flow encounters unexpected states, fail closed and follow
 * **Condition:** `git status` reports `HEAD detached at <commit-sha>`.
 * **Recovery:**
   1. Check if uncommitted work exists: `git status -sb`.
-  2. Switch back to a named branch: `git switch main` (or the relevant feature branch).
-  3. If detached commits were made, do not discard them; create a temporary branch pointer (`git branch temp-recovery`) and report to the owner.
+  2. If detached commits were made, **create a recovery branch pointer immediately before switching branches**:
+     ```bash
+     git branch temp-recovery-detached
+     ```
+     *(Or pass the explicit detached commit SHA: `git branch temp-recovery-detached <detached-commit-sha>`.)*
+  3. Switch back to a named branch:
+     ```bash
+     git switch main
+     ```
+  4. Report the recovery pointer (`temp-recovery-detached`) and its commit SHA to the repository owner.
 
 ### Scenario C: Fast-Forward Pull Fails (`fatal: Not possible to fast-forward, aborting.`)
 * **Condition:** Local `main` has diverged from `origin/main` (e.g., local commits were accidentally committed to `main`).
