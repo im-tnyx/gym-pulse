@@ -12,6 +12,7 @@ This repository is a **Docs-as-Code architecture and Phase 1 product specificati
 ## How to contribute
 
 - Inspect the latest branch, issue, requirements, decision status, and relevant implementation/test files **before writing**. Keep changes small, issue-linked and reviewable; do not invent frameworks, providers, migrations, build scripts or approvals.
+- Synchronize local worktrees with upstream `main` per [POST_MERGE_SYNC.md](POST_MERGE_SYNC.md); verify a clean working tree before switching branches and avoid destructive reset, stash, or force-delete.
 - Preserve explicit **trusted-server tenant and resource scoping** and named capability/Member-self authorization. Authentication, a JWT role, client tenant ID, screen visibility and RLS alone are **not** authorization; see [ADR-0009](../docs/adr/ADR-0009-authorization-implementation.md) and [ADR-0010](../docs/adr/ADR-0010-data-layer-tenant-isolation-rls.md), both **Proposed**. `D-SEC-008` remains **OPEN**.
 - Keep payments, attendance, membership entitlement and sensitive mutations server-authoritative; verify provider events, guard retry/idempotency paths and preserve auditable actor/reason. Do not introduce direct client canonical-database access.
 - **Never** place API keys, passwords, access tokens, private member/health/payment data, production dumps or sensitive logs into prompts, examples, commits or test artifacts. Use synthetic/redacted fixtures.

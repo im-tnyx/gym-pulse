@@ -8,6 +8,7 @@ Use these steps for one reviewable task slice. Read the smallest relevant source
 
 - Identify the user request, linked issue/PR, requested deliverable, and whether the task is docs-only, application, security/data, or production-related.
 - Inspect live `main` HEAD, active branch/PR, relevant files, and `git status --short --branch` **when a worktree exists**. Never overwrite unrelated changes.
+- For post-merge worktree synchronization, follow the [post-merge sync guide](../.github/POST_MERGE_SYNC.md) to inspect upstream changes, verify fast-forward pull safety, and prevent uncommitted change loss.
 - Compare current GitHub issue/PR states and actual source/config with [`.ai/current-state.md`](current-state.md). Report stale or inaccessible context; do not treat old snapshots as current.
 - Read only applicable canonical requirements, approved decisions and relevant ADR statuses. Record exact references, not invented approvals.
 
@@ -53,7 +54,7 @@ Use these steps for one reviewable task slice. Read the smallest relevant source
 
 **Routine pause / resumable continuation:** A healthy task may remain `IN_PROGRESS` across sessions without a blocker, approval request, or reviewable PR. Record a **continuation checkpoint**, not a false terminal/review outcome: current owner (and incoming owner if transferring), branch and exact HEAD/baseline, clean/dirty/uncommitted work where visible, changed paths, completed and pending steps, actual validation with `NOT RUN` reasons, risks, and **one next bounded action**. Keep the terminal/review outcome field empty (note `CONTINUATION — IN_PROGRESS` separately). On restart, inspect live files/branch/status before resuming; if a transfer occurs, explicitly acknowledge ownership without overwriting another contributor's work.
 
-**Blocked/review/completion handoff:** Record actual file/commit/PR links, validation run/not-run, residual risks, unresolved approvals, the applicable outcome from the table, and **one next bounded action**. Update the existing task brief **only when used**; otherwise keep the evidence in the linked issue/PR. Refresh [`.ai/current-state.md`](current-state.md) only for a material context/next-action change or confirmed staleness, and only after checking live sources. Keep historical audit records intact.
+**Blocked/review/completion handoff:** Record actual file/commit/PR links, validation run/not-run, residual risks, unresolved approvals, the applicable outcome from the table, and **one next bounded action**. Update the existing task brief **only when used**; otherwise keep the evidence in the linked issue/PR. Refresh [`.ai/current-state.md`](current-state.md) only for a material context/next-action change or confirmed staleness, and only after checking live sources. Keep historical audit records intact. Following an authorized PR merge, synchronize local worktrees per [.github/POST_MERGE_SYNC.md](../.github/POST_MERGE_SYNC.md) before starting the next bounded task.
 
 ## Tool or tracker unavailable?
 
