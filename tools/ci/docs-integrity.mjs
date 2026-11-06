@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { visualColumn, stripIndent } from './lib/markdown-indent.mjs';
 
 const [argRepo, base, head, merge] = process.argv.slice(2);
 const isSha = value => typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
@@ -44,33 +45,6 @@ function escapedAt(text, index) {
   let slashes = 0;
   for (let i = index - 1; i >= 0 && text[i] === '\\'; i--) slashes++;
   return slashes % 2 === 1;
-}
-
-function visualColumn(str, fromCol = 0) {
-  let col = fromCol;
-  for (let i = 0; i < str.length; i++) {
-    if (str[i] === '\t') col += 4 - (col % 4);
-    else col++;
-  }
-  return col;
-}
-
-function stripIndent(str, targetIndent, fromCol = 0) {
-  if (targetIndent <= 0) return { matches: true, remaining: str, consumedChars: 0 };
-  let col = fromCol;
-  const targetCol = fromCol + targetIndent;
-  for (let i = 0; i < str.length; i++) {
-    const ch = str[i];
-    if (ch === ' ') col++;
-    else if (ch === '\t') col += 4 - (col % 4);
-    else return null;
-    if (col >= targetCol) {
-      const excess = col - targetCol;
-      const remaining = ' '.repeat(excess) + str.slice(i + 1);
-      return { matches: true, remaining, consumedChars: i + 1 };
-    }
-  }
-  return null;
 }
 
 function isBlockInterruption(raw) {
