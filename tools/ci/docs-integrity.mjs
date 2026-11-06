@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { visualColumn, stripIndent } from './lib/markdown-indent.mjs';
+import { lineLookup, inRanges } from './lib/source-position.mjs';
 
 const [argRepo, base, head, merge] = process.argv.slice(2);
 const isSha = value => typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
@@ -2248,26 +2249,6 @@ function refersToDeletedMarkdown(source, raw, deleted) {
   });
 }
 
-// Convert match offsets to 1-based file lines without rescanning for each link.
-function lineLookup(text) {
-  const breaks = [];
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charCodeAt(i);
-    if (char === 13) {
-      if (text.charCodeAt(i + 1) === 10) i++; // CRLF is one break.
-      breaks.push(i);
-    } else if (char === 10) breaks.push(i); // LF or standalone CR.
-  }
-  return offset => {
-    let lo = 0, hi = breaks.length;
-    while (lo < hi) {
-      const mid = (lo + hi) >>> 1;
-      if (breaks[mid] < offset) lo = mid + 1; else hi = mid;
-    }
-    return lo + 1;
-  };
-}
-
 // Pinned Unicode 15.1 default (locale-independent) full case-fold differences
 // from simple lowercasing. Generated from Python's UCD 15.1 casefold data;
 // each "codepoint:result,codepoints" entry is a fold that simple lowercase
@@ -3138,16 +3119,6 @@ function parseHtmlTagEnd(text, begin, nameLength, tick) {
     if (index === valueStart) return invalidate();
   }
 }
-function inRanges(ranges, offset) {
-  let low = 0, high = ranges.length;
-  while (low < high) {
-    const mid = (low + high) >>> 1;
-    if (ranges[mid].start <= offset) low = mid + 1;
-    else high = mid;
-  }
-  return low > 0 && offset < ranges[low - 1].end;
-}
-
 function validateMarkdown(filename, deletedTargets = null, budget = null) {
   let resolved;
   try { resolved = localFile(filename); } catch { fail(safe(filename) + ': missing/unsafe Markdown'); return; }
