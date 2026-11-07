@@ -1,0 +1,48 @@
+# Issue #45: isolated Docker-based regression fixture runner for docs-integrity.
+# Runs the full offline synthetic fixture suite in a network-isolated container.
+# Paths filter ensures this workflow runs only when tools/ci/** or this workflow changes.
+name: GymPulse Docs Fixtures (Docker)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'tools/ci/**'
+      - '.github/workflows/docs-fixtures-docker.yml'
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gympulse-docs-fixtures-docker-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs-fixtures-docker:
+    name: docs-fixtures-docker
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Run docs-integrity fixtures in isolated Docker container
+        run: |
+          docker run --rm \
+            --network none \
+            -v "${{ github.workspace }}:/repo:ro" \
+            -w /repo \
+            node:24-bookworm \
+            node tools/ci/tests/docs-integrity-fixtures.mjs
